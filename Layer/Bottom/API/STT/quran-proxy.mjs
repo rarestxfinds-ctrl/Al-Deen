@@ -1,7 +1,6 @@
 import { WebSocketServer } from 'ws';
 import WebSocket from 'ws';
 
-const SILENCE_TIMEOUT_MS = 1500;
 const LOCAL_ASR_URL = 'ws://localhost:8082';
 
 const wss = new WebSocketServer({ port: 8081, host: '0.0.0.0' });
@@ -10,8 +9,6 @@ console.log('✅ Quran proxy listening on port 8081');
 wss.on('connection', (clientWs) => {
   console.log('🔌 Client connected');
 
-  const audioChunks = [];
-  let silenceTimer = null;
   let asrSocket = null;
 
   function connectASR() {
@@ -21,8 +18,8 @@ wss.on('connection', (clientWs) => {
       try {
         const result = JSON.parse(data);
         if (result.text && clientWs.readyState === clientWs.OPEN) {
-          clientWs.send(JSON.stringify({ text: result.text, is_final: true }));
-          console.log('✅ Forwarded to client:', result.text);
+          clientWs.send(JSON.stringify({ text: result.text, is_final: result.is_final ?? true }));
+          console.log(`✅ Forwarded to client: ${result.text}`);
         } else if (result.error) {
           console.error('❌ ASR error:', result.error);
         }
@@ -38,31 +35,18 @@ wss.on('connection', (clientWs) => {
   }
   connectASR();
 
-  async function transcribeAndSend() {
-    if (audioChunks.length === 0) return;
-    if (!asrSocket || asrSocket.readyState !== WebSocket.OPEN) {
-      console.log('⚠️ ASR server not ready, skipping transcription');
-      return;
-    }
-    const chunks = audioChunks.splice(0, audioChunks.length);
-    const combined = Buffer.concat(chunks.map(c => Buffer.from(c)));
-    console.log(`🎙️ Sending ${combined.length} bytes to local ASR server...`);
-    asrSocket.send(combined);
-  }
-
   clientWs.on('message', (data) => {
-    audioChunks.push(data);
-    clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(() => {
-      console.log('🔇 Silence detected — transcribing...');
-      transcribeAndSend();
-    }, SILENCE_TIMEOUT_MS);
-  });
+  console.log(`📨 Received ${data.length} bytes from client`);
+  if (asrSocket && asrSocket.readyState === WebSocket.OPEN) {
+    asrSocket.send(data);
+    console.log(`✅ Forwarded ${data.length} bytes to ASR server`);
+  } else {
+    console.warn("ASR socket not open, cannot forward");
+  }
+});
 
   clientWs.on('close', () => {
-    console.log('🔌 Client disconnected — transcribing remaining audio...');
-    clearTimeout(silenceTimer);
-    transcribeAndSend();
+    console.log('🔌 Client disconnected');
     if (asrSocket) asrSocket.close();
   });
 

@@ -52,17 +52,14 @@ const Surah = () => {
   } = useApp();
 
   const showTransliteration = selectedAyahTransliterator !== "None";
-
   const { stop: stopAudio, isPlaying } = useAudio();
-
   const { data: surahData, isLoading, error, refetch } = useQuranData(surahId);
-
   const verses = surahData?.verses;
   const lines = surahData?.lines;
-
   const { updateProgress } = useReadingProgress();
   const { startSession, stopSession, saveSecondsToGoal, isTrackingEnabled } = useReadingSession();
   const { activeGoal } = useQuranGoals();
+  const { hifz } = useApp(); // assumes hifz is in useApp context
 
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
@@ -83,27 +80,48 @@ const Surah = () => {
     translation?: string;
   }>({ open: false });
 
-  // Use Deepgram hook
+  // --- Visible verse state (from scroll) ---
+  const [visibleVerse, setVisibleVerse] = useState(1);
+
+  // --- Use the combined STT + alignment hook ---
   const {
-    startRecording: startDeepgramRecording,
-    stopRecording: stopDeepgramRecording,
+    toggleRecording,
     isRecording: isDeepgramRecording,
     transcript,
+    sendRawAudio,
+    connectWebSocket,
     error: deepgramError,
-  } = useDeepgram();
+  } = useDeepgram({
+    surahId,
+    verses,
+    visibleVerse,
+    hifz,
+  });
+
+  // --- Test audio handler ---
+  const sendTestAudio = useCallback(async () => {
+    const audioPath = "/Layer/Bottom/Data/Quran/Qiraat/Mishary_Rashid_Alafasy/Surah/1/Ayah/1/Audio.mp3";
+    try {
+      console.log("Fetching audio from:", audioPath);
+      const response = await fetch(audioPath);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const arrayBuffer = await response.arrayBuffer();
+      await connectWebSocket();
+      const success = sendRawAudio(arrayBuffer);
+      console.log("Test audio sent:", success);
+    } catch (err) {
+      console.error("Failed to send test audio:", err);
+    }
+  }, [connectWebSocket, sendRawAudio]);
 
   const handleRecordToggle = () => {
-    if (isDeepgramRecording) {
-      stopDeepgramRecording();
-    } else {
-      startDeepgramRecording();
-    }
+    toggleRecording();
   };
 
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const sessionIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const isPageLayout = layout === "page";
   const isTimeGoal = activeGoal?.goal_type === "time_based";
   const shouldTrack = isTrackingEnabled && isTimeGoal;
@@ -147,15 +165,16 @@ const Surah = () => {
     );
     setReadingProgress(progress);
 
-    let visibleVerse = 1;
+    let newVisibleVerse = 1;
     verseRefs.current.forEach((element, verseId) => {
       const rect = element.getBoundingClientRect();
       if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
-        visibleVerse = verseId;
+        newVisibleVerse = verseId;
       }
     });
+    setVisibleVerse(newVisibleVerse);
 
-    if (visibleVerse > 1) updateProgress(surahId, visibleVerse);
+    if (newVisibleVerse > 1) updateProgress(surahId, newVisibleVerse);
   }, [verses, surahId, updateProgress]);
 
   useEffect(() => {
@@ -354,6 +373,7 @@ const Surah = () => {
         <AudioControls
           isRecording={isDeepgramRecording}
           onRecordToggle={handleRecordToggle}
+          onTestAudio={sendTestAudio}
           hideVerses={hideVerses}
           onHideVersesToggle={setHideVerses}
           transcript={transcript}

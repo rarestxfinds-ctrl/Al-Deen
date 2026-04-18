@@ -1,4 +1,4 @@
-import { Mic, MicOff, Eye, EyeOff } from "lucide-react";
+import { Mic, MicOff, Eye, EyeOff, Play } from "lucide-react";
 import { Switch } from "@/Top/Component/UI/Switch";
 import { Card } from "@/Top/Component/UI/Card";
 import { cn } from "@/Middle/Library/utils";
@@ -6,6 +6,7 @@ import { cn } from "@/Middle/Library/utils";
 interface AudioControlsProps {
   isRecording?: boolean;
   onRecordToggle?: () => void;
+  onTestAudio?: () => void;   // new
   hideVerses?: boolean;
   onHideVersesToggle?: (checked: boolean) => void;
   transcript?: string;
@@ -15,6 +16,7 @@ interface AudioControlsProps {
 export function AudioControls({
   isRecording = false,
   onRecordToggle,
+  onTestAudio,
   hideVerses = false,
   onHideVersesToggle,
   transcript = "",
@@ -39,7 +41,17 @@ export function AudioControls({
         )}
       </Card>
 
-      {/* Hide Verses Toggle — fully controlled, no local state */}
+      {/* Test Audio Button (sends a fixed MP3 file) */}
+      {onTestAudio && (
+        <Card
+          className="p-3 rounded-full cursor-pointer transition-all hover:scale-105 bg-white dark:bg-black"
+          onClick={onTestAudio}
+        >
+          <Play className="h-6 w-6 text-foreground group-hover:text-white dark:group-hover:text-black" />
+        </Card>
+      )}
+
+      {/* Hide Verses Toggle */}
       <Card className="p-2 rounded-full flex items-center justify-center">
         <Switch
           checked={hideVerses}
