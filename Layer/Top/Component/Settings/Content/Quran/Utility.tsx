@@ -71,26 +71,10 @@ export function MobileNavigator({
     </div>
   );
 
+  // Only the content – top bar is managed externally (via store)
   return (
-    <div className="fixed inset-0 z-50 bg-background">
-      <div className="p-4 pt-12">
-        {/* Header with back button and title */}
-        <div className="flex items-center gap-3 mb-6">
-          <Button
-            onClick={onClose}
-            size="sm"
-            className="w-8 h-8 p-0 rounded-full"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="relative rounded-[40px] bg-white dark:bg-black border-2 border-black dark:border-white transition-all duration-200 py-1 px-3">
-            <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-          </div>
-        </div>
-        
-        {/* Content */}
-        {children || <OptionList />}
-      </div>
+    <div>
+      {children || <OptionList />}
     </div>
   );
 }

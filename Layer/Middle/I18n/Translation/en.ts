@@ -3,7 +3,7 @@ export const en = {
   nav: {
     home: "Home",
     quran: "Quran",
-    hadiths: "Hadiths",
+    hadith: "Hadith",
     duas: "Duas",
     feedback: "Feedback",
     help: "Help",
@@ -78,7 +78,7 @@ export const en = {
   // Search
   search: {
     title: "Search",
-    placeholder: "Search the Quran, Hadiths, and more...",
+    placeholder: "Search the Quran, Hadith, and more...",
     recentSearches: "Recent Searches",
     popularSearches: "Popular Searches",
     quickNavigation: "Quick Navigation",
@@ -93,21 +93,21 @@ export const en = {
     welcome: "Welcome to Al-Deen",
     subtitle: "Your comprehensive Islamic resource",
     exploreQuran: "Explore the Quran",
-    exploreHadiths: "Explore Hadiths",
+    exploreHadiths: "Explore Hadith",
     exploreDuas: "Explore Duas",
     getHelp: "Get Help",
   },
   
-  // Hadiths
-  hadiths: {
-    title: "Hadiths",
+  // Hadith
+  hadith: {
+    title: "Hadith",
     collections: "Collections",
     chapters: "Chapters",
     hadith: "Hadith",
     narrator: "Narrator",
     grade: "Grade",
     book: "Book",
-    noHadiths: "No hadiths found",
+    noHadiths: "No hadith found",
     loadingCollection: "Loading collection...",
     loadingChapter: "Loading chapter...",
   },

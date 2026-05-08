@@ -24,7 +24,7 @@ export function SpotlightSearch() {
   const navLinks = useMemo(() => [
     { name: t.nav.home, path: "/", icon: Home },
     { name: t.nav.quran, path: "/Quran", icon: BookOpen },
-    { name: t.nav.hadiths, path: "/Hadith", icon: BookText },
+    { name: t.nav.hadith, path: "/Hadith", icon: BookText },
     { name: t.nav.duas, path: "/Aid/Dua", icon: MessageSquare },
     { name: "Prayers", path: "/Prayers", icon: Home },
     { name: "Tajweed", path: "/Tajweed", icon: BookOpen },

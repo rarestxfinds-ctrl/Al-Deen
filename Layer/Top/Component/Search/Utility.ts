@@ -10,7 +10,7 @@ import type { SearchCategory, SearchResult, SearchCategoryConfig } from "./Types
 export const ALL_PAGES = [
   { name: "Home", path: "/", icon: Home },
   { name: "Quran", path: "/Quran", icon: BookOpen },
-  { name: "Hadiths", path: "/Hadith", icon: BookText },
+  { name: "Hadith", path: "/Hadith", icon: BookText },
   { name: "Duas", path: "/Aid/Dua", icon: MessageSquare },
   { name: "Prayers", path: "/Aid/Prayers", icon: Clock },
   { name: "Tajweed", path: "/Aid/Tajweed", icon: BookOpen },
@@ -25,7 +25,7 @@ export const ALL_PAGES = [
 export const CATEGORIES: SearchCategoryConfig[] = [
   { id: "pages", label: "Pages", placeholder: "Search pages...", icon: Home },
   { id: "quran", label: "Quran", placeholder: "Search Surahs, Juz, Pages, Verses...", icon: BookOpen },
-  { id: "hadiths", label: "Hadiths", placeholder: "Search Hadith collections...", icon: BookText },
+  { id: "hadith", label: "Hadith", placeholder: "Search Hadith collections...", icon: BookText },
   { id: "duas", label: "Duas", placeholder: "Search Duas...", icon: MessageSquare },
 ];
 
@@ -49,7 +49,7 @@ export interface VerseResult {
 export function getResultTypeLabel(category: SearchCategory): string {
   switch (category) {
     case "quran": return "Quran Results";
-    case "hadiths": return "Hadith Collections";
+    case "hadith": return "Hadith Collections";
     case "duas": return "Dua Categories";
     default: return "Pages";
   }
@@ -146,7 +146,7 @@ export function searchByCategory(
       results = [...verseResults, ...surahResults, ...juzResults, ...pageResults];
       break;
 
-    case "hadiths":
+    case "hadith":
       results = hadithCollections
         .filter(collection =>
           collection.name.toLowerCase().includes(lowerQuery) ||
@@ -155,7 +155,7 @@ export function searchByCategory(
         .map(collection => ({
           id: collection.id,
           title: collection.name,
-          subtitle: `${collection.hadithCount.toLocaleString()} hadiths`,
+          subtitle: `${collection.hadithCount.toLocaleString()} hadith`,
           arabicName: collection.arabicName,
           path: `/hadith/${collection.id}`,
           type: "Collection"
@@ -226,7 +226,7 @@ export function searchHadiths(query: string): SearchResult[] {
     .map(collection => ({
       id: collection.id,
       title: collection.name,
-      subtitle: `${collection.hadithCount.toLocaleString()} hadiths`,
+      subtitle: `${collection.hadithCount.toLocaleString()} hadith`,
       arabicName: collection.arabicName,
       path: `/hadith/${collection.id}`,
       type: "Collection"

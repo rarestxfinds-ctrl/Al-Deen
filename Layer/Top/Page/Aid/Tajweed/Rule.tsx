@@ -16,10 +16,8 @@ export default function TajweedRule() {
   let subcategory: any = undefined;
 
   if (subfolderId) {
-    // Nested: category/folder/subcategory
     subcategory = getTajweedSubfolderSubcategory(categoryId || "", subfolderId, subcategoryId || "");
   } else {
-    // Flat: category/subcategory
     subcategory = getTajweedSubcategory(categoryId || "", subcategoryId || "");
   }
 
@@ -39,23 +37,14 @@ export default function TajweedRule() {
   }
 
   const backPath = subfolderId
-    ? `/Aid/Tajweed/${category.id}/folder/${subfolderId}`
+    ? `/Aid/Tajweed/${category.id}/${subfolderId}`
     : `/Aid/Tajweed/${category.id}`;
 
   return (
     <Layout>
-      <div className="container py-8 max-w-4xl mx-auto px-4">
-        <Container className="!p-5 mb-6">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{subcategory.name}</h1>
-            {subcategory.arabicName && (
-              <p className="font-arabic text-xl text-muted-foreground" dir="rtl">
-                {subcategory.arabicName}
-              </p>
-            )}
-          </div>
-          <p className="text-muted-foreground mt-2">{subcategory.description}</p>
-        </Container>
+      {/* Removed outer container and py-8 to eliminate extra margin */}
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Title and description container removed entirely */}
 
         <div>
           {subcategory.rules.map((rule: any, index: number) => (

@@ -15,7 +15,7 @@ export interface HadithChapter {
   arabicName?: string;
   hadithRange: string;
   hadithCount: number;
-  hadiths: Hadith[];
+  hadith: Hadith[];
 }
 
 export interface HadithChapterMeta {
@@ -30,7 +30,6 @@ export interface HadithCollection {
   id: string;
   slug: string;
   name: string;
-  arabicName: string;
   author: string;
   hadithCount: number;
   description: string;
@@ -45,8 +44,8 @@ function formatNameFromId(id: string): string {
 }
 
 // Helper: compute hadith range from list
-function getHadithRange(hadiths: Hadith[]): string {
-  const numbers = hadiths.map(h => h.id);
+function getHadithRange(hadith: Hadith[]): string {
+  const numbers = hadith.map(h => h.id);
   const min = Math.min(...numbers);
   const max = Math.max(...numbers);
   return `${min}-${max}`;
@@ -80,8 +79,8 @@ function parseHadithFile(id: number, data: any[]): Hadith {
 // Eagerly import all hadith JSON files from subfolders
 const allHadithFiles = import.meta.glob('@/Bottom/Data/Hadith/Sahih/al-Bukhari/*/*.json', { eager: true });
 
-// Build chapter data: map chapterId -> { hadiths, name, range, count }
-const chaptersData: Record<string, { hadiths: Hadith[]; name: string; range: string; count: number }> = {};
+// Build chapter data: map chapterId -> { hadith, name, range, count }
+const chaptersData: Record<string, { hadith: Hadith[]; name: string; range: string; count: number }> = {};
 
 // Group files by chapter folder
 for (const [path, module] of Object.entries(allHadithFiles)) {
@@ -93,17 +92,17 @@ for (const [path, module] of Object.entries(allHadithFiles)) {
   const hadith = parseHadithFile(hadithId, data);
 
   if (!chaptersData[chapterId]) {
-    chaptersData[chapterId] = { hadiths: [], name: formatNameFromId(chapterId), range: '', count: 0 };
+    chaptersData[chapterId] = { hadith: [], name: formatNameFromId(chapterId), range: '', count: 0 };
   }
-  chaptersData[chapterId].hadiths.push(hadith);
+  chaptersData[chapterId].hadith.push(hadith);
 }
 
-// After collecting all hadiths, sort each chapter's hadiths by id and compute range/count
+// After collecting all hadith, sort each chapter's hadith by id and compute range/count
 for (const chapterId in chaptersData) {
   const chapter = chaptersData[chapterId];
-  chapter.hadiths.sort((a, b) => a.id - b.id);
-  chapter.range = getHadithRange(chapter.hadiths);
-  chapter.count = chapter.hadiths.length;
+  chapter.hadith.sort((a, b) => a.id - b.id);
+  chapter.range = getHadithRange(chapter.hadith);
+  chapter.count = chapter.hadith.length;
 }
 
 // Build BUKHARI_CHAPTERS in the expected format
@@ -114,7 +113,7 @@ for (const [id, data] of Object.entries(chaptersData)) {
     name: data.name,
     hadithRange: data.range,
     hadithCount: data.count,
-    hadiths: data.hadiths,
+    hadith: data.hadith,
   };
 }
 
@@ -124,7 +123,6 @@ export const hadithCollections: HadithCollection[] = [
     id: "bukhari",
     slug: "Sahih-al-Bukhari",
     name: "Sahih al-Bukhari",
-    arabicName: "صحيح البخاري",
     author: "Imam Bukhari",
     hadithCount: 7563,
     description: "The most authentic collection of Hadith compiled by Imam Bukhari",
@@ -150,7 +148,7 @@ export function getChapter(collectionIdentifier: string, chapterId: string): Had
 }
 
 export function getHadithsByChapter(collectionIdentifier: string, chapterId: string): Hadith[] {
-  return getChapter(collectionIdentifier, chapterId)?.hadiths ?? [];
+  return getChapter(collectionIdentifier, chapterId)?.hadith ?? [];
 }
 
 // Helper: get full transliteration string (for components)

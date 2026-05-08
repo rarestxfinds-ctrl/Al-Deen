@@ -1,8 +1,8 @@
-// src/Top/Component/Quran/Layout/Safhah/Main.tsx
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { useApp } from "@/Middle/Context/App";
 import { useAudio } from "@/Middle/Context/Audio";
 import { WordTooltip, useAudioPlayback, extractVerseNumberFromMarker } from "./Utility";
+import { Bismillah } from "@/Top/Component/Quran/Bismillah";
 import type { PageLinesProps } from "./Types";
 
 const LATIN_FONT_STYLE: React.CSSProperties = {
@@ -28,10 +28,20 @@ export const PageLines = memo(function PageLines({
   inlineTransliteration,
   hideVerses = false,
   hideVerseMarkers = false,
+  bismillahWords = [],
+  bismillahFontFamily,
+  bismillahFontClass = fontClass,
+  bismillahFontSize = arabicFontSize,
+  pageFontFamily,
+  isIndoPakFont = false,
+  verseMarkerMap = [],
+  isUthmaniV4Font = false,
 }: PageLinesProps) {
   const { hoverRecitation, hifz } = useApp();
   const { activeVerse, activeWord, playAyah } = useAudio();
   const { playWordAudio, isPlaying } = useAudioPlayback(surahId);
+
+  const [hoveredWordKey, setHoveredWordKey] = useState<string | null>(null);
 
   const inlineTranslationSize = Math.max(12);
   const inlineTransliterationSize = Math.max(12);
@@ -45,13 +55,11 @@ export const PageLines = memo(function PageLines({
   const showInlineTransliteration = inlineTransliteration !== "None";
   const anyInlineActive = showInlineTranslation || showInlineTransliteration;
 
-  // Helper: check if a word is marked as completed (memorized)
   const isWordCompleted = (verse: any, wordIndex: number): boolean => {
     if (!verse) return false;
     return hifz.isWordCompleted(surahId, verse.verseNumber, wordIndex);
   };
 
-  // Build class name – NO extra colors for completed words, only opacity handled separately
   const buildWordClassName = (
     isVerseHighlighted: boolean,
     isVerseMarker: boolean,
@@ -69,7 +77,9 @@ export const PageLines = memo(function PageLines({
     } else if (isVerseEnd || isVerseMarker) {
       cls += "text-muted-foreground hover:text-primary cursor-pointer";
     } else {
-      cls += "text-foreground hover:text-primary";
+      if (!isUthmaniV4Font) {
+        cls += "text-foreground hover:text-primary";
+      }
     }
     return cls;
   };
@@ -88,6 +98,9 @@ export const PageLines = memo(function PageLines({
     }
 
     const handleMouseEnter = () => {
+      if (isUthmaniV4Font && verse && !isVerseEnd && !isVerseNumber) {
+        setHoveredWordKey(`${verse.verseNumber}-${wordIndex}`);
+      }
       if (isVerseNumber) {
         const vn = extractVerseNumberFromMarker(glyph);
         if (vn !== null) setHoveredVerse(vn);
@@ -97,6 +110,9 @@ export const PageLines = memo(function PageLines({
     };
 
     const handleMouseLeave = () => {
+      if (isUthmaniV4Font) {
+        setHoveredWordKey(null);
+      }
       if (isVerseNumber || isVerseEnd) setHoveredVerse(null);
     };
 
@@ -115,11 +131,8 @@ export const PageLines = memo(function PageLines({
 
     const isVerseMarker = verse !== null && wordIndex === verse.words.length - 1;
 
-    // Determine if this word should be hidden when hideVerses is true
     const shouldHideBySetting = (hideVerses && !isVerseMarker) || (hideVerseMarkers && isVerseMarker);
     const wordCompleted = verse ? isWordCompleted(verse, wordIndex) : false;
-
-    // If the word is completed, it becomes visible regardless of hideVerses
     const shouldBeVisible = !shouldHideBySetting || wordCompleted;
     const opacityClass = shouldBeVisible ? "opacity-100" : "opacity-0";
     const transitionClass = "transition-opacity duration-300";
@@ -161,10 +174,8 @@ export const PageLines = memo(function PageLines({
 
     const { handleClick, handleMouseEnter, handleMouseLeave } = buildHandlers(word);
 
-    // New click handler: only toggle memorization when hideVerses is true
     const handleWordClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      // Only toggle memorization when hideVerses is enabled
       if (hideVerses && verse && !isVerseMarker) {
         if (wordCompleted) {
           hifz.unmarkWordCompleted(surahId, verse.verseNumber, wordIndex);
@@ -172,17 +183,23 @@ export const PageLines = memo(function PageLines({
           hifz.markWordCompleted(surahId, verse.verseNumber, wordIndex);
         }
       }
-      // Always play audio if there is a click handler
       if (handleClick) handleClick();
     };
 
-    const spanClass = buildWordClassName(
+    let spanClass = buildWordClassName(
       isVerseHighlighted,
       isVerseMarker,
       isVerseEnd,
       isActive,
       isPlayingAudio,
     );
+
+    if (isUthmaniV4Font) {
+      const isHovered = hoveredWordKey === `${verse?.verseNumber}-${wordIndex}`;
+      if (isActive || isPlayingAudio || isHovered) {
+        spanClass += " uthmani-glyph-highlighted";
+      }
+    }
 
     const refCallback = (el: HTMLSpanElement | null) => {
       if (el && isFirstInLine && verse && idx === 0) {
@@ -193,6 +210,20 @@ export const PageLines = memo(function PageLines({
     const showTranslationCol = showInlineTranslation && !!inlineTranslationText;
     const showTransliterationCol = showInlineTransliteration && !!inlineTransliterationText;
     const hasInline = showTranslationCol || showTransliterationCol;
+
+    const dataAttrs: Record<string, string | number | undefined> = {
+      'data-verse': verse?.verseNumber ?? markerVerseNumber,
+      'data-word': wordIndex,
+    };
+    if (isVerseMarker) dataAttrs['data-is-verse-marker'] = 'true';
+
+    let displayGlyph = glyph;
+    if (isIndoPakFont && isVerseMarker && markerVerseNumber) {
+      const replacement = verseMarkerMap[markerVerseNumber - 1];
+      if (replacement && replacement !== "") {
+        displayGlyph = replacement;
+      }
+    }
 
     return (
       <div
@@ -213,8 +244,9 @@ export const PageLines = memo(function PageLines({
             className={spanClass}
             style={{ cursor: "pointer" }}
             onClick={handleWordClick}
+            {...dataAttrs}
           >
-            {glyph}{' '}
+            {displayGlyph}{' '}
           </span>
         </WordTooltip>
 
@@ -247,10 +279,30 @@ export const PageLines = memo(function PageLines({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
+      {bismillahWords.length > 0 && (
+        <Bismillah
+          words={bismillahWords}
+          fontClass={bismillahFontClass}
+          fontSize={bismillahFontSize}
+          fontFamily={bismillahFontFamily}
+          wordSpacing={wordSpacing}
+          showInlineTranslation={showInlineTranslation}
+          showInlineTransliteration={showInlineTransliteration}
+          hoverTranslationEnabled={isHoverTranslationEnabled}
+          inlineTranslationSize={inlineTranslationSize}
+          inlineTransliterationSize={inlineTransliterationSize}
+        />
+      )}
+
       <div
         className={fontClass}
-        style={{ fontSize: arabicFontSize, lineHeight: 1.8, wordSpacing }}
+        style={{
+          fontSize: arabicFontSize,
+          lineHeight: 1.8,
+          wordSpacing,
+          fontFamily: pageFontFamily || fontClass,
+        }}
         dir="rtl"
       >
         {resolvedLines.map((line, lineIdx) => (
@@ -258,6 +310,7 @@ export const PageLines = memo(function PageLines({
             key={lineIdx}
             className={`flex justify-center items-start flex-wrap ${anyInlineActive ? "gap-x-3 mb-6" : "gap-x-0 mb-0"}`}
             dir="rtl"
+            data-line-container
           >
             {line.map((word, wordIdx) => renderWordColumn(word, wordIdx, true))}
           </div>

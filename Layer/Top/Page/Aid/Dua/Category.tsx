@@ -76,7 +76,7 @@ const Dua_Category = () => {
   if (!category) {
     return (
       <Layout>
-        <div className="container py-16 text-center">
+        <div className="py-16 text-center">
           <Container className="max-w-md mx-auto">
             <div className="p-8 text-center">
               <h1 className="text-2xl font-semibold mb-4">Category Not Found</h1>
@@ -302,11 +302,8 @@ const Dua_Category = () => {
 
   return (
     <Layout>
-      <section className="py-6">
-        <div className="container max-w-3xl">
-          <Container className="pt-6 px-6 pb-2 mb-6">
-            <h1 className="text-2xl font-bold">{category.name}</h1>
-          </Container>
+      <section>
+        <div className="mx-auto max-w-3xl">
           <div className="space-y-5">
             {category.duas.map((dua, index) => renderDua(dua, index))}
           </div>

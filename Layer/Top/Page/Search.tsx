@@ -102,7 +102,7 @@ export default function SearchPage() {
     switch (category) {
       case "pages": return pageResults.length;
       case "quran": return surahResults.length + verseResults.length;
-      case "hadiths": return hadithResults.length;
+      case "hadith": return hadithResults.length;
       case "duas": return duaResults.length;
       default: return 0;
     }
@@ -277,8 +277,8 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* Hadiths Results */}
-            {category === "hadiths" && hadithResults.length > 0 && (
+            {/* Hadith Results */}
+            {category === "hadith" && hadithResults.length > 0 && (
               <div className="space-y-2">
                 {hadithResults.map((result) => (
                   <Link key={result.id} to={result.path}>

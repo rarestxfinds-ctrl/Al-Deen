@@ -4,7 +4,7 @@ export const id: TranslationKeys = {
   nav: {
     home: "Beranda",
     quran: "Al-Quran",
-    hadiths: "Hadits",
+    hadith: "Hadits",
     duas: "Doa",
     feedback: "Masukan",
     help: "Bantuan",
@@ -91,7 +91,7 @@ export const id: TranslationKeys = {
     exploreDuas: "Jelajahi Doa",
     getHelp: "Dapatkan Bantuan",
   },
-  hadiths: {
+  hadith: {
     title: "Hadits",
     collections: "Koleksi",
     chapters: "Bab",

@@ -1,75 +1,35 @@
-import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/Top/Component/Layout/Index";
 import { Card } from "@/Top/Component/UI/Card";
-import { Button } from "@/Top/Component/UI/Button";
-import { getCollection, getChaptersByCollection } from "@/Bottom/API/Hadith";
+import { hadithCollections } from "@/Bottom/API/Hadith";
 import { useTranslation } from "@/Middle/Hook/Use-Translation";
+import { Link } from "react-router-dom";
 
-const Hadith_Collection = () => {
-  const { Collection } = useParams<{ Collection: string }>();  // ✅ Changed from collectionId to Collection
+const Collection = () => {
   const { t } = useTranslation();
-
-  const collection = Collection ? getCollection(Collection) : null;
-  const chapters = Collection ? getChaptersByCollection(Collection) : [];
-
-  if (!collection) {
-    return (
-      <Layout>
-        <div className="py-16 text-center">
-          <Card className="max-w-md mx-auto p-8">
-            <h1 className="text-2xl font-semibold mb-4">Collection Not Found</h1>
-            <Link to="/Hadith">
-              <Button>
-                {t.common.back} to {t.hadiths.title}
-              </Button>
-            </Link>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
-      {chapters.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No chapters available yet.</p>
-        </Card>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          {chapters.map((chapter, index) => (
-            <Link
-              key={chapter.id}
-              to={`/Hadith/${collection.slug}/${chapter.id}`}
-              className="flex-1 min-w-[150px]"
-            >
-              <Card className="p-4 text-center transition-all hover:scale-[1.01] group">
-                <div className="flex flex-col items-center gap-2">
-                  <Button
-                    size="sm"
-                    className="w-10 h-10 rounded-full p-0 flex items-center justify-center"
-                  >
-                    {index + 1}
-                  </Button>
-                  <p className="font-semibold text-sm group-hover:text-white dark:group-hover:text-black">
-                    {chapter.name}
+      <section className="flex justify-center w-full px-2 sm:px-4">
+        <div className="flex flex-wrap gap-3 w-full">
+          {hadithCollections.map((collection) => (
+            <div key={collection.id} className="flex-1 min-w-[200px]">
+              <Link to={`/Hadith/${collection.slug}`} className="block">
+                <Card className="p-4 transition-all hover:scale-[1.02] group">
+                  <h3 className="font-semibold text-base group-hover:text-white dark:group-hover:text-black">
+                    {collection.name}
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground mt-1 group-hover:text-white dark:group-hover:text-black">
+                    {collection.hadithCount.toLocaleString()} {t.hadith.hadith}
                   </p>
-                  {chapter.hadithRange && (
-                    <Button
-                      size="sm"
-                      className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground h-auto"
-                    >
-                      {chapter.hadithRange}
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            </Link>
+                </Card>
+              </Link>
+            </div>
           ))}
         </div>
-      )}
+      </section>
     </Layout>
   );
 };
 
-export default Hadith_Collection;
+export default Collection;

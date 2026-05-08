@@ -16,10 +16,10 @@ export const QURAN_SUBCATEGORIES = [
 
 // KFGQPC font variants
 export const KFGQPC_VARIANTS = [
-  { id: "uthmani" as const,    label: "Uthmani Hafs" },
-  { id: "uthmani_v1" as const, label: "V1" },
-  { id: "uthmani_v2" as const, label: "V2" },
-  { id: "uthmani_v4" as const, label: "V4" },
+  { id: "uthmani" as const,    label: "QPC Uthmani Hafs" },
+  { id: "uthmani_v1" as const, label: "King Fahad Complex V1" },
+  { id: "uthmani_v2" as const, label: "King Fahad Complex V2" },
+  { id: "uthmani_v4" as const, label: "King Fahad Complex V4" },
 ];
 
 // Reciters

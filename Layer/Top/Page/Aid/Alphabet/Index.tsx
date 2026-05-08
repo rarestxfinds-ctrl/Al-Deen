@@ -11,9 +11,6 @@ const AlphabetIndex = () => {
     <Layout>
       <section className="py-6">
         <div className="container max-w-4xl mx-auto">
-          <Container className="text-center mb-8">
-            <h1 className="text-2xl font-bold">Arabic Alphabet</h1>
-          </Container>
 
           {/* Grid directly inside the first container, no extra Container */}
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 justify-items-center">

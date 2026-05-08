@@ -1,12 +1,11 @@
 import { Mic, MicOff, Eye, EyeOff, Play } from "lucide-react";
-import { Switch } from "@/Top/Component/UI/Switch";
 import { Card } from "@/Top/Component/UI/Card";
 import { cn } from "@/Middle/Library/utils";
 
 interface AudioControlsProps {
   isRecording?: boolean;
   onRecordToggle?: () => void;
-  onTestAudio?: () => void;   // new
+  onTestAudio?: () => void;
   hideVerses?: boolean;
   onHideVersesToggle?: (checked: boolean) => void;
   transcript?: string;
@@ -22,6 +21,10 @@ export function AudioControls({
   transcript = "",
   className,
 }: AudioControlsProps) {
+  const handleEyeClick = () => {
+    onHideVersesToggle?.(!hideVerses);
+  };
+
   return (
     <div className={cn("fixed right-4 bottom-24 z-40 flex flex-col gap-3", className)}>
       {/* Record Button */}
@@ -41,7 +44,7 @@ export function AudioControls({
         )}
       </Card>
 
-      {/* Test Audio Button (sends a fixed MP3 file) */}
+      {/* Test Audio Button */}
       {onTestAudio && (
         <Card
           className="p-3 rounded-full cursor-pointer transition-all hover:scale-105 bg-white dark:bg-black"
@@ -51,15 +54,19 @@ export function AudioControls({
         </Card>
       )}
 
-      {/* Hide Verses Toggle */}
-      <Card className="p-2 rounded-full flex items-center justify-center">
-        <Switch
-          checked={hideVerses}
-          onCheckedChange={onHideVersesToggle}
-          size="md"
-          icon={<Eye className="h-4 w-4" />}
-          iconChecked={<EyeOff className="h-4 w-4" />}
-        />
+      {/* Eye-knop met kleur (groen = aan / rood = uit) */}
+      <Card
+        className={cn(
+          "p-3 rounded-full cursor-pointer transition-all w-fit inline-flex items-center justify-center",
+          !hideVerses ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
+        )}
+        onClick={handleEyeClick}
+      >
+        {hideVerses ? (
+          <EyeOff className="h-5 w-5 text-white" />
+        ) : (
+          <Eye className="h-5 w-5 text-white" />
+        )}
       </Card>
 
       {/* Transcript */}

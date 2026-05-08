@@ -15,6 +15,7 @@ import { useIsMobile } from "@/Middle/Hook/Use-Mobile";
 import { MobileNavigator } from "../Utility";
 import { KFGQPC_VARIANTS } from "../Constant";
 import { useApp } from "@/Middle/Context/App";
+import { mobileSettingsStore } from "../../../mobileSettingsStore";
 
 export function Arabic() {
   const isMobile = useIsMobile();
@@ -34,25 +35,43 @@ export function Arabic() {
     return KFGQPC_VARIANTS.find(o => o.id === quranFont)?.label || "Uthmani Hafs";
   })();
 
-  // Font options for mobile navigator
   const fontOptions = [
-    { id: "uthmani", label: "Uthmani Hafs" },
-    { id: "uthmani_v1", label: "V1" },
-    { id: "uthmani_v2", label: "V2" },
-    { id: "uthmani_v4", label: "V4" },
+    { id: "uthmani", label: "QPC Uthmani Hafs" },
+    { id: "uthmani_v1", label: "King Fahad Complex V1" },
+    { id: "uthmani_v2", label: "King Fahad Complex V2" },
+    { id: "uthmani_v4", label: "King Fahad Complex V4" },
     { id: "indopak", label: "IndoPak" },
   ];
 
-  // Mobile full-screen navigation for font selection
+  const openFontPicker = () => {
+    // Push modal onto stack – saves current state and sets new top bar
+    mobileSettingsStore.pushModal(
+      "Select Font",
+      true,
+      () => closeFontPicker(),  // back button closes picker
+      () => closeFontPicker()   // close button also closes picker
+    );
+    setShowFontList(true);
+  };
+
+  const closeFontPicker = () => {
+    setShowFontList(false);
+    // Pop modal – restores previous store state
+    mobileSettingsStore.popModal();
+  };
+
   if (isMobile && showFontList) {
     return (
       <MobileNavigator
         isOpen={showFontList}
-        onClose={() => setShowFontList(false)}
+        onClose={closeFontPicker}
         title="Select Font"
         options={fontOptions}
         selectedId={quranFont}
-        onSelect={setQuranFont}
+        onSelect={(id) => {
+          setQuranFont(id);
+          closeFontPicker();
+        }}
       />
     );
   }
@@ -88,7 +107,7 @@ export function Arabic() {
       {/* Font Selection */}
       {isMobile ? (
         <Button
-          onClick={() => setShowFontList(true)}
+          onClick={openFontPicker}
           variant="secondary"
           className="w-full flex items-center justify-between px-4 py-2 h-auto group"
           fullWidth

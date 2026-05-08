@@ -27,7 +27,7 @@ export default function TajweedLevel() {
     return <div>Invalid URL</div>;
   }
 
-  // Case 1: level2 exists → subcategory inside a subfolder
+  // Case 1: level2 exists → subcategory inside a subfolder (rules view)
   if (level2) {
     const subfolder = category.subfolders.find(f => f.id === level1);
     const subcategory = subfolder?.subcategories.find(s => s.id === level2);
@@ -42,18 +42,8 @@ export default function TajweedLevel() {
     }
     return (
       <Layout>
-        <div className="container py-8 max-w-4xl mx-auto px-4">
-          <Container className="!p-5 mb-6">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold">{subcategory.name}</h1>
-              {subcategory.arabicName && (
-                <p className="font-arabic text-xl text-muted-foreground" dir="rtl">
-                  {subcategory.arabicName}
-                </p>
-              )}
-            </div>
-            <p className="text-muted-foreground mt-2">{subcategory.description}</p>
-          </Container>
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Title/description container removed */}
 
           <div className="space-y-3">
             {subcategory.rules.map((rule, idx) => (
@@ -91,25 +81,21 @@ export default function TajweedLevel() {
   if (subfolder) {
     return (
       <Layout>
-        <div className="py-8 max-w-4xl mx-auto px-4">
-          <Container className="!p-5 mb-6">
-            <h1 className="text-2xl font-bold">{subfolder.name}</h1>
-          </Container>
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Subfolder title removed */}
 
           <div className="space-y-3">
             {subfolder.subcategories.map((sub) => (
               <Link key={sub.id} to={`/Aid/Tajweed/${category.id}/${subfolder.id}/${sub.id}`} className="block">
                 <Button className="!p-5 w-full !justify-start !text-left" fullWidth>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold">{sub.name}</h3>
-                      {sub.arabicName && (
-                        <span className="font-arabic text-sm text-muted-foreground" dir="rtl">
-                          {sub.arabicName}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="font-semibold">{sub.name}</span>
+                      <span className="text-muted-foreground">–</span>
+                      <span className="text-sm text-muted-foreground whitespace-normal break-words">
+                        {sub.description}
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{sub.description}</p>
                   </div>
                 </Button>
               </Link>
@@ -120,7 +106,7 @@ export default function TajweedLevel() {
     );
   }
 
-  // Direct subcategory (flat category)
+  // Direct subcategory (flat category) – rules view
   const subcategory = getTajweedSubcategory(category.id, level1);
   if (!subcategory) {
     return (
@@ -134,18 +120,8 @@ export default function TajweedLevel() {
 
   return (
     <Layout>
-      <div className="container py-8 max-w-4xl mx-auto px-4">
-        <Container className="!p-5 mb-6">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{subcategory.name}</h1>
-            {subcategory.arabicName && (
-              <p className="font-arabic text-xl text-muted-foreground" dir="rtl">
-                {subcategory.arabicName}
-              </p>
-            )}
-          </div>
-          <p className="text-muted-foreground mt-2">{subcategory.description}</p>
-        </Container>
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Title/description container removed */}
 
         <div className="space-y-3">
           {subcategory.rules.map((rule, idx) => (

@@ -12,14 +12,15 @@ export function SearchResults({
   selectedIndex,
   onResultClick,
   onSeeAll,
-}: SearchResultsProps) {
+  hideTopBorder = false,
+}: SearchResultsProps & { hideTopBorder?: boolean }) {
   const getFontClass = () => "font-tajweed tajweed-colors";
 
   if (!query) return null;
 
   return (
     <>
-      <div className="h-px bg-border/50 mx-4" />
+      {!hideTopBorder && <div className="h-px bg-border/50 mx-4" />}
       <ScrollArea className="max-h-[50vh] p-2">
         {results.length > 0 ? (
           <div className="space-y-1">

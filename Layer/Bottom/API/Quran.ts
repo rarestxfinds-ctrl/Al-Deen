@@ -11,7 +11,7 @@ export type QuranFontType = "Standard" | "V1" | "V2";
 
 export type SurahData = string[];
 
-
+export type VerseTransliterationData = string[]; // one string per verse
 export type TranslationData = string[];
 
 export type KbkData = string[][];
@@ -93,7 +93,7 @@ if (Array.isArray(pageMap) && pageMap.length > 0) {
 export const surahList: SurahMeta[] = (Array.isArray(ayahs) ? ayahs : []).map((ayahCount, idx) => {
   const id = idx + 1;
   const englishNameTranslation = Array.isArray(Surah_Translation) && Surah_Translation[id - 1] ? Surah_Translation[id - 1] : "";
-  const englishNameTransliteration = Array.isArray(Surah_Translation) && Surah_Translation[id - 1] ? Surah_Translation[id - 1] : "";
+  const englishNameTransliteration = Array.isArray(Surah_Transliteration) && Surah_Transliteration[id - 1] ? Surah_Transliteration[id - 1] : "";
   const fontName = id.toString().padStart(3, '0');
   const pageRange = surahPageMap.get(id) || { minPage: 1, maxPage: 604 };
   const revelationType = Array.isArray(place) && place[id - 1] ? (place[id - 1] as "Meccan" | "Medinan") : "Meccan";
@@ -315,13 +315,14 @@ export type TransliterationData = string[][]; // word-by-word per verse
 
 // ============= Cache =============
 const cache = {
-  surah:       new Map<string, SurahData>(),
-  translation: new Map<string, TranslationData>(),
-  transliteration: new Map<string, TransliterationData>(), // NEW
-  WBW:         new Map<string, KbkData>(),
-  layout:      new Map<number, SurahLayout | null>(),
-  timestamps:  new Map<string, string[][] | string[] | null>(),
-};
+  surah:            new Map<string, SurahData>(),
+  translation:      new Map<string, TranslationData>(),
+  transliteration:  new Map<string, VerseTransliterationData>(), // verse-level
+  wbwTransliteration: new Map<string, TransliterationData>(),    // word-by-word
+  WBW:              new Map<string, KbkData>(),
+  layout:           new Map<number, SurahLayout | null>(),
+  timestamps:       new Map<string, string[][] | string[] | null>(),
+}; 
 // Add with other glob modules
 const transliterationModules = import.meta.glob(
   '@/Bottom/Data/Quran/Surah/Transliteration/*/*.json',
@@ -421,26 +422,20 @@ async function loadTranslation(surahId: number, source: TranslationSource): Prom
   }
 }
 async function loadTransliteration(
-  surahId: number, 
-  style: string = "Academic" // or "Phonetic", "KingFahd", etc.
-): Promise<TransliterationData | null> {
+  surahId: number,
+  style: string
+): Promise<VerseTransliterationData | null> {
   const key = `${style}-${surahId}`;
   if (cache.transliteration.has(key)) return cache.transliteration.get(key)!;
-  
   try {
-    // Dynamic import based on style and surah ID
-    const module = await import(
-      `@/Bottom/Data/Quran/Surah/Transliteration/${style}/${surahId}.json`
-    );
-    const data: TransliterationData = module.default ?? module;
+    const module = await import(`@/Bottom/Data/Quran/Surah/Transliteration/${style}/${surahId}.json`);
+    const data: VerseTransliterationData = module.default ?? module;
     cache.transliteration.set(key, data);
     return data;
-  } catch (error) {
-    console.warn(`Transliteration not found: ${style}/${surahId}.json`, error);
+  } catch {
     return null;
   }
 }
-
 async function loadKbk(surahId: number): Promise<KbkData | null> {
   const key = `WBW-${surahId}`;
   if (cache.WBW.has(key)) return cache.WBW.get(key)!;
@@ -453,18 +448,31 @@ async function loadKbk(surahId: number): Promise<KbkData | null> {
     return null;
   }
 }
-// ============= Word-by-Word Translation Loader (dynamic by translator) =============
+async function loadWbwTransliteration(
+  surahId: number,
+  style: string
+): Promise<TransliterationData | null> {
+  const key = `wbw-${style}-${surahId}`;
+  if (cache.wbwTransliteration.has(key)) return cache.wbwTransliteration.get(key)!;
+  try {
+    const module = await import(`@/Bottom/Data/Quran/Surah/Transliteration/WBW/${style}/${surahId}.json`);
+    const data: TransliterationData = module.default ?? module;
+    cache.wbwTransliteration.set(key, data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 async function loadWbwTranslation(surahId: number, translator: string): Promise<KbkData | null> {
   const key = `wbw-${translator}-${surahId}`;
   if (cache.WBW.has(key)) return cache.WBW.get(key)!;
   try {
-    // Path: /Bottom/Data/Quran/Surah/Translation/{translator}/{surahId}.json
     const module = await import(`@/Bottom/Data/Quran/Surah/Translation/WBW/${translator}/${surahId}.json`);
     const data: KbkData = module.default ?? module;
     cache.WBW.set(key, data);
     return data;
-  } catch (error) {
-    console.warn(`WBW translation not found for ${translator}/${surahId}.json`, error);
+  } catch {
     return null;
   }
 }
@@ -555,13 +563,13 @@ export async function getAyahTimestamps(surahId: number, ayahNumber: number, rec
 export async function getSurah(
   surahId: number,
   options: {
-    translation?: TranslationSource;           // verse translation
-    wbwTranslationHover?: string;              // hover word-by-word translator
-    wbwTranslationInline?: string;             // inline word-by-word translator
+    translation?: TranslationSource;
+    wbwTranslationHover?: string;
+    wbwTranslationInline?: string;
     fontType?: QuranFontType;
-    transliteration?: string;                  // verse-level transliteration
-    wbwTransliterationHover?: string;          // hover word-by-word transliteration
-    wbwTransliterationInline?: string;         // inline word-by-word transliteration
+    transliteration?: string;                  // verse-level
+    wbwTransliterationHover?: string;          // word-by-word
+    wbwTransliterationInline?: string;         // word-by-word
   } = {}
 ): Promise<AssembledSurah> {
   const fontType = options.fontType ?? "Standard";
@@ -569,9 +577,9 @@ export async function getSurah(
   const [
     surahData,
     translationData,
-    transliterationData,
-    wbwTransliterationHoverData,
-    wbwTransliterationInlineData,
+    transliterationData,               // verse-level
+    wbwTransliterationHoverData,       // word-by-word
+    wbwTransliterationInlineData,      // word-by-word
     wbwTranslationHoverData,
     wbwTranslationInlineData,
     layoutData,
@@ -579,8 +587,8 @@ export async function getSurah(
     loadSurah(surahId, fontType),
     options.translation ? loadTranslation(surahId, options.translation) : Promise.resolve(null),
     options.transliteration ? loadTransliteration(surahId, options.transliteration) : Promise.resolve(null),
-    options.wbwTransliterationHover ? loadTransliteration(surahId, options.wbwTransliterationHover) : Promise.resolve(null),
-    options.wbwTransliterationInline ? loadTransliteration(surahId, options.wbwTransliterationInline) : Promise.resolve(null),
+    options.wbwTransliterationHover ? loadWbwTransliteration(surahId, options.wbwTransliterationHover) : Promise.resolve(null),
+    options.wbwTransliterationInline ? loadWbwTransliteration(surahId, options.wbwTransliterationInline) : Promise.resolve(null),
     options.wbwTranslationHover ? loadWbwTranslation(surahId, options.wbwTranslationHover) : Promise.resolve(null),
     options.wbwTranslationInline ? loadWbwTranslation(surahId, options.wbwTranslationInline) : Promise.resolve(null),
     loadLayout(surahId),
@@ -593,9 +601,7 @@ export async function getSurah(
       arabic,
       words: fontType === "V1" ? arabic.split("") : arabic.split(" "),
       ...(translationData && { translation: translationData[index] }),
-      ...(transliterationData && transliterationData[verseIndex] && {
-        transliteration: transliterationData[verseIndex].join(" "),
-      }),
+      ...(transliterationData && { transliteration: transliterationData[index] }),
       ...(wbwTransliterationHoverData && wbwTransliterationHoverData[verseIndex] && {
         wbwTransliterationHover: wbwTransliterationHoverData[verseIndex],
       }),

@@ -230,7 +230,7 @@ export default function Safhah() {
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div>
           {pageVerses.length > 0 ? (
             pageVerses.map(({ verse, surah }, idx) => (
               <div key={`${surah?.id}-${verse.verseNumber}-${idx}`} className="glass-container !rounded-xl !block">

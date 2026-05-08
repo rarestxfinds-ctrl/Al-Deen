@@ -12,7 +12,7 @@ import { Button } from "@/Top/Component/UI/Button";
 import { Tooltip } from "@/Top/Component/UI/Tooltip";
 import { useState } from "react";
 
-const Hadith_Detail = () => {
+const Detail = () => {
   const { Collection, Chapter, HadithId } = useParams();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -42,13 +42,13 @@ const Hadith_Detail = () => {
   const collection = Collection ? getCollection(Collection) : null;
   const chapter = Collection && Chapter ? getChapter(Collection, Chapter) : null;
   const hadithIdNum = HadithId ? parseInt(HadithId, 10) : 0;
-  const hadith = chapter?.hadiths?.find(h => h.id === hadithIdNum);
+  const hadith = chapter?.hadith?.find(h => h.id === hadithIdNum);
 
   // Navigation within chapter
-  const currentIndex = chapter?.hadiths.findIndex(h => h.id === hadithIdNum) ?? -1;
-  const prevHadith = currentIndex > 0 ? chapter?.hadiths[currentIndex - 1] : null;
-  const nextHadith = currentIndex !== -1 && currentIndex < (chapter?.hadiths.length ?? 0) - 1
-    ? chapter?.hadiths[currentIndex + 1]
+  const currentIndex = chapter?.hadith.findIndex(h => h.id === hadithIdNum) ?? -1;
+  const prevHadith = currentIndex > 0 ? chapter?.hadith[currentIndex - 1] : null;
+  const nextHadith = currentIndex !== -1 && currentIndex < (chapter?.hadith.length ?? 0) - 1
+    ? chapter?.hadith[currentIndex + 1]
     : null;
 
   // Bookmark logic
@@ -57,7 +57,7 @@ const Hadith_Detail = () => {
 
   const handleBookmark = async () => {
     if (!user || !hadith) {
-      toast({ title: "Sign in required", description: "Please sign in to bookmark hadiths" });
+      toast({ title: "Sign in required", description: "Please sign in to bookmark hadith" });
       return;
     }
     if (isBookmarked) {
@@ -277,4 +277,4 @@ const Hadith_Detail = () => {
   );
 };
 
-export default Hadith_Detail;
+export default Detail;

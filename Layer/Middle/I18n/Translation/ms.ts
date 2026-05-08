@@ -4,7 +4,7 @@ export const ms: TranslationKeys = {
   nav: {
     home: "Utama",
     quran: "Al-Quran",
-    hadiths: "Hadis",
+    hadith: "Hadis",
     duas: "Doa",
     feedback: "Maklum Balas",
     help: "Bantuan",
@@ -91,7 +91,7 @@ export const ms: TranslationKeys = {
     exploreDuas: "Terokai Doa",
     getHelp: "Dapatkan Bantuan",
   },
-  hadiths: {
+  hadith: {
     title: "Hadis",
     collections: "Koleksi",
     chapters: "Bab",

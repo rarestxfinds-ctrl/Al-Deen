@@ -16,7 +16,7 @@
 
 /* === Uthmani V1 - Page 1 (unicode-range based, pages 1-604) === */
 @font-face {
-  font-family: 'Uthmani V1';
+  font-family: 'Uthmani-V1-1';
   src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF2/1.woff2') format('woff2'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF/1.woff') format('woff'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/TFF/1.ttf') format('truetype');
@@ -25,9 +25,19 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Uthmani-V1-2';
+  src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF2/2.woff2') format('woff2'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF/2.woff') format('woff'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/TFF/2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === Uthmani V2 - Page 1 (unicode-range based, pages 1-604) === */
 @font-face {
-  font-family: 'Uthmani V2';
+  font-family: 'Uthmani-V2-1';
   src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF2/1.woff2') format('woff2'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF/1.woff') format('woff'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/TFF/1.ttf') format('truetype');
@@ -36,12 +46,33 @@
   font-display: swap;
 }
 
+/* === Uthmani V2 - Page 2 (unicode-range based, pages 1-604) === */
+@font-face {
+  font-family: 'Uthmani-V2-2';
+  src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF2/2.woff2') format('woff2'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF/2.woff') format('woff'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/TFF/2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === Uthmani V4 - COLRv1 (primary for all themes, palette-switchable) === */
 @font-face {
-  font-family: 'Uthmani V4';
+  font-family: 'Uthmani-V4-1';
   src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/1.woff2') format('woff2'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/1.woff') format('woff'),
        url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Uthmani-V4-2';
+  src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/2.woff2') format('woff2'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/2.woff') format('woff'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/2.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -278,7 +309,7 @@
 
   /* IndoPak - Nastaliq */
   .font-indopak {
-    font-family: 'IndoPak', 'Scheherazade New', 'Amiri', serif;
+    font-family: 'IndoPak';
   }
 
   /* Surah Names */
@@ -419,7 +450,10 @@
   padding: 8px 12px;
   font-size: 13px;
 }
-
+.uthmani-glyph-highlighted {
+  color: transparent;
+  text-shadow: 0 0 0px rgb(0, 192, 128, 1);
+}
 /* Hover effect (for any element that needs hover) */
 .hover-effect:hover::before {
   background-color: rgba(0, 0, 0, 0.6);

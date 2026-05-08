@@ -25,7 +25,6 @@ export interface TajweedRule {
 export interface TajweedSubcategory {
   id: string;
   name: string;
-  arabicName: string;
   description: string;
   rules: TajweedRule[];
 }
@@ -39,7 +38,6 @@ export interface TajweedSubfolder {
 export interface TajweedCategoryDetail {
   id: string;
   name: string;
-  arabicName: string;
   description: string;
   icon: string;
   color: string;
@@ -60,7 +58,6 @@ export interface LetterForms {
 export interface Letter {
   id: string;
   name: string;
-  arabicName: string;
   forms: LetterForms;
   pronunciation: string;
   example: string;
@@ -94,7 +91,7 @@ function formatNameFromId(filename: string): string {
 }
 
 function formatIdFromFilename(filename: string): string {
-  return filename.toLowerCase().replace(/ /g, "-");
+  return filename.replace(/ /g, "-");
 }
 
 /**
@@ -117,6 +114,7 @@ type FolderNode = {
   name: string;
   subfolders: Map<string, FolderNode>;
   files: TajweedSubcategory[];
+  parentDescription?: string;
 };
 
 const categoryNodes: Map<string, FolderNode> = new Map();
@@ -150,10 +148,21 @@ for (const [path, mod] of Object.entries(tajweedModules)) {
   const id = formatIdFromFilename(filename);
   const name = formatNameFromId(filename);
 
-  if (Array.isArray(data) && data.length >= 2 && typeof data[0] === 'string' && typeof data[1] === 'string') {
-    const arabicName = data[0];
-    const description = data[1];
-    const rulesArray = data.length >= 3 && Array.isArray(data[2]) ? data[2] : [];
+  // ========== Handle Parent.json ==========
+  if (filename.toLowerCase() === "parent") {
+    // Expected format: ["Description string"]
+    if (Array.isArray(data) && data.length >= 1 && typeof data[0] === 'string') {
+      currentNode.parentDescription = data[0];
+    }
+    continue; // skip adding as a subcategory
+  }
+  // ========================================
+
+  // Regular subcategory JSON (new format)
+  if (Array.isArray(data) && data.length >= 2 && typeof data[0] === 'string' && Array.isArray(data[1])) {
+    const description = data[0];
+    const rulesArray = data[1];
+    
     const rules: TajweedRule[] = rulesArray.map((rule: any[]) => ({
       letter: rule[0],
       transliteration: rule[1],
@@ -161,7 +170,13 @@ for (const [path, mod] of Object.entries(tajweedModules)) {
       example: rule[3],
       exampleTranslation: rule[4] || "",
     }));
-    const subcategory: TajweedSubcategory = { id, name, arabicName, description, rules };
+
+    const subcategory: TajweedSubcategory = {
+      id,
+      name,
+      description,
+      rules
+    };
     currentNode.files.push(subcategory);
   }
 }
@@ -169,17 +184,31 @@ for (const [path, mod] of Object.entries(tajweedModules)) {
 // Build category details from nodes
 const tajweedCategoryDetails: TajweedCategoryDetail[] = Array.from(categoryNodes.entries()).map(([folderName, node]) => {
   const hasSubfolders = node.subfolders.size > 0;
-  const subfolders: TajweedSubfolder[] = Array.from(node.subfolders.entries()).map(([subName, subNode]) => ({
-    id: formatIdFromFilename(subName),
-    name: formatNameFromId(subName),
-    subcategories: subNode.files,
-  }));
+
+  // Category display name (with optional parent description)
+  const categoryBaseName = formatNameFromId(folderName);
+  const categoryDisplayName = node.parentDescription
+    ? `${categoryBaseName} - ${node.parentDescription}`
+    : categoryBaseName;
+
+  // Subfolders display names (also with optional parent description)
+  const subfolders: TajweedSubfolder[] = Array.from(node.subfolders.entries()).map(([subName, subNode]) => {
+    const subBaseName = formatNameFromId(subName);
+    const subDisplayName = subNode.parentDescription
+      ? `${subBaseName} - ${subNode.parentDescription}`
+      : subBaseName;
+    return {
+      id: formatIdFromFilename(subName),
+      name: subDisplayName,
+      subcategories: subNode.files,
+    };
+  });
+
   const subcategories = node.files; // direct JSON files under the category
 
   return {
     id: formatIdFromFilename(folderName),
-    name: formatNameFromId(folderName),
-    arabicName: "",
+    name: categoryDisplayName,
     description: hasSubfolders ? `${subfolders.length} sections` : `${subcategories.length} ${subcategories.length === 1 ? 'rule' : 'rules'}`,
     icon: "BookOpen",
     color: "#8B5CF6",
@@ -193,7 +222,6 @@ const tajweedCategoryDetails: TajweedCategoryDetail[] = Array.from(categoryNodes
 export interface TajweedCategory {
   id: string;
   name: string;
-  arabicName: string;
   description: string;
   icon: string;
   color: string;
@@ -272,7 +300,6 @@ export function getTajweedCategory(id: string): TajweedCategory | undefined {
   return {
     id: detail.id,
     name: detail.name,
-    arabicName: detail.arabicName,
     description: detail.description,
     icon: detail.icon,
     color: detail.color,

@@ -1,4 +1,3 @@
-// Layer/Top/Component/Quran/Layout/Safhah/Types.ts
 import type { AssembledSurah, AssembledVerse, SurahMeta } from "@/Bottom/API/Quran";
 
 export interface WordTooltipProps {
@@ -17,7 +16,14 @@ export interface ResolvedWord {
   wordIndex: number;
   isVerseEnd: boolean;
   isVerseNumber: boolean;
+  isVerseMarker: boolean;
   verseNumber?: number;
+  transliteration?: string;
+}
+
+export interface BismillahWord {
+  glyph: string;
+  translation?: string;
   transliteration?: string;
 }
 
@@ -35,8 +41,16 @@ export interface PageLinesProps {
   hoverTranslation: string | boolean;
   inlineTranslation: string;
   inlineTransliteration: string;
-  hideVerses?: boolean;          // <-- added
-  hideVerseMarkers?: boolean;    // <-- kept
+  hideVerses?: boolean;
+  hideVerseMarkers?: boolean;
+  // Bismillah props (only for first page)
+  bismillahWords?: BismillahWord[];
+  bismillahFontFamily?: string;
+  bismillahFontClass?: string;
+  bismillahFontSize?: string;
+  pageFontFamily?: string;        // per‑page font for current surah
+  isIndoPakFont?: boolean;
+verseMarkerMap?: string[];
 }
 
 export interface PageViewProps {
@@ -53,6 +67,6 @@ export interface PageViewProps {
   verseRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
   wordSpacing?: string;
   showTransliteration?: boolean;
-  hideVerses?: boolean;          // <-- added
-  hideVerseMarkers?: boolean;    // <-- added
+  hideVerses?: boolean;
+  hideVerseMarkers?: boolean;
 }

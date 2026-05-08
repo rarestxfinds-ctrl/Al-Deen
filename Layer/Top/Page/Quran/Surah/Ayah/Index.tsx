@@ -1,60 +1,122 @@
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Layout } from "@/Top/Component/Layout/Index";
-import { SurahNavbar } from "@/Top/Component/Quran/Surah/Navbar";
-import { SurahNavigation } from "@/Top/Component/Quran/Surah/Navigation";
 import { AudioPlayer } from "@/Top/Component/Audio-Player/Index";
 import { SurahHeader } from "@/Top/Component/Quran/Surah/Header";
-import { VerseCard } from "@/Top/Component/Quran/Layout/Ayah/Main";
 import { PageLines } from "@/Top/Component/Quran/Layout/Safhah/Main";
+import { AyahView } from "@/Top/Component/Quran/Layout/Ayah/Index";
 import { NotesDialog } from "@/Top/Component/Dialog/Notes";
 import { ShareDialog } from "@/Top/Component/Dialog/Share";
 import { SurahInfoDialog } from "@/Top/Component/Dialog/Surah-Info";
-import { surahList, juzData } from "@/Bottom/API/Quran";
+import {
+  surahList,
+  juzData,
+  getPageSegments,
+  type AssembledVerse,
+  type ResolvedWord,
+} from "@/Bottom/API/Quran";
 import { useApp } from "@/Middle/Context/App";
 import { useAudio } from "@/Middle/Context/Audio";
 import { useQuranData } from "@/Middle/Hook/Use-Quran-Data";
+import { useReadingProgress } from "@/Middle/Hook/Use-Reading-Progress";
 import { useReadingSession } from "@/Middle/Hook/Use-Reading-Session";
 import { useQuranGoals } from "@/Middle/Hook/Use-Quran-Goals";
 import { Button } from "@/Top/Component/UI/button";
 import { Skeleton } from "@/Top/Component/UI/Skeleton";
-import { AlertCircle } from "lucide-react";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { TafsirDialog } from "@/Top/Component/Dialog/Tafsir";
+import { Container } from "@/Top/Component/UI/Container";
+import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Alert, AlertDescription } from "@/Top/Component/UI/Alert";
+import { AudioControls } from "@/Top/Component/Quran/Record";
+import { useDeepgram } from "@/Middle/Hook/Use-STT";
 
 const AyahIndex = () => {
   const { id, verseId } = useParams<{ id: string; verseId: string }>();
-  const surahId  = parseInt(id || "1");
+  const [searchParams] = useSearchParams();
+  const surahId = parseInt(id || "1");
   const verseNum = parseInt(verseId || "1");
-  const surah    = surahList.find((s) => s.id === surahId) || surahList[0];
+  const surah = surahList.find((s) => s.id === surahId) || surahList[0];
+  const targetVerse = searchParams.get("verse") || verseNum.toString();
 
   const {
-    layout, fontSize, translationFontSize, quranFont,
-    showArabicText, verseTranslation, hoverTranslation, inlineTranslation,
+    layout,
+    fontSize,
+    translationFontSize,
+    quranFont,
+    showArabicText,
+    verseTranslation,
+    hoverTranslation,
+    inlineTranslation,
+    transliterationSize,
+    selectedAyahTransliterator,
+    hoverTransliteration,
+    inlineTransliteration,
+    hideVerses,
+    setHideVerses,
+    hideVerseMarkers,
+    recordAudioEnabled,
   } = useApp();
 
+  const showTransliteration = selectedAyahTransliterator !== "None";
   const { stop: stopAudio, isPlaying } = useAudio();
   const { data: surahData, isLoading, error, refetch } = useQuranData(surahId);
   const verses = surahData?.verses;
-  const verse  = verses?.find((v) => v.verseNumber === verseNum);
-
-  const { startSession, stopSession, saveMinutesToGoal } = useReadingSession();
+  const verse = verses?.find((v) => v.verseNumber === verseNum);
+  const { updateProgress } = useReadingProgress();
+  const { startSession, stopSession, saveSecondsToGoal, isTrackingEnabled } = useReadingSession();
   const { activeGoal } = useQuranGoals();
+  const { hifz } = useApp();
 
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
-  const [surahInfoDialog, setSurahInfoDialog]  = useState(false);
-  const [notesDialog, setNotesDialog] = useState<{ open: boolean; ayahId?: number; verseText?: string }>({ open: false });
-  const [shareDialog, setShareDialog] = useState<{ open: boolean; ayahId?: number; verseText?: string; translation?: string }>({ open: false });
+  const [surahInfoDialog, setSurahInfoDialog] = useState(false);
+  const [tafsirDialog, setTafsirDialog] = useState<{
+    open: boolean;
+    verseNumber: number;
+  }>({ open: false, verseNumber: verseNum });
+  const [notesDialog, setNotesDialog] = useState<{
+    open: boolean;
+    ayahId?: number;
+    verse?: AssembledVerse;
+  }>({ open: false });
+  const [shareDialog, setShareDialog] = useState<{
+    open: boolean;
+    ayahId?: number;
+    verseText?: string;
+    translation?: string;
+  }>({ open: false });
 
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sessionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const isPageLayout = layout === "page";
+  const isTimeGoal = activeGoal?.goal_type === "time_based";
+  const shouldTrack = isTrackingEnabled && isTimeGoal;
 
-  const { currentJuz, currentHizb, currentPage } = useMemo(() => {
-    const juzInfo    = juzData.find(juz => juz.surahs.some(s => s.id === surahId));
-    const juzNumber  = juzInfo?.juzNumber || 1;
-    const totalVersesBefore = surahList.filter(s => s.id < surahId).reduce((sum, s) => sum + s.numberOfAyahs, 0);
-    const pageNumber = Math.ceil((totalVersesBefore / 6236) * 604) || 1;
-    return { currentJuz: juzNumber, currentHizb: (juzNumber - 1) * 2 + 1, currentPage: pageNumber };
+  // ---------- Deepgram / STT ----------
+  const {
+    toggleRecording,
+    isRecording: isDeepgramRecording,
+    transcript,
+    sendRawAudio,
+    connectWebSocket,
+    error: deepgramError,
+  } = useDeepgram({
+    surahId,
+    verses,
+    visibleVerse: verseNum,
+    hifz,
+  });
+
+  // ---------- Juz / Hizb (no rough page) ----------
+  const { currentJuz, currentHizb } = useMemo(() => {
+    const juzInfo = juzData.find((juz) => juz.surahs.some((s) => s.id === surahId));
+    const juzNumber = juzInfo?.juzNumber || 1;
+    const hizbNumber = (juzNumber - 1) * 2 + 1;
+    return {
+      currentJuz: juzNumber,
+      currentHizb: hizbNumber,
+    };
   }, [surahId]);
 
   const getFontClass = () => {
@@ -67,35 +129,105 @@ const AyahIndex = () => {
     }
   };
 
-  const arabicFontSize         = `${(1.5 * fontSize) / 5}rem`;
+  const arabicFontSize = `${(1.5 * fontSize) / 5}rem`;
   const translationFontSizeValue = `${(1 * translationFontSize) / 3}rem`;
+  const transliterationFontSizeValue = `${(1 * transliterationSize) / 3}rem`;
 
-  // For page layout, we need to build a single line of resolved words for this verse
-  const pageLayoutWords = useMemo(() => {
-    if (!isPageLayout || !verse) return null;
-    // Each word in the verse becomes a resolved word object
+  // ---------- Page layout helpers ----------
+  const pageNumber = useMemo(() => {
+    if (!surah.pages) return 1;
+    for (let p = surah.pages[0]; p <= surah.pages[1]; p++) {
+      const segs = getPageSegments(p);
+      if (segs) {
+        const sSeg = segs.find(s => s.surah === surah.id);
+        if (sSeg && verseNum >= sSeg.startVerse && verseNum <= sSeg.endVerse) return p;
+      }
+    }
+    return surah.pages[0];
+  }, [surah, verseNum]);
+
+  const pageFontFamily = useMemo(() => {
+    switch (quranFont) {
+      case "indopak":    return "IndoPak";
+      case "uthmani_v1": return `Uthmani-V1-${pageNumber}`;
+      case "uthmani_v2": return `Uthmani-V2-${pageNumber}`;
+      case "uthmani_v4": return `Uthmani-V4-${pageNumber}`;
+      default:           return "Uthmani";
+    }
+  }, [quranFont, pageNumber]);
+
+  const bismillahFontFamily = useMemo(() => {
+    switch (quranFont) {
+      case "indopak":    return "IndoPak";
+      case "uthmani_v1": return "Uthmani-V1-1";
+      case "uthmani_v2": return "Uthmani-V2-1";
+      case "uthmani_v4": return "Uthmani-V4-1";
+      default:           return "Uthmani";
+    }
+  }, [quranFont]);
+
+  const showBismillah = surah.id !== 1 && surah.id !== 9 && verseNum === 1 && showArabicText;
+  const { data: surah1Data } = useQuranData(1);
+  const bismillahWords = useMemo(() => {
+    if (!showBismillah || !surah1Data?.verses?.length) return [];
+    const firstVerse = surah1Data.verses[0];
+    if (firstVerse.words.length < 4) return [];
+    return firstVerse.words.slice(0, 4).map((glyph, idx) => ({
+      glyph,
+      translation: firstVerse.wbwTranslationInline?.[idx] || firstVerse.wbwTranslationHover?.[idx],
+      transliteration: firstVerse.wbwTransliterationInline?.[idx] || firstVerse.wbwTransliterationHover?.[idx],
+    }));
+  }, [showBismillah, surah1Data]);
+
+  const resolvedLines: ResolvedWord[][] = useMemo(() => {
+    if (!verse || !isPageLayout) return [];
     const words = verse.words.map((glyph, idx) => ({
       glyph,
       verse,
       wordIndex: idx,
       isVerseEnd: idx === verse.words.length - 1,
       isVerseNumber: false,
-      verseNumber: undefined,
+      isVerseMarker: idx === verse.words.length - 1,
+      verseNumber: idx === verse.words.length - 1 ? verse.verseNumber : undefined,
+      transliteration: verse.wbwTransliteration?.[idx],
     }));
-    // We create a single line (array of words) and wrap in an array of lines
     return [words];
-  }, [isPageLayout, verse]);
+  }, [verse, isPageLayout]);
 
+  // ---------- Test audio ----------
+  const sendTestAudio = useCallback(async () => {
+    const audioPath = `/Layer/Bottom/Data/Quran/Qiraat/Mishary_Rashid_Alafasy/Surah/${surahId}/Ayah/${verseNum}/Audio.mp3`;
+    try {
+      const response = await fetch(audioPath);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const arrayBuffer = await response.arrayBuffer();
+      await connectWebSocket();
+      sendRawAudio(arrayBuffer);
+    } catch (err) {
+      console.error("Failed to send test audio:", err);
+    }
+  }, [connectWebSocket, sendRawAudio, surahId, verseNum]);
+
+  const handleRecordToggle = () => toggleRecording();
+
+  // ---------- Reading session ----------
   useEffect(() => {
+    if (!shouldTrack) return;
     startSession();
+    sessionIntervalRef.current = setInterval(async () => {
+      const seconds = await stopSession();
+      if (seconds > 0 && activeGoal) saveSecondsToGoal(activeGoal.id, seconds);
+      startSession();
+    }, 10000);
     return () => {
-      stopSession().then((minutes) => {
-        if (activeGoal && minutes > 0) saveMinutesToGoal(activeGoal.id, minutes);
+      if (sessionIntervalRef.current) clearInterval(sessionIntervalRef.current);
+      stopSession().then((seconds) => {
+        if (seconds > 0 && activeGoal) saveSecondsToGoal(activeGoal.id, seconds);
       });
     };
-  }, [surahId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shouldTrack, activeGoal, startSession, stopSession, saveSecondsToGoal]);
 
-  // Scroll to verse on load
+  // ---------- Scroll to verse ----------
   useEffect(() => {
     if (verse) {
       const el = verseRefs.current.get(verseNum);
@@ -103,16 +235,47 @@ const AyahIndex = () => {
     }
   }, [verse, verseNum]);
 
+  useEffect(() => {
+    if (targetVerse && verses) {
+      const target = parseInt(targetVerse);
+      const el = verseRefs.current.get(target);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
+  }, [targetVerse, verses]);
+
+  const showHeader = verseNum === 1;
+
+  // ---------- Surah navigation helpers ----------
+  const prevSurah = surahList.find((s) => s.id === surahId - 1);
+  const nextSurah = surahList.find((s) => s.id === surahId + 1);
+
+  // ---------- Render ----------
   if (isLoading) {
     return (
       <Layout hideFooter>
-        <SurahNavbar surahName={surah.englishName} surahId={surah.id} juz={currentJuz} hizb={currentHizb} page={currentPage} />
-        <div className="container py-8 max-w-4xl mx-auto pb-24 space-y-4">
-          <div className="p-6 border border-border rounded-xl">
-            <Skeleton className="h-8 w-full mb-4" />
-            <Skeleton className="h-4 w-3/4 mb-2" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
+        <div
+          className="w-full max-w-[17em] mx-auto px-4 pt-28"
+          style={{ fontSize: arabicFontSize }}
+        >
+          {showHeader && (
+            <SurahHeader
+              surah={surah}
+              fontClass={getFontClass()}
+              arabicFontSize={arabicFontSize}
+              onInfoClick={() => setSurahInfoDialog(true)}
+              onAudioClick={() => setShowAudioPlayer(true)}
+              onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
+            />
+          )}
+          <Container
+            className={`w-full ${
+              showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"
+            } mb-12`}
+          >
+            <div className="p-6">
+              <Skeleton className="h-8 w-full mb-4" />
+            </div>
+          </Container>
         </div>
       </Layout>
     );
@@ -121,80 +284,159 @@ const AyahIndex = () => {
   if (error || !verse) {
     return (
       <Layout hideFooter>
-        <SurahNavbar surahName={surah.englishName} surahId={surah.id} juz={currentJuz} hizb={currentHizb} page={currentPage} />
-        <div className="container py-8 max-w-4xl mx-auto pb-24">
+        <div
+          className="w-full max-w-[17em] mx-auto px-4 pt-28"
+          style={{ fontSize: arabicFontSize }}
+        >
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>Failed to load verse data. Please try again later.</AlertDescription>
+            <AlertDescription>
+              {error?.message || "Failed to load verse data. Please try again later."}
+            </AlertDescription>
           </Alert>
-          <div className="text-center">
-            <Button onClick={() => refetch()}>Retry</Button>
+          <div className="text-center space-x-4">
+            <Button onClick={() => refetch()}>Try Again</Button>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </div>
         </div>
       </Layout>
     );
   }
 
-  const showBismillah = surahId !== 1 && surahId !== 9 && showArabicText;
-
-  // Compute word count for the header (optional)
-  const wordCount = verse.words.length;
-
   return (
     <Layout hideFooter>
-      <SurahNavbar
-        surahName={surah.englishName}
-        surahId={surah.id}
-        juz={currentJuz}
-        hizb={currentHizb}
-        page={currentPage}
-      />
-
-      <div className="container pt-28 max-w-4xl mx-auto pb-24">
-        <SurahHeader
-          surah={surah}
-          wordCount={wordCount}
-          showBismillah={showBismillah}
-          fontClass={getFontClass()}
-          arabicFontSize={arabicFontSize}
-          onInfoClick={() => setSurahInfoDialog(true)}
-          onAudioClick={() => setShowAudioPlayer(true)}
-        />
-
-        {isPageLayout ? (
-          <div className="glass-container !rounded-xl overflow-hidden !block">
-            <div className="pt-4 px-6 sm:px-8 pb-4">
-              <PageLines
-                resolvedLines={pageLayoutWords!}
-                fontClass={getFontClass()}
-                arabicFontSize={arabicFontSize}
-                wordSpacing="1.8px"
-                surahId={surahId}
-                verseRefs={verseRefs}
-                hoveredVerse={null}
-                setHoveredVerse={() => {}}
-              />
-            </div>
-          </div>
-        ) : (
-          <VerseCard
-            verse={verse}
+      <div
+        style={{ fontSize: arabicFontSize }}
+        className="w-full max-w-[17em] mx-auto px-4 pt-28"
+      >
+        {/* Header – only for the first verse */}
+        {showHeader && (
+          <SurahHeader
             surah={surah}
-            showArabicText={showArabicText}
-            verseTranslation={verseTranslation}
-            translationFontSize={translationFontSizeValue}
-            isHighlighted={true}
-            verseRef={(el) => { if (el) verseRefs.current.set(verse.verseNumber, el); }}
-            onNotesClick={() => setNotesDialog({ open: true, ayahId: verse.verseNumber, verseText: verse.arabic })}
-            onShareClick={() => setShareDialog({ open: true, ayahId: verse.verseNumber, verseText: verse.arabic, translation: verse.translation })}
+            fontClass={getFontClass()}
+            arabicFontSize={arabicFontSize}
+            onInfoClick={() => setSurahInfoDialog(true)}
+            onAudioClick={() => setShowAudioPlayer(true)}
+            onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: verseNum })}
           />
         )}
 
-        <SurahNavigation
-          currentSurahId={surahId}
-          totalVerses={surah.numberOfAyahs}
-        />
+        <div ref={containerRef} className="w-full">
+          {isPageLayout ? (
+            /* ---------- Page layout: PageLines inside a Container ---------- */
+            <Container
+              className={`w-full ${
+                showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"
+              } mb-12`}
+            >
+              <div>
+                <PageLines
+                  resolvedLines={resolvedLines}
+                  fontClass={getFontClass()}
+                  arabicFontSize={arabicFontSize}
+                  wordSpacing="1.8px"
+                  surahId={surahId}
+                  verseRefs={verseRefs}
+                  hoveredVerse={null}
+                  setHoveredVerse={() => {}}
+                  showTransliteration={showTransliteration}
+                  transliterationFontSize={transliterationFontSizeValue}
+                  hoverTranslation={hoverTranslation}
+                  inlineTranslation={inlineTranslation}
+                  inlineTransliteration={inlineTransliteration}
+                  hideVerses={hideVerses}
+                  hideVerseMarkers={hideVerseMarkers}
+                  bismillahWords={showBismillah ? bismillahWords : []}
+                  bismillahFontFamily={showBismillah ? bismillahFontFamily : undefined}
+                  bismillahFontClass={getFontClass()}
+                  bismillahFontSize={arabicFontSize}
+                  pageFontFamily={pageFontFamily}
+                  isIndoPakFont={quranFont === "indopak"}
+                  verseMarkerMap={[]}
+                  isUthmaniV4Font={quranFont === "uthmani_v4"}
+                />
+              </div>
+
+              {/* Juz - Page - Hizb info */}
+              <div className="flex items-center justify-center pb-1">
+                <span className="text-sm text-muted-foreground font-medium">
+                  Juz - {currentJuz} | Page - {pageNumber} | Hizb - {currentHizb}
+                </span>
+              </div>
+            </Container>
+          ) : (
+            /* ---------- Ayah layout: AyahView (uses Container internally) ---------- */
+            <AyahView
+              surah={surah}
+              verses={[verse]}
+              showArabicText={showArabicText}
+              verseTranslation={verseTranslation}
+              inlineTranslation={inlineTranslation}
+              translationFontSize={translationFontSizeValue}
+              transliterationFontSize={transliterationFontSizeValue}
+              selectedAyahTransliterator={selectedAyahTransliterator}
+              targetVerse={null}
+              verseRefs={verseRefs}
+              onNotesClick={(ayahId) => {
+                const v = verses?.find((v) => v.verseNumber === ayahId);
+                setNotesDialog({ open: true, ayahId, verse: v });
+              }}
+              onTafsirClick={(ayahId) => setTafsirDialog({ open: true, verseNumber: ayahId })}
+              onShareClick={(ayahId, verseText, translation) =>
+                setShareDialog({ open: true, ayahId, verseText, translation })
+              }
+              hoverTransliteration={hoverTransliteration}
+              inlineTransliteration={inlineTransliteration}
+            />
+          )}
+
+          {/* ---------- Navigation: Previous / Next Ayah (with Surah boundaries) ---------- */}
+          <div className="flex items-center justify-center gap-3 py-4 mt-8">
+            {verseNum > 1 ? (
+              <Link to={`/Quran/Surah/${surahId}/Ayah/${verseNum - 1}`}>
+                <Button className="gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous Ayah
+                </Button>
+              </Link>
+            ) : prevSurah ? (
+              <Link to={`/Quran/Surah/${prevSurah.id}/Ayah/1`}>
+                <Button className="gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous Surah
+                </Button>
+              </Link>
+            ) : null}
+
+            {verseNum < surah.numberOfAyahs ? (
+              <Link to={`/Quran/Surah/${surahId}/Ayah/${verseNum + 1}`}>
+                <Button className="gap-2">
+                  Next Ayah
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            ) : nextSurah ? (
+              <Link to={`/Quran/Surah/${nextSurah.id}/Ayah/1`}>
+                <Button className="gap-2">
+                  Next Surah
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            ) : null}
+          </div>
+        </div>
       </div>
+
+      {recordAudioEnabled && (
+        <AudioControls
+          isRecording={isDeepgramRecording}
+          onRecordToggle={handleRecordToggle}
+          onTestAudio={sendTestAudio}
+          hideVerses={hideVerses}
+          onHideVersesToggle={setHideVerses}
+          transcript={transcript}
+        />
+      )}
 
       <AudioPlayer
         isVisible={showAudioPlayer}
@@ -202,14 +444,12 @@ const AyahIndex = () => {
         surahId={surahId}
         surahName={surah.englishName}
       />
-
       <NotesDialog
         open={notesDialog.open}
         onOpenChange={(open) => setNotesDialog({ ...notesDialog, open })}
         surahId={surahId}
-        surahName={surah.englishName}
         ayahId={notesDialog.ayahId}
-        verseText={notesDialog.verseText}
+        verse={notesDialog.verse}
       />
       <ShareDialog
         open={shareDialog.open}
@@ -225,6 +465,12 @@ const AyahIndex = () => {
         onOpenChange={setSurahInfoDialog}
         surahId={surahId}
         surah={surah}
+      />
+      <TafsirDialog
+        open={tafsirDialog.open}
+        onOpenChange={(open) => setTafsirDialog(prev => ({ ...prev, open }))}
+        surahId={surahId}
+        verseNumber={tafsirDialog.verseNumber}
       />
     </Layout>
   );

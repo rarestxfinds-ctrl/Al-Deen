@@ -15,6 +15,7 @@ import { WordTooltip, useAudioPlayback } from "../Safhah/Utility";
 import { useState, useMemo } from "react";
 import { Container } from "@/Top/Component/UI/Container";
 import { Button } from "@/Top/Component/UI/Button";
+import { getPageSegments } from "@/Bottom/API/Quran"; // new import
 import type { VerseCardProps } from "../Types";
 
 export function VerseCard({
@@ -29,7 +30,7 @@ export function VerseCard({
   verseRef,
   onNotesClick,
   onShareClick,
-  onTafsirClick,               // ✅ NEW
+  onTafsirClick,
   hoverTransliteration,
   inlineTransliteration,
 }: VerseCardProps) {
@@ -41,6 +42,40 @@ export function VerseCard({
   const { playingKey, playWordAudio, isPlaying } = useAudioPlayback(surah.id);
 
   const [hoveredVerse, setHoveredVerse] = useState<number | null>(null);
+
+  // --------------- New: page‑specific font family ---------------
+  const pageFontFamily = useMemo(() => {
+    // Fonts that are split across pages
+    if (quranFont === "uthmani_v1" || quranFont === "uthmani_v2" || quranFont === "uthmani_v4") {
+      const version = quranFont === "uthmani_v1" ? "1" : quranFont === "uthmani_v2" ? "2" : "4";
+      const surahPages = surah.pages;
+      if (!surahPages) return `Uthmani-V${version}`; // fallback
+
+      // Find which page contains this verse
+      for (let pageNum = surahPages[0]; pageNum <= surahPages[1]; pageNum++) {
+        const segments = getPageSegments(pageNum);
+        if (segments) {
+          const surahSegment = segments.find((seg) => seg.surah === surah.id);
+          if (
+            surahSegment &&
+            verse.verseNumber >= surahSegment.startVerse &&
+            verse.verseNumber <= surahSegment.endVerse
+          ) {
+            return `Uthmani-V${version}-${pageNum}`;
+          }
+        }
+      }
+      // Fallback if not found
+      return `Uthmani-V${version}`;
+    }
+
+    // IndoPak is a single font, no page number
+    if (quranFont === "indopak") return "IndoPak";
+
+    // Generic Uthmani
+    return "Uthmani";
+  }, [quranFont, surah, verse.verseNumber]);
+  // ------------------------------------------------------------
 
   const isTooltipEnabled = useMemo(() => {
     const hasTranslation = hoverTranslation !== "None" && hoverTranslation !== false;
@@ -95,9 +130,7 @@ export function VerseCard({
   return (
     <Container 
       ref={verseRef} 
-      className={cn(
-        isHighlighted && "ring-2 ring-primary"
-      )}
+      className={cn(isHighlighted && "ring-2 ring-primary")}
     >
       <div className="pt-4 px-6 sm:px-8 pb-2">
         <div className="flex items-center justify-between mb-4">
@@ -145,7 +178,7 @@ export function VerseCard({
                 <TooltipContent side="bottom">{t.quran.bookmark}</TooltipContent>
               </Tooltip>
 
-              {/* ✅ Tafsir button */}
+              {/* Tafsir button */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" className="p-1.5 rounded-lg" onClick={onTafsirClick}>
@@ -177,12 +210,16 @@ export function VerseCard({
           </div>
         </div>
 
-        {/* Arabic Text */}
+        {/* Arabic Text – now with page‑specific fontFamily */}
         {showArabicText && (
           <div className="flex justify-end mb-4">
             <div
               className={computedFontClass}
-              style={{ fontSize: arabicFontSize, lineHeight: 1.8 }}
+              style={{
+                fontSize: arabicFontSize,
+                lineHeight: 1.8,
+                fontFamily: pageFontFamily,   // <--- the key fix
+              }}
               dir="rtl"
             >
               {verse.words.map((glyph, idx) => {

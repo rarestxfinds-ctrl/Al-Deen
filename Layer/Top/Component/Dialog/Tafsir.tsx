@@ -215,7 +215,7 @@ export const TafsirDialog = memo(function TafsirDialog({
   // Desktop layout
   return (
     <div 
-      className="fixed inset-0 z-40 bg-background"
+      className="fixed inset-0 z-50 bg-background"
       onClick={handleBackdropClick}
     >
       <ScrollArea className="h-full" ref={scrollRef}>

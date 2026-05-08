@@ -1,7 +1,7 @@
 // Types.tsx
 import { ReactNode } from "react";
 
-export type SearchCategory = "pages" | "quran" | "hadiths" | "duas";
+export type SearchCategory = "pages" | "quran" | "hadith" | "duas";
 
 export interface SearchResult {
   id: string;

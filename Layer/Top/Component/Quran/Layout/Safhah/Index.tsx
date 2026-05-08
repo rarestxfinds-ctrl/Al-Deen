@@ -1,11 +1,16 @@
-// Layer/Top/Component/Quran/Layout/Safhah/Index.tsx (PageView)
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAudio } from "@/Middle/Context/Audio";
+import { useApp } from "@/Middle/Context/App";
 import { PageLines } from "./Main";
+import { WordTooltip, useAudioPlayback } from "./Utility";
 import type { PageViewProps, ResolvedWord } from "./Types";
 import type { AssembledVerse } from "@/Bottom/API/Quran";
 import { getPageSegments } from "@/Bottom/API/Quran";
 import { Container } from "@/Top/Component/UI/Container";
+import { useQuranData } from "@/Middle/Hook/Use-Quran-Data";
+import indoPakMarkers from "@/Bottom/Data/Quran/Meta/Indo-Pak-Verse-Markers.json";
+
+const DEBUG_OVERFLOW = true;
 
 export function PageView({
   surah,
@@ -23,14 +28,68 @@ export function PageView({
   wordSpacing = "1.8px",
   hideVerses = false,
   hideVerseMarkers = false,
+  pageFooter,
 }: PageViewProps) {
   const { verses, lines } = assembledSurah;
   const { activeVerse, activeWord, playAyah } = useAudio();
+  const { quranFont, hifz } = useApp();
   const [hoveredVerse, setHoveredVerse] = useState<number | null>(null);
+  const [overflowPages, setOverflowPages] = useState<Set<number>>(new Set());
 
-  const isHoverTranslationEnabled = useMemo(() => {
-    return hoverTranslation !== "None" && hoverTranslation !== false;
-  }, [hoverTranslation]);
+  // Word‑level audio (same hook used by PageLines)
+  const { playWordAudio, isPlaying } = useAudioPlayback(surah.id);
+
+  const surah1Data = useQuranData(1);
+
+  const isHoverTranslationEnabled = useMemo(
+    () => hoverTranslation !== "None" && hoverTranslation !== false,
+    [hoverTranslation]
+  );
+
+  const isIndoPakFont = quranFont === "indopak";
+  const isUthmaniV4Font = quranFont === "uthmani_v4";
+
+  const verseMarkerMap = useMemo(() => {
+    if (!isIndoPakFont) return [];
+    const markers = (indoPakMarkers as string[][])[surah.id - 1];
+    return Array.isArray(markers) ? markers : [];
+  }, [isIndoPakFont, surah.id]);
+
+  const getPageFontFamily = (pageNumber: number): string => {
+    switch (quranFont) {
+      case "indopak": return "IndoPak";
+      case "uthmani": return "Uthmani";
+      case "uthmani_v1": return `Uthmani-V1-${pageNumber}`;
+      case "uthmani_v2": return `Uthmani-V2-${pageNumber}`;
+      case "uthmani_v4": return `Uthmani-V4-${pageNumber}`;
+      default: return "Uthmani";
+    }
+  };
+
+  const getBismillahFontFamily = (): string => {
+    switch (quranFont) {
+      case "indopak": return "IndoPak";
+      case "uthmani": return "Uthmani";
+      case "uthmani_v1": return "Uthmani-V1-1";
+      case "uthmani_v2": return "Uthmani-V2-1";
+      case "uthmani_v4": return "Uthmani-V4-1";
+      default: return "Uthmani";
+    }
+  };
+
+  const bismillahWords = useMemo(() => {
+    if (!showArabicText) return [];
+    const verses1 = surah1Data.data?.verses;
+    if (!verses1 || verses1.length === 0) return [];
+    const firstVerse = verses1[0];
+    const words = firstVerse.words;
+    if (words.length < 5) return [];
+    return words.slice(0, 4).map((glyph, idx) => ({
+      glyph,
+      translation: firstVerse.wbwTranslationInline?.[idx] || firstVerse.wbwTranslationHover?.[idx],
+      transliteration: firstVerse.wbwTransliterationInline?.[idx] || firstVerse.wbwTransliterationHover?.[idx],
+    }));
+  }, [showArabicText, surah1Data.data]);
 
   const pages = useMemo(() => {
     const startPage = surah.pages[0];
@@ -38,28 +97,21 @@ export function PageView({
     const result: { pageNumber: number; verses: AssembledVerse[] }[] = [];
 
     const verseMap = new Map<number, AssembledVerse>();
-    for (const verse of verses) {
-      verseMap.set(verse.verseNumber, verse);
-    }
+    for (const verse of verses) verseMap.set(verse.verseNumber, verse);
 
     for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
       const segments = getPageSegments(pageNum);
       if (!segments) continue;
-
       const surahSegment = segments.find((seg) => seg.surah === surah.id);
       if (!surahSegment) continue;
 
       const pageVerses: AssembledVerse[] = [];
-      for (let verseNum = surahSegment.startVerse; verseNum <= surahSegment.endVerse; verseNum++) {
-        const verse = verseMap.get(verseNum);
+      for (let vn = surahSegment.startVerse; vn <= surahSegment.endVerse; vn++) {
+        const verse = verseMap.get(vn);
         if (verse) pageVerses.push(verse);
       }
-
-      if (pageVerses.length > 0) {
-        result.push({ pageNumber: pageNum, verses: pageVerses });
-      }
+      if (pageVerses.length > 0) result.push({ pageNumber: pageNum, verses: pageVerses });
     }
-
     return result;
   }, [surah, verses]);
 
@@ -71,7 +123,6 @@ export function PageView({
 
   const resolvedLines = useMemo<ResolvedWord[][]>(() => {
     if (!lines) return [];
-
     return lines.map((lineRefs) =>
       lineRefs.map((ref) => {
         const [ayahStr, wordStr] = ref.split(":");
@@ -82,24 +133,20 @@ export function PageView({
         const glyph = verse?.words[wordIndex] ?? ref;
         const isVerseEnd = !!verse && wordIndex === verse.words.length - 1;
         const isVerseNumber = verse === null;
+        const isVerseMarker = !!verse && wordIndex === verse.words.length - 1;
 
         let verseNumber: number | undefined;
         if (isVerseNumber && glyph.includes(":")) {
-          const parts = glyph.split(":");
-          verseNumber = parseInt(parts[0], 10);
+          verseNumber = parseInt(glyph.split(":")[0], 10);
+        } else if (isVerseMarker && verse) {
+          verseNumber = verse.verseNumber;
         }
 
-        const transliteration =
-          (!isVerseEnd && verse?.wbwTransliteration?.[wordIndex]) || undefined;
-
+        const transliteration = (!isVerseEnd && verse?.wbwTransliteration?.[wordIndex]) || undefined;
         return {
-          glyph,
-          verse,
-          wordIndex,
-          isVerseEnd,
-          isVerseNumber,
-          verseNumber,
-          transliteration,
+          glyph, verse, wordIndex,
+          isVerseEnd, isVerseNumber, isVerseMarker,
+          verseNumber, transliteration,
         };
       })
     );
@@ -107,189 +154,309 @@ export function PageView({
 
   const resolvedLinesByPage = useMemo(() => {
     return pages.map((page) => {
-      const pageVerseNumbers = new Set(page.verses.map((v) => v.verseNumber));
-      return resolvedLines.filter((line) =>
-        line.some((word) => {
-          if (word.verse !== null) return pageVerseNumbers.has(word.verse.verseNumber);
-          if (word.isVerseNumber && word.verseNumber) return pageVerseNumbers.has(word.verseNumber);
-          return false;
-        })
+      const verseNumbers = new Set(page.verses.map(v => v.verseNumber));
+      return resolvedLines.filter(line =>
+        line.some(word =>
+          word.verse !== null ? verseNumbers.has(word.verse.verseNumber)
+          : word.isVerseNumber && word.verseNumber ? verseNumbers.has(word.verseNumber)
+          : false
+        )
       );
     });
   }, [pages, resolvedLines]);
 
   const getVerseTransliteration = (verse: AssembledVerse): string | null => {
     if (!showTransliteration) return null;
-    if (verse.wbwTransliteration && verse.wbwTransliteration.length > 0) {
-      return verse.wbwTransliteration.join(" ");
-    }
     return verse.transliteration || null;
   };
 
+  const shouldShowBismillah = surah.id !== 1 && surah.id !== 9 && showArabicText;
+
+  // ---- Overflow detection (hidden PageLines always present) ----
+  const pageLinesRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  useEffect(() => {
+    if (!showArabicText) return;
+    const observers: ResizeObserver[] = [];
+
+    pages.forEach((page) => {
+      const el = pageLinesRefs.current.get(page.pageNumber);
+      if (!el) return;
+
+      const checkWrapping = () => {
+        const lineContainers = el.querySelectorAll("[data-line-container]");
+        for (const lineEl of lineContainers) {
+          const words = lineEl.querySelectorAll("[data-word]");
+          if (words.length < 2) continue;
+          const firstTop = words[0].getBoundingClientRect().top;
+          for (let i = 1; i < words.length; i++) {
+            if (Math.abs(words[i].getBoundingClientRect().top - firstTop) > 0.5) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const observer = new ResizeObserver(() => {
+        if (el.clientWidth > 0) {
+          const wrapped = checkWrapping();
+          setOverflowPages((prev) => {
+            const next = new Set(prev);
+            const currentlyOverflow = next.has(page.pageNumber);
+            if (wrapped && !currentlyOverflow) {
+              console.log(`[DEBUG] Page ${page.pageNumber} overflow → fluid layout`);
+              next.add(page.pageNumber);
+            } else if (!wrapped && currentlyOverflow) {
+              console.log(`[DEBUG] Page ${page.pageNumber} restored → PageLines`);
+              next.delete(page.pageNumber);
+            }
+            return next;
+          });
+        }
+      });
+
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach(o => o.disconnect());
+  }, [pages, resolvedLinesByPage, showArabicText]);
+
+  // ---- Rich fluid fallback (word‑by‑word, full interactivity) ----
+  const renderFluidArabic = (verses: AssembledVerse[], pageFont: string) => (
+    <div
+      dir="rtl"
+      className={fontClass}
+      style={{
+        fontSize: arabicFontSize,
+        lineHeight: 1.8,
+        wordSpacing,                     // ← essential Arabic word spacing
+        fontFamily: pageFont || fontClass, // ← page‑specific font
+        textAlign: "right",
+        padding: "1rem 0",
+      }}
+    >
+      {verses.map((verse) =>
+        verse.words.map((glyph, wordIdx) => {
+          const isVerseEnd = wordIdx === verse.words.length - 1;
+          const isVerseMarker = isVerseEnd;
+          const verseNumber = verse.verseNumber;
+
+          const hoverTranslationText =
+            !isVerseEnd && verse.wbwTranslationHover?.[wordIdx];
+          const hoverTransliterationText =
+            !isVerseEnd && verse.wbwTransliterationHover?.[wordIdx];
+
+          const handleClick = isVerseEnd
+            ? () => playAyah(surah.id, verseNumber)
+            : () => playWordAudio(verseNumber, wordIdx);
+
+          const handleMouseEnter = () => {
+            if (isVerseEnd) setHoveredVerse(verseNumber);
+          };
+          const handleMouseLeave = () => {
+            if (isVerseEnd) setHoveredVerse(null);
+          };
+
+          const isVerseHighlighted =
+            hoveredVerse !== null && hoveredVerse === verseNumber;
+          const isActive =
+            !isVerseEnd && verseNumber === activeVerse && wordIdx === activeWord;
+          const wordKey = `word-${verseNumber}-${wordIdx}`;
+          const ayahKey = `ayah-${verseNumber}`;
+          const isPlayingAudio =
+            isPlaying(wordKey) || isPlaying(ayahKey);
+
+          let spanClass = "select-text transition-colors duration-200 inline ";
+          if (isVerseHighlighted && !isVerseMarker) spanClass += "text-primary";
+          else if (isActive) spanClass += "text-emerald-500 animate-pulse";
+          else if (isPlayingAudio) spanClass += "text-primary animate-pulse";
+          else if (isVerseEnd || isVerseMarker)
+            spanClass += "text-muted-foreground hover:text-primary cursor-pointer";
+          else spanClass += "text-foreground hover:text-primary";
+
+          return (
+            <WordTooltip
+              key={`${verseNumber}-${wordIdx}`}
+              translation={hoverTranslationText}
+              transliteration={hoverTransliterationText}
+              enabled={isHoverTranslationEnabled}
+              onClick={handleClick}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <span
+                className={spanClass}
+                style={{ cursor: "pointer" }}
+                onClick={handleClick}
+                data-verse={verseNumber}
+                data-word={wordIdx}
+                {...(isVerseMarker ? { "data-is-verse-marker": "true" } : {})}
+              >
+                {glyph}{" "}
+              </span>
+            </WordTooltip>
+          );
+        })
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      {pages.map((page, pageIdx) => (
-        <Container key={page.pageNumber}>
-          <div>
-            {showArabicText && (
-              lines ? (
-                <PageLines
-                  resolvedLines={resolvedLinesByPage[pageIdx]}
-                  fontClass={fontClass}
-                  arabicFontSize={arabicFontSize}
-                  wordSpacing={wordSpacing}
-                  surahId={surah.id}
-                  verseRefs={verseRefs}
-                  hoveredVerse={hoveredVerse}
-                  setHoveredVerse={setHoveredVerse}
-                  showTransliteration={showTransliteration}
-                  transliterationFontSize={transliterationFontSize}
-                  hoverTranslation={hoverTranslation}
-                  inlineTranslation={inlineTranslation}
-                  inlineTransliteration={inlineTransliteration}
-                  hideVerses={hideVerses}               // <-- added
-                  hideVerseMarkers={hideVerseMarkers}
-                />
-              ) : (
-                <div>
+    <div id="quran-container">
+      {pages.map((page, pageIdx) => {
+        const pageFontFamily = getPageFontFamily(page.pageNumber);
+        const bismillahFontFamily = getBismillahFontFamily();
+        const showBismillahOnThisPage = pageIdx === 0 && shouldShowBismillah;
+        const containerClassName = pageIdx === 0
+          ? "rounded-t-none rounded-b-[48px] mb-12"
+          : "rounded-[48px] mb-12";
+        const isOverflow = overflowPages.has(page.pageNumber);
+
+        return (
+          <Container
+            key={page.pageNumber}
+            className={`w-full ${containerClassName} ${
+              DEBUG_OVERFLOW && isOverflow ? "ring-2 ring-red-500" : ""
+            }`}
+          >
+            <div className="relative">
+              {showArabicText && (
+                <>
+                  {/* Fluid fallback shown when overflowing */}
+                  {isOverflow && renderFluidArabic(page.verses, pageFontFamily)}
+
+                  {/* Always‑rendered hidden measurement copy of PageLines */}
                   <div
-                    className={`${fontClass} leading-[2.8] text-justify`}
-                    dir="rtl"
-                    style={{ fontSize: arabicFontSize, textAlignLast: "right", wordSpacing }}
+                    ref={(el) => {
+                      if (el) pageLinesRefs.current.set(page.pageNumber, el);
+                      else pageLinesRefs.current.delete(page.pageNumber);
+                    }}
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      visibility: "hidden",
+                      top: 0, left: 0,
+                      width: "100%",
+                      zIndex: -1,
+                    }}
                   >
-                    {page.verses.map((verse) => (
-                      <span
-                        key={verse.verseNumber}
-                        ref={(el) => {
-                          if (el)
-                            verseRefs.current.set(
-                              verse.verseNumber,
-                              el as unknown as HTMLDivElement,
-                            );
-                        }}
-                        className="inline"
-                      >
-                        {verse.words.map((word, wIdx) => {
-                          const isLastWord = wIdx === verse.words.length - 1;
-                          if (hideVerses) return null;
-                          if (hideVerseMarkers && isLastWord) return null;
-                          return (
-                            <span
-                              key={wIdx}
-                              className={`select-text transition-colors duration-200
-                                ${verse.verseNumber === activeVerse && wIdx === activeWord
-                                  ? "text-emerald-500 animate-pulse"
-                                  : hoveredVerse === verse.verseNumber
-                                  ? "bg-primary/20 rounded px-0.5"
-                                  : "text-foreground"}
-                              `}
-                              onClick={() => {
-                                if (isLastWord) playAyah(surah.id, verse.verseNumber);
-                              }}
-                              onMouseEnter={() => {
-                                if (isLastWord) setHoveredVerse(verse.verseNumber);
-                              }}
-                              onMouseLeave={() => {
-                                if (isLastWord) setHoveredVerse(null);
-                              }}
-                            >
-                              {word}{" "}
-                            </span>
-                          );
-                        })}
-                      </span>
-                    ))}
+                    <PageLines
+                      resolvedLines={resolvedLinesByPage[pageIdx]}
+                      fontClass={fontClass}
+                      arabicFontSize={arabicFontSize}
+                      wordSpacing={wordSpacing}
+                      surahId={surah.id}
+                      verseRefs={verseRefs}
+                      hoveredVerse={hoveredVerse}
+                      setHoveredVerse={setHoveredVerse}
+                      showTransliteration={showTransliteration}
+                      transliterationFontSize={transliterationFontSize}
+                      hoverTranslation={hoverTranslation}
+                      inlineTranslation={inlineTranslation}
+                      inlineTransliteration={inlineTransliteration}
+                      hideVerses={hideVerses}
+                      hideVerseMarkers={hideVerseMarkers}
+                      bismillahWords={showBismillahOnThisPage ? bismillahWords : []}
+                      bismillahFontFamily={showBismillahOnThisPage ? bismillahFontFamily : undefined}
+                      bismillahFontClass={fontClass}
+                      bismillahFontSize={arabicFontSize}
+                      pageFontFamily={pageFontFamily}
+                      isIndoPakFont={isIndoPakFont}
+                      verseMarkerMap={verseMarkerMap}
+                      isUthmaniV4Font={isUthmaniV4Font}
+                    />
                   </div>
 
+                  {/* Visible PageLines (normal mode) */}
+                  {!isOverflow && (
+                    <div>
+                      <PageLines
+                        resolvedLines={resolvedLinesByPage[pageIdx]}
+                        fontClass={fontClass}
+                        arabicFontSize={arabicFontSize}
+                        wordSpacing={wordSpacing}
+                        surahId={surah.id}
+                        verseRefs={verseRefs}
+                        hoveredVerse={hoveredVerse}
+                        setHoveredVerse={setHoveredVerse}
+                        showTransliteration={showTransliteration}
+                        transliterationFontSize={transliterationFontSize}
+                        hoverTranslation={hoverTranslation}
+                        inlineTranslation={inlineTranslation}
+                        inlineTransliteration={inlineTransliteration}
+                        hideVerses={hideVerses}
+                        hideVerseMarkers={hideVerseMarkers}
+                        bismillahWords={showBismillahOnThisPage ? bismillahWords : []}
+                        bismillahFontFamily={showBismillahOnThisPage ? bismillahFontFamily : undefined}
+                        bismillahFontClass={fontClass}
+                        bismillahFontSize={arabicFontSize}
+                        pageFontFamily={pageFontFamily}
+                        isIndoPakFont={isIndoPakFont}
+                        verseMarkerMap={verseMarkerMap}
+                        isUthmaniV4Font={isUthmaniV4Font}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!showArabicText && (
+                <div className="space-y-4">
                   {showTransliteration && (
-                    <div className="mt-4 space-y-2">
+                    <div className="space-y-1">
                       {page.verses.map((verse) => {
                         const translit = getVerseTransliteration(verse);
                         if (!translit) return null;
                         return (
-                          <div
+                          <p
                             key={`translit-${verse.verseNumber}`}
-                            className="text-muted-foreground leading-relaxed text-justify"
+                            className={`text-muted-foreground leading-relaxed transition-colors duration-200 ${
+                              hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
+                            }`}
                             style={{ fontSize: transliterationFontSize }}
+                            onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
+                            onMouseLeave={() => setHoveredVerse(null)}
                           >
                             {translit}
-                          </div>
+                          </p>
                         );
                       })}
                     </div>
                   )}
 
-                  {isHoverTranslationEnabled && (
-                    <div className="mt-2 space-y-1">
-                      {page.verses.map((verse) => (
-                        <p
-                          key={`trans-${verse.verseNumber}`}
-                          className={`text-foreground leading-relaxed transition-colors duration-200
-                            ${hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""}
-                          `}
-                          style={{ fontSize: translationFontSize }}
-                          onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
-                          onMouseLeave={() => setHoveredVerse(null)}
-                        >
-                          {verse.translation ?? null}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            )}
-
-            {!showArabicText && (
-              <div className="space-y-4">
-                {showTransliteration && (
                   <div className="space-y-1">
-                    {page.verses.map((verse) => {
-                      const translit = getVerseTransliteration(verse);
-                      if (!translit) return null;
-                      return (
-                        <p
-                          key={`translit-${verse.verseNumber}`}
-                          className={`text-muted-foreground leading-relaxed transition-colors duration-200
-                            ${hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""}
-                          `}
-                          style={{ fontSize: transliterationFontSize }}
-                          onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
-                          onMouseLeave={() => setHoveredVerse(null)}
-                        >
-                          {translit}
-                        </p>
-                      );
-                    })}
+                    {page.verses.map((verse) => (
+                      <p
+                        key={verse.verseNumber}
+                        className={`text-foreground leading-relaxed transition-colors duration-200 ${
+                          hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
+                        }`}
+                        style={{ fontSize: translationFontSize }}
+                        onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
+                        onMouseLeave={() => setHoveredVerse(null)}
+                      >
+                        {verse.translation ?? null}
+                      </p>
+                    ))}
                   </div>
-                )}
-
-                <div className="space-y-1">
-                  {page.verses.map((verse) => (
-                    <p
-                      key={verse.verseNumber}
-                      className={`text-foreground leading-relaxed transition-colors duration-200
-                        ${hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""}
-                      `}
-                      style={{ fontSize: translationFontSize }}
-                      onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
-                      onMouseLeave={() => setHoveredVerse(null)}
-                    >
-                      {verse.translation ?? null}
-                    </p>
-                  ))}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="flex items-center justify-center">
-            <span className="text-sm text-muted-foreground font-medium">
-              {page.pageNumber}
-            </span>
-          </div>
-        </Container>
-      ))}
+            <div className="flex items-center justify-center pb-1">
+              {pageFooter ? (
+                pageFooter(page.pageNumber)
+              ) : (
+                <span className="text-sm text-muted-foreground font-medium">
+                  {page.pageNumber}
+                </span>
+              )}
+            </div>
+          </Container>
+        );
+      })}
     </div>
   );
 }

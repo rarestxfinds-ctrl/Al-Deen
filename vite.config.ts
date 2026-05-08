@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Al Deen",
         short_name: "Al Deen",
-        description: "Access to Quran, Hadiths and etc.",
+        description: "Access to Quran, Hadith and etc.",
         theme_color: "#1a1a1a",
         background_color: "#ffffff",
         display: "standalone",

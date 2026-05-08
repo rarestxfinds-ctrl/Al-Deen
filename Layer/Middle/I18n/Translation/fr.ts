@@ -4,7 +4,7 @@ export const fr: TranslationKeys = {
   nav: {
     home: "Accueil",
     quran: "Coran",
-    hadiths: "Hadiths",
+    hadith: "Hadith",
     duas: "Duas",
     feedback: "Commentaires",
     help: "Aide",
@@ -74,7 +74,7 @@ export const fr: TranslationKeys = {
   },
   search: {
     title: "Rechercher",
-    placeholder: "Rechercher dans le Coran, Hadiths...",
+    placeholder: "Rechercher dans le Coran, Hadith...",
     recentSearches: "Recherches récentes",
     popularSearches: "Recherches populaires",
     quickNavigation: "Navigation rapide",
@@ -87,12 +87,12 @@ export const fr: TranslationKeys = {
     welcome: "Bienvenue sur Al-Deen",
     subtitle: "Votre ressource islamique complète",
     exploreQuran: "Explorer le Coran",
-    exploreHadiths: "Explorer les Hadiths",
+    exploreHadiths: "Explorer les Hadith",
     exploreDuas: "Explorer les Duas",
     getHelp: "Obtenir de l'aide",
   },
-  hadiths: {
-    title: "Hadiths",
+  hadith: {
+    title: "Hadith",
     collections: "Collections",
     chapters: "Chapitres",
     hadith: "Hadith",

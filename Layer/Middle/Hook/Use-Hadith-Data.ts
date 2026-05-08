@@ -28,7 +28,7 @@ export function useHadithChapter(collectionId: string, chapterId: string) {
 
 export function useHadithsByChapter(collectionId: string, chapterId: string) {
   return useQuery<Hadith[], Error>({
-    queryKey: ['hadith-hadiths', collectionId, chapterId],
+    queryKey: ['hadith-hadith', collectionId, chapterId],
     queryFn: () => getHadithsByChapter(collectionId, chapterId),
     staleTime: 1000 * 60 * 60,
     enabled: !!collectionId && !!chapterId,

@@ -1,321 +1,214 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useRef } from 'react';
 import { Layout } from "@/Top/Component/Layout/Index";
 import { Container } from "@/Top/Component/UI/Container";
 import { Button } from "@/Top/Component/UI/Button";
-import { Plus, Minus, RotateCcw, Repeat, Target, Volume2, VolumeX, Hand } from "lucide-react";
+import { RotateCcw, Fingerprint, Edit2, Check, Repeat } from "lucide-react";
 
-const TasbihPage = () => {
-  const [count, setCount] = useState(0);
-  const [target, setTarget] = useState(33);
-  const [loopCount, setLoopCount] = useState(1);
-  const [currentLoop, setCurrentLoop] = useState(1);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [completedLoops, setCompletedLoops] = useState(0);
-  const [showTargetModal, setShowTargetModal] = useState(false);
-  const [showLoopModal, setShowLoopModal] = useState(false);
-  const [tempTarget, setTempTarget] = useState(33);
-  const [tempLoop, setTempLoop] = useState(1);
+const HoldTasbihPage = () => {
+  const [count, setCount] = useState<number>(0);
+  const [target, setTarget] = useState<number>(33);
+  const [loops, setLoops] = useState<number>(0);
+  const [isEditingTarget, setIsEditingTarget] = useState<boolean>(false);
+  const [tempTarget, setTempTarget] = useState<string>("33");
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  const [isLocked, setIsLocked] = useState<boolean>(false); 
+  
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  const HOLD_DURATION = 1000; 
+  const INTERVAL_STEP = 10;
 
-  // Load saved state
-  useEffect(() => {
-    const saved = localStorage.getItem("tasbih-state");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setCount(parsed.count || 0);
-      setTarget(parsed.target || 33);
-      setLoopCount(parsed.loopCount || 1);
-      setCurrentLoop(parsed.currentLoop || 1);
-      setCompletedLoops(parsed.completedLoops || 0);
-    }
-  }, []);
-
-  // Save state
-  useEffect(() => {
-    localStorage.setItem("tasbih-state", JSON.stringify({
-      count, target, loopCount, currentLoop, completedLoops
-    }));
-  }, [count, target, loopCount, currentLoop, completedLoops]);
-
-  // Initialize audio
-  useEffect(() => {
-    audioRef.current = new Audio("/click-sound.mp3");
-    return () => {
-      if (audioRef.current) {
-        audioRef.current = null;
+  const handleSuccess = () => {
+    setCount((prevCount) => {
+      const nextCount = prevCount + 1;
+      if (nextCount > target) {
+        setLoops((l) => l + 1);
+        return 1; 
       }
-    };
-  }, []);
-
-  const playSound = useCallback(() => {
-    if (soundEnabled && audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
-    }
-  }, [soundEnabled]);
-
-  const increment = useCallback(() => {
-    const newCount = count + 1;
-    setCount(newCount);
-    playSound();
+      return nextCount === 0 ? 1 : nextCount;
+    });
     
-    // Check if target reached
-    if (newCount >= target) {
-      const newCompletedLoops = completedLoops + 1;
-      setCompletedLoops(newCompletedLoops);
-      
-      // Check if all loops completed
-      if (currentLoop >= loopCount) {
-        // All loops complete - reset everything
-        setCount(0);
-        setCurrentLoop(1);
-        alert(`Completed ${loopCount} loop${loopCount > 1 ? 's' : ''}! 🎉`);
-      } else {
-        // Move to next loop
-        setCount(0);
-        setCurrentLoop(currentLoop + 1);
-        alert(`Loop ${currentLoop} completed! Moving to loop ${currentLoop + 1}`);
-      }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [count, target, currentLoop, loopCount, completedLoops, playSound]);
+    setIsLocked(true); 
+  };
 
-  const decrement = useCallback(() => {
-    if (count > 0) {
-      setCount(count - 1);
+  const startHolding = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isLocked || timerRef.current || isEditingTarget) return;
+
+    timerRef.current = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + (100 / (HOLD_DURATION / INTERVAL_STEP));
+        if (next >= 100) {
+          handleSuccess();
+          return 100; 
+        }
+        return next;
+      });
+    }, INTERVAL_STEP);
+  };
+
+  const stopHolding = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [count]);
+    setProgress(0);
+    setIsLocked(false);
+  };
 
-  const resetCurrentLoop = useCallback(() => {
-    if (confirm("Reset current loop?")) {
+  const saveTarget = () => {
+    const val = parseInt(tempTarget);
+    if (!isNaN(val) && val > 0) {
+      setTarget(val);
+      setIsEditingTarget(false);
+    }
+  };
+
+  const resetCounter = () => {
+    if (window.confirm("Reset all progress and loops?")) {
       setCount(0);
+      setLoops(0);
+      setProgress(0);
+      setIsLocked(false);
     }
-  }, []);
+  };
 
-  const resetAll = useCallback(() => {
-    if (confirm("Reset all progress?")) {
-      setCount(0);
-      setCurrentLoop(1);
-      setCompletedLoops(0);
-    }
-  }, []);
-
-  const handleTargetSave = useCallback(() => {
-    setTarget(tempTarget);
-    setShowTargetModal(false);
-  }, [tempTarget]);
-
-  const handleLoopSave = useCallback(() => {
-    setLoopCount(tempLoop);
-    setCurrentLoop(1);
-    setCount(0);
-    setCompletedLoops(0);
-    setShowLoopModal(false);
-  }, [tempLoop]);
-
-  const progress = (count / target) * 100;
-  const loopProgress = (currentLoop / loopCount) * 100;
+  const isValidTarget = parseInt(tempTarget) > 0;
 
   return (
     <Layout>
-      <div className="container max-w-md mx-auto py-6 px-4">
-        <Container className="!p-6">
-          {/* Main Counter */}
-          <div className="text-center mb-8">
-            <div className="relative mb-4">
-              <div className={`
-                text-8xl font-bold font-mono transition-all duration-200
-                ${count > 0 ? "scale-105 text-primary" : "scale-100"}
-              `}>
-                {count}
-              </div>
-              <div className="absolute -top-2 -right-2 text-xs text-muted-foreground">
-                / {target}
-              </div>
+      <div className="container max-w-md mx-auto p-0 sm:py-12 sm:px-4 select-none">
+        <Container className="flex flex-col items-center min-h-[550px] !p-0 sm:!p-8">
+          
+          {/* Top Navigation Row */}
+          <div className="grid grid-cols-3 w-full items-center mb-12 px-4 sm:px-0 pt-4 sm:pt-0">
+            <div className="flex justify-start">
+              <Container className="!w-auto !px-3 !py-1 flex items-center gap-2">
+                <Repeat size={14} className="text-current" />
+                <span className="text-sm font-bold tabular-nums text-current">{loops}</span>
+              </Container>
             </div>
 
-            {/* Progress Bar */}
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
-              <div 
-                className="h-full bg-primary transition-all duration-300 rounded-full"
-                style={{ width: `${progress}%` }}
-              />
+            <div className="flex justify-center">
+              <Container className="!w-auto !px-3 !py-1 flex items-center justify-center whitespace-nowrap">
+                <span className="text-[10px] uppercase tracking-widest font-bold text-current">
+                  Hold Fingerprint
+                </span>
+              </Container>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {Math.round(progress)}% of current target
-            </p>
-          </div>
 
-          {/* Loop Progress */}
-          <div className="mb-8 p-4 rounded-[40px] bg-muted/30">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Repeat className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Loop Progress</span>
-              </div>
-              <span className="text-sm font-mono">
-                {currentLoop} / {loopCount}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary/60 transition-all duration-300 rounded-full"
-                style={{ width: `${loopProgress}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Completed loops: {completedLoops}
-            </p>
-          </div>
+            <div className="flex justify-end gap-2">
+              {isEditingTarget ? (
+                <Button 
+                  onClick={saveTarget}
+                  disabled={!isValidTarget}
+                  size="icon"
+                  className={!isValidTarget ? 'opacity-20' : ''}
+                >
+                  <Check size={18} strokeWidth={3} className="text-current" />
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => {
+                    setTempTarget(target.toString());
+                    setIsEditingTarget(true);
+                  }}
+                  size="icon"
+                >
+                  <Edit2 size={18} className="text-current" />
+                </Button>
+              )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <Button
-              onClick={decrement}
-              variant="secondary"
-              className="w-16 h-16 rounded-full p-0"
-              disabled={count === 0}
-            >
-              <Minus className="h-8 w-8" />
-            </Button>
-            
-            <Button
-              onClick={increment}
-              className="w-24 h-24 rounded-full p-0 text-3xl font-bold shadow-lg"
-            >
-              +
-            </Button>
-            
-            <Button
-              onClick={resetCurrentLoop}
-              variant="secondary"
-              className="w-16 h-16 rounded-full p-0"
-            >
-              <RotateCcw className="h-6 w-6" />
-            </Button>
-          </div>
-
-          {/* Settings Section */}
-          <div className="space-y-3 pt-4 border-t border-border">
-            {/* Target and Loop Settings */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button 
-                onClick={() => {
-                  setTempTarget(target);
-                  setShowTargetModal(true);
-                }} 
-                variant="secondary"
-                className="gap-2"
-              >
-                <Target className="h-4 w-4" />
-                Target: {target}
+              <Button onClick={resetCounter} variant="secondary" size="icon">
+                <RotateCcw className="h-4 w-4 text-current" />
               </Button>
+            </div>
+          </div>
+
+          {/* Center Display Area - Dynamic Width Centering */}
+          <div className="text-center w-full flex flex-col items-center justify-center flex-grow px-4">
+            <div className="flex items-center justify-center text-7xl font-bold tracking-tighter tabular-nums text-black dark:text-white">
+              <span>{count}</span>
+              <span className="text-muted/20 mx-4">/</span>
               
-              <Button 
-                onClick={() => {
-                  setTempLoop(loopCount);
-                  setShowLoopModal(true);
-                }} 
-                variant="secondary"
-                className="gap-2"
-              >
-                <Repeat className="h-4 w-4" />
-                Loops: {loopCount}
-              </Button>
-            </div>
-
-            {/* Sound Toggle and Reset All */}
-            <div className="flex gap-3">
-              <Button 
-                onClick={() => setSoundEnabled(!soundEnabled)} 
-                variant="secondary"
-                className="flex-1 gap-2"
-              >
-                {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                {soundEnabled ? "Sound On" : "Sound Off"}
-              </Button>
-              
-              <Button 
-                onClick={resetAll} 
-                variant="secondary"
-                className="flex-1"
-              >
-                Reset All
-              </Button>
+              {isEditingTarget ? (
+                <input 
+                  type="text" 
+                  value={tempTarget}
+                  // Restricted to max 3 digits
+                  onChange={(e) => setTempTarget(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  // Dynamic width based on character count (ch)
+                  style={{ width: `${Math.max(tempTarget.length, 1)}ch` }}
+                  className="bg-transparent outline-none text-7xl font-bold text-black dark:text-white transition-all"
+                  autoFocus
+                />
+              ) : (
+                <span>{target}</span>
+              )}
             </div>
           </div>
 
-          {/* Recommended using fingers message */}
-          <div className="mt-6 pt-4 border-t border-border">
-            <div className="flex items-center justify-center gap-2">
-              <Hand className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                Recommended: Using your fingers for tasbih is sunnah
-              </p>
-            </div>
-          </div>
+          {/* Interaction Area */}
+          <div className="relative mt-8 mb-16">
+            <div 
+              className={`relative cursor-pointer select-none touch-none transition-transform duration-200 
+                ${progress > 0 ? 'scale-95' : 'scale-100'}
+              `}
+              onContextMenu={(e) => e.preventDefault()}
+              onMouseDown={startHolding}
+              onMouseUp={stopHolding}
+              onMouseLeave={stopHolding}
+              onTouchStart={startHolding}
+              onTouchEnd={stopHolding}
+            >
+              <div style={{ color: 'rgb(128, 128, 128)' }} className={progress >= 100 ? 'opacity-0' : 'opacity-100'}>
+                <Fingerprint size={160} />
+              </div>
 
-          {/* Keyboard Shortcuts */}
-          <div className="mt-4 text-center">
-            <p className="text-[10px] text-muted-foreground">
-              Press <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">Space</kbd> or <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">↑</kbd> to increment • 
-              <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] ml-1">↓</kbd> to decrement
-            </p>
+              <div 
+                className="absolute inset-0 text-black dark:text-white overflow-hidden"
+                style={{ 
+                  clipPath: `inset(${100 - progress}% 0 0 0)`,
+                  transition: progress === 0 ? 'none' : 'clip-path 10ms linear'
+                }}
+              >
+                <Fingerprint size={160} />
+              </div>
+            </div>
+
+            <svg className="absolute -inset-8 w-[224px] h-[224px] -rotate-90 pointer-events-none">
+              <circle
+                cx="112"
+                cy="112"
+                r="104"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="transparent"
+                className={`${progress > 0 ? 'text-muted/10' : 'text-transparent'}`}
+              />
+              <circle
+                cx="112"
+                cy="112"
+                r="104"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="transparent"
+                strokeDasharray={653}
+                strokeDashoffset={progress === 0 ? 653 : 653 - (653 * progress) / 100}
+                className="text-black dark:text-white"
+                strokeLinecap="round"
+                style={{ transition: progress === 0 ? 'none' : 'stroke-dashoffset 10ms linear' }}
+              />
+            </svg>
           </div>
         </Container>
       </div>
-
-      {/* Target Modal */}
-      {showTargetModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Container className="max-w-sm w-full !p-6">
-            <h3 className="text-lg font-semibold mb-4 text-center">Set Target</h3>
-            <input
-              type="number"
-              value={tempTarget}
-              onChange={(e) => setTempTarget(Math.max(1, Number(e.target.value)))}
-              className="w-full px-4 py-2 rounded-[40px] bg-muted/30 border-2 border-black dark:border-white text-center text-lg font-mono outline-none focus:border-primary transition-colors mb-4"
-              min="1"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button onClick={() => setShowTargetModal(false)} variant="secondary" fullWidth>
-                Cancel
-              </Button>
-              <Button onClick={handleTargetSave} fullWidth>
-                Save
-              </Button>
-            </div>
-          </Container>
-        </div>
-      )}
-
-      {/* Loop Modal */}
-      {showLoopModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Container className="max-w-sm w-full !p-6">
-            <h3 className="text-lg font-semibold mb-4 text-center">Set Number of Loops</h3>
-            <input
-              type="number"
-              value={tempLoop}
-              onChange={(e) => setTempLoop(Math.max(1, Number(e.target.value)))}
-              className="w-full px-4 py-2 rounded-[40px] bg-muted/30 border-2 border-black dark:border-white text-center text-lg font-mono outline-none focus:border-primary transition-colors mb-4"
-              min="1"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button onClick={() => setShowLoopModal(false)} variant="secondary" fullWidth>
-                Cancel
-              </Button>
-              <Button onClick={handleLoopSave} fullWidth>
-                Save
-              </Button>
-            </div>
-          </Container>
-        </div>
-      )}
     </Layout>
   );
 };
 
-export default TasbihPage;
+export default HoldTasbihPage;

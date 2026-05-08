@@ -2,28 +2,25 @@ import { Info, Play, Pause, Loader2, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/Top/Component/UI/tooltip";
 import { useAudio } from "@/Middle/Context/Audio";
 import { useTranslation } from "@/Middle/Hook/Use-Translation";
-import { Bismillah } from "@/Top/Component/Quran/Bismillah";
 import { Container } from "@/Top/Component/UI/Container";
 import { Button } from "@/Top/Component/UI/Button";
 import type { SurahMeta } from "@/Bottom/API/Quran";
 
 interface SurahHeaderProps {
   surah: SurahMeta;
-  showBismillah?: boolean;
-  fontClass: string;          // for the Bismillah
+  fontClass: string;          // for the surah name
   arabicFontSize: string;
   onInfoClick: () => void;
-  onTafsirClick: () => void;   // ✅ NEW – opens Tafsir dialog starting at verse 1
+  onTafsirClick: () => void;
   onAudioClick: () => void;
 }
 
 export function SurahHeader({
   surah,
-  showBismillah = true,
   fontClass,
   arabicFontSize,
   onInfoClick,
-  onTafsirClick,               // ✅ NEW
+  onTafsirClick,
   onAudioClick,
 }: SurahHeaderProps) {
   const { t } = useTranslation();
@@ -50,7 +47,7 @@ export function SurahHeader({
   };
 
   return (
-    <Container className="!px-6 !py-4">
+    <Container className="!px-6 !py-4 rounded-t-[40px] rounded-b-none">
       <div className="space-y-3">
         {/* Title row: surah number, Arabic name, English translation, actions */}
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -88,7 +85,6 @@ export function SurahHeader({
                 <TooltipContent side="bottom">{t.quran.surahInfo}</TooltipContent>
               </Tooltip>
 
-              {/* ✅ NEW – Tafsir button */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -126,13 +122,6 @@ export function SurahHeader({
             </TooltipProvider>
           </div>
         </div>
-
-        {/* Bismillah */}
-        {showBismillah && (
-          <div className="pt-2">
-            <Bismillah fontClass={fontClass} fontSize={arabicFontSize} />
-          </div>
-        )}
       </div>
     </Container>
   );

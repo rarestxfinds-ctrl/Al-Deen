@@ -1,7 +1,5 @@
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Layout } from "@/Top/Component/Layout/Index";
-import { SurahNavbar } from "@/Top/Component/Quran/Surah/Navbar";
-import { SurahNavigation } from "@/Top/Component/Quran/Surah/Navigation";
 import { AudioPlayer } from "@/Top/Component/Audio-Player/Index";
 import { SurahHeader } from "@/Top/Component/Quran/Surah/Header";
 import { PageView } from "@/Top/Component/Quran/Layout/Safhah/Index";
@@ -19,7 +17,8 @@ import { useQuranGoals } from "@/Middle/Hook/Use-Quran-Goals";
 import { Button } from "@/Top/Component/UI/button";
 import { Skeleton } from "@/Top/Component/UI/Skeleton";
 import { TafsirDialog } from "@/Top/Component/Dialog/Tafsir";
-import { AlertCircle } from "lucide-react";
+import { Container } from "@/Top/Component/UI/Container";
+import { AlertCircle, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Alert, AlertDescription } from "@/Top/Component/UI/Alert";
 import { AudioControls } from "@/Top/Component/Quran/Record";
@@ -59,7 +58,7 @@ const Surah = () => {
   const { updateProgress } = useReadingProgress();
   const { startSession, stopSession, saveSecondsToGoal, isTrackingEnabled } = useReadingSession();
   const { activeGoal } = useQuranGoals();
-  const { hifz } = useApp(); // assumes hifz is in useApp context
+  const { hifz } = useApp();
 
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
@@ -80,10 +79,8 @@ const Surah = () => {
     translation?: string;
   }>({ open: false });
 
-  // --- Visible verse state (from scroll) ---
   const [visibleVerse, setVisibleVerse] = useState(1);
 
-  // --- Use the combined STT + alignment hook ---
   const {
     toggleRecording,
     isRecording: isDeepgramRecording,
@@ -98,25 +95,20 @@ const Surah = () => {
     hifz,
   });
 
-  // --- Test audio handler ---
   const sendTestAudio = useCallback(async () => {
     const audioPath = "/Layer/Bottom/Data/Quran/Qiraat/Mishary_Rashid_Alafasy/Surah/1/Ayah/1/Audio.mp3";
     try {
-      console.log("Fetching audio from:", audioPath);
       const response = await fetch(audioPath);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const arrayBuffer = await response.arrayBuffer();
       await connectWebSocket();
-      const success = sendRawAudio(arrayBuffer);
-      console.log("Test audio sent:", success);
+      sendRawAudio(arrayBuffer);
     } catch (err) {
       console.error("Failed to send test audio:", err);
     }
   }, [connectWebSocket, sendRawAudio]);
 
-  const handleRecordToggle = () => {
-    toggleRecording();
-  };
+  const handleRecordToggle = () => toggleRecording();
 
   const verseRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -126,19 +118,16 @@ const Surah = () => {
   const isTimeGoal = activeGoal?.goal_type === "time_based";
   const shouldTrack = isTrackingEnabled && isTimeGoal;
 
-  const { currentJuz, currentHizb, currentPage } = useMemo(() => {
+  const { currentJuz, currentHizb } = useMemo(() => {
     const juzInfo = juzData.find((juz) => juz.surahs.some((s) => s.id === surahId));
     const juzNumber = juzInfo?.juzNumber || 1;
-    const totalVersesBefore = surahList
-      .filter((s) => s.id < surahId)
-      .reduce((sum, s) => sum + s.numberOfAyahs, 0);
-    const pageNumber = Math.ceil((totalVersesBefore / 6236) * 604) || 1;
     return {
       currentJuz: juzNumber,
       currentHizb: (juzNumber - 1) * 2 + 1,
-      currentPage: pageNumber,
     };
   }, [surahId]);
+
+  const startPage = surah.pages?.[0] ?? 1;
 
   const getFontClass = () => {
     switch (quranFont) {
@@ -156,15 +145,10 @@ const Surah = () => {
 
   const handleScroll = useCallback(() => {
     if (!containerRef.current || !verses?.length) return;
-
     const container = containerRef.current;
     const scrollPosition = window.scrollY - container.offsetTop + window.innerHeight;
-    const progress = Math.min(
-      100,
-      Math.max(0, (scrollPosition / container.scrollHeight) * 100),
-    );
+    const progress = Math.min(100, Math.max(0, (scrollPosition / container.scrollHeight) * 100));
     setReadingProgress(progress);
-
     let newVisibleVerse = 1;
     verseRefs.current.forEach((element, verseId) => {
       const rect = element.getBoundingClientRect();
@@ -173,31 +157,21 @@ const Surah = () => {
       }
     });
     setVisibleVerse(newVisibleVerse);
-
     if (newVisibleVerse > 1) updateProgress(surahId, newVisibleVerse);
   }, [verses, surahId, updateProgress]);
 
   useEffect(() => {
     if (!shouldTrack) return;
-
     startSession();
-
     sessionIntervalRef.current = setInterval(async () => {
       const seconds = await stopSession();
-      if (seconds > 0 && activeGoal) {
-        saveSecondsToGoal(activeGoal.id, seconds);
-      }
+      if (seconds > 0 && activeGoal) saveSecondsToGoal(activeGoal.id, seconds);
       startSession();
     }, 10000);
-
     return () => {
-      if (sessionIntervalRef.current) {
-        clearInterval(sessionIntervalRef.current);
-      }
+      if (sessionIntervalRef.current) clearInterval(sessionIntervalRef.current);
       stopSession().then((seconds) => {
-        if (seconds > 0 && activeGoal) {
-          saveSecondsToGoal(activeGoal.id, seconds);
-        }
+        if (seconds > 0 && activeGoal) saveSecondsToGoal(activeGoal.id, seconds);
       });
     };
   }, [shouldTrack, activeGoal, startSession, stopSession, saveSecondsToGoal]);
@@ -211,32 +185,52 @@ const Surah = () => {
     if (targetVerse && verses) {
       const verseNumber = parseInt(targetVerse);
       const el = verseRefs.current.get(verseNumber);
-      if (el) {
-        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
-      }
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
     } else if (!targetVerse && !isLoading && verses) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [surahId, targetVerse, verses, isLoading]);
 
+  const prevSurah = surahList.find((s) => s.id === surahId - 1);
+  const nextSurah = surahList.find((s) => s.id === surahId + 1);
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // Custom footer for each page
+  const pageFooter = useCallback(
+    (pageNumber: number) => (
+      <span className="text-sm text-muted-foreground font-medium">
+        Juz - {currentJuz} | Page - {pageNumber} | Hizb - {currentHizb}
+      </span>
+    ),
+    [currentJuz, currentHizb]
+  );
+
   if (isLoading) {
     return (
       <Layout hideFooter>
-        <SurahNavbar
-          surahName={surah.englishName}
-          surahId={surah.id}
-          juz={currentJuz}
-          hizb={currentHizb}
-          page={currentPage}
-        />
-        <div className="container py-8 max-w-4xl mx-auto space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="p-6 border border-border rounded-xl">
-              <Skeleton className="h-8 w-full mb-4" />
-              <Skeleton className="h-4 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ))}
+        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
+          <SurahHeader
+            surah={surah}
+            fontClass={getFontClass()}
+            arabicFontSize={arabicFontSize}
+            onInfoClick={() => setSurahInfoDialog(true)}
+            onAudioClick={() => setShowAudioPlayer(true)}
+            onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
+          />
+          <div className="space-y-4 mt-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Container key={i} className="w-full !rounded-[48px] mb-12">
+                <div className="p-6">
+                  <Skeleton className="h-8 w-full mb-4" />
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+                <div className="flex items-center justify-center pb-1">
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </Container>
+            ))}
+          </div>
         </div>
       </Layout>
     );
@@ -245,25 +239,14 @@ const Surah = () => {
   if (error) {
     return (
       <Layout hideFooter>
-        <SurahNavbar
-          surahName={surah.englishName}
-          surahId={surah.id}
-          juz={currentJuz}
-          hizb={currentHizb}
-          page={currentPage}
-        />
-        <div className="container py-8 max-w-4xl mx-auto">
+        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error.message || "Failed to load Surah data. Please try again later."}
-            </AlertDescription>
+            <AlertDescription>{error.message || "Failed to load Surah data."}</AlertDescription>
           </Alert>
           <div className="text-center space-x-4">
             <Button onClick={() => refetch()}>Try Again</Button>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Reload Page
-            </Button>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </div>
         </div>
       </Layout>
@@ -273,19 +256,10 @@ const Surah = () => {
   if (!verses) {
     return (
       <Layout hideFooter>
-        <SurahNavbar
-          surahName={surah.englishName}
-          surahId={surah.id}
-          juz={currentJuz}
-          hizb={currentHizb}
-          page={currentPage}
-        />
-        <div className="container py-8 max-w-4xl mx-auto">
+        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No verses found for this surah. Please try again.
-            </AlertDescription>
+            <AlertDescription>No verses found for this surah.</AlertDescription>
           </Alert>
           <div className="text-center">
             <Button onClick={() => refetch()}>Try Again</Button>
@@ -297,29 +271,17 @@ const Surah = () => {
 
   return (
     <Layout hideFooter>
-      <SurahNavbar
-        surahName={surah.englishName}
-        surahId={surah.id}
-        juz={currentJuz}
-        hizb={currentHizb}
-        page={currentPage}
-        progress={readingProgress}
-        onAudioToggle={() => setShowAudioPlayer(!showAudioPlayer)}
-        isAudioPlaying={isPlaying}
-      />
+      <div style={{ fontSize: arabicFontSize }} className="w-full max-w-[17em] mx-auto px-4 pt-28">
+        <SurahHeader
+          surah={surah}
+          fontClass={getFontClass()}
+          arabicFontSize={arabicFontSize}
+          onInfoClick={() => setSurahInfoDialog(true)}
+          onAudioClick={() => setShowAudioPlayer(true)}
+          onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
+        />
 
-      <div ref={containerRef}>
-        <div className="container max-w-4xl mx-auto space-y-6 px-0 sm:px-2">
-          <SurahHeader
-            surah={surah}
-            showBismillah={surahId !== 1 && surahId !== 9 && showArabicText}
-            fontClass={getFontClass()}
-            arabicFontSize={arabicFontSize}
-            onInfoClick={() => setSurahInfoDialog(true)}
-            onAudioClick={() => setShowAudioPlayer(true)}
-            onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
-          />
-
+        <div ref={containerRef} className="w-full">
           {isPageLayout ? (
             <PageView
               surah={surah}
@@ -336,6 +298,7 @@ const Surah = () => {
               verseRefs={verseRefs}
               hideVerses={hideVerses}
               hideVerseMarkers={hideVerseMarkers}
+              pageFooter={pageFooter}   // <-- custom footer
             />
           ) : (
             <AyahView
@@ -362,10 +325,28 @@ const Surah = () => {
             />
           )}
 
-          <SurahNavigation
-            currentSurahId={surahId}
-            totalVerses={surah.numberOfAyahs}
-          />
+          <div className="flex items-center justify-center gap-3 py-4 mt-8">
+            {prevSurah && (
+              <Link to={`/Quran/Surah/${prevSurah.id}`}>
+                <Button className="gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous Surah
+                </Button>
+              </Link>
+            )}
+            <Button onClick={scrollToTop} className="gap-2">
+              <ChevronUp className="h-4 w-4" />
+              Beginning of Surah
+            </Button>
+            {nextSurah && (
+              <Link to={`/Quran/Surah/${nextSurah.id}`}>
+                <Button className="gap-2">
+                  Next Surah
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -379,48 +360,21 @@ const Surah = () => {
           transcript={transcript}
         />
       )}
-
       <AudioPlayer
         isVisible={showAudioPlayer}
-        onClose={() => {
-          stopAudio();
-          setShowAudioPlayer(false);
-        }}
+        onClose={() => { stopAudio(); setShowAudioPlayer(false); }}
         surahId={surahId}
         surahName={surah.englishName}
       />
-
-      <NotesDialog
-        open={notesDialog.open}
-        onOpenChange={(open) => setNotesDialog({ ...notesDialog, open })}
-        surahId={surahId}
-        ayahId={notesDialog.ayahId}
-        verse={notesDialog.verse}
-      />
-
-      <ShareDialog
-        open={shareDialog.open}
-        onOpenChange={(open) => setShareDialog({ ...shareDialog, open })}
-        surahId={surahId}
-        surahName={surah.englishName}
-        ayahId={shareDialog.ayahId}
-        verseText={shareDialog.verseText}
-        translation={shareDialog.translation}
-      />
-
-      <SurahInfoDialog
-        open={surahInfoDialog}
-        onOpenChange={setSurahInfoDialog}
-        surahId={surahId}
-        surah={surah}
-      />
-
-      <TafsirDialog
-        open={tafsirDialog.open}
-        onOpenChange={(open) => setTafsirDialog(prev => ({ ...prev, open }))}
-        surahId={surahId}
-        verseNumber={tafsirDialog.verseNumber}
-      />
+      <NotesDialog open={notesDialog.open} onOpenChange={(open) => setNotesDialog({ ...notesDialog, open })}
+        surahId={surahId} ayahId={notesDialog.ayahId} verse={notesDialog.verse} />
+      <ShareDialog open={shareDialog.open} onOpenChange={(open) => setShareDialog({ ...shareDialog, open })}
+        surahId={surahId} surahName={surah.englishName} ayahId={shareDialog.ayahId}
+        verseText={shareDialog.verseText} translation={shareDialog.translation} />
+      <SurahInfoDialog open={surahInfoDialog} onOpenChange={setSurahInfoDialog}
+        surahId={surahId} surah={surah} />
+      <TafsirDialog open={tafsirDialog.open} onOpenChange={(open) => setTafsirDialog(prev => ({ ...prev, open }))}
+        surahId={surahId} verseNumber={tafsirDialog.verseNumber} />
     </Layout>
   );
 };

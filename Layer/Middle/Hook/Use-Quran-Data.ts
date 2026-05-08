@@ -11,7 +11,6 @@ function mapFontToDataType(font: QuranFontFamily): QuranFontType {
     default: return "Standard";
   }
 }
-
 export function useQuranData(surahNumber: number) {
   const {
     verseTranslation,

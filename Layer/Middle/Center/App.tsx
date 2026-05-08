@@ -23,10 +23,10 @@ const QuranGoals   = lazy(() => import("@/Top/Page/Quran/Goal"));
 const QuranPage    = lazy(() => import("@/Top/Page/Quran/Safhah"));
 
 // Hadith
-const Hadith            = lazy(() => import("@/Top/Page/Hadith/Index"));
-const Hadith_Collection = lazy(() => import("@/Top/Page/Hadith/Collection"));
-const Hadith_Chapter    = lazy(() => import("@/Top/Page/Hadith/Chapter"));
-const Hadith_Detail     = lazy(() => import("@/Top/Page/Hadith/Detail"));
+const Collection            = lazy(() => import("@/Top/Page/Hadith/Collection"));
+const Chapter = lazy(() => import("@/Top/Page/Hadith/Chapter"));
+const Narration    = lazy(() => import("@/Top/Page/Hadith/Narration"));
+const Detail     = lazy(() => import("@/Top/Page/Hadith/Detail"));
 
 // Aid
 const Aid              = lazy(() => import("@/Top/Page/Aid/Index"));
@@ -96,10 +96,10 @@ const App = () => (
                     <Route path="/Quran/Goal" element={<QuranGoals />} />
 
                     {/* Hadith */}
-                    <Route path="/Hadith" element={<Hadith />} />
-                    <Route path="/Hadith/:Collection" element={<Hadith_Collection />} />
-                    <Route path="/Hadith/:Collection/:Chapter/:HadithId" element={<Hadith_Detail />} />
-                    <Route path="/Hadith/:Collection/:Chapter" element={<Hadith_Chapter />} />
+                    <Route path="/Hadith" element={<Collection />} />
+                    <Route path="/Hadith/:Collection" element={<Chapter />} />
+                    <Route path="/Hadith/:Collection/:Chapter/:HadithId" element={<Detail />} />
+                    <Route path="/Hadith/:Collection/:Chapter" element={<Narration />} />
 
                     {/* Aid */}
                     <Route path="/Aid" element={<Aid />} />
