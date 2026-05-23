@@ -15,7 +15,6 @@ import { useReadingProgress } from "@/Middle/Hook/Use-Reading-Progress";
 import { useReadingSession } from "@/Middle/Hook/Use-Reading-Session";
 import { useQuranGoals } from "@/Middle/Hook/Use-Quran-Goals";
 import { Button } from "@/Top/Component/UI/button";
-import { Skeleton } from "@/Top/Component/UI/Skeleton";
 import { TafsirDialog } from "@/Top/Component/Dialog/Tafsir";
 import { Container } from "@/Top/Component/UI/Container";
 import { AlertCircle, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
@@ -195,7 +194,6 @@ const Surah = () => {
   const nextSurah = surahList.find((s) => s.id === surahId + 1);
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // Custom footer for each page
   const pageFooter = useCallback(
     (pageNumber: number) => (
       <span className="text-sm text-muted-foreground font-medium">
@@ -206,40 +204,13 @@ const Surah = () => {
   );
 
   if (isLoading) {
-    return (
-      <Layout hideFooter>
-        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
-          <SurahHeader
-            surah={surah}
-            fontClass={getFontClass()}
-            arabicFontSize={arabicFontSize}
-            onInfoClick={() => setSurahInfoDialog(true)}
-            onAudioClick={() => setShowAudioPlayer(true)}
-            onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
-          />
-          <div className="space-y-4 mt-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Container key={i} className="w-full !rounded-[48px] mb-12">
-                <div className="p-6">
-                  <Skeleton className="h-8 w-full mb-4" />
-                  <Skeleton className="h-4 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-                <div className="flex items-center justify-center pb-1">
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              </Container>
-            ))}
-          </div>
-        </div>
-      </Layout>
-    );
+    return null;
   }
 
   if (error) {
     return (
       <Layout hideFooter>
-        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
+        <div className="w-full max-w-[19em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error.message || "Failed to load Surah data."}</AlertDescription>
@@ -256,7 +227,7 @@ const Surah = () => {
   if (!verses) {
     return (
       <Layout hideFooter>
-        <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
+        <div className="w-full max-w-[19em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>No verses found for this surah.</AlertDescription>
@@ -271,7 +242,8 @@ const Surah = () => {
 
   return (
     <Layout hideFooter>
-      <div style={{ fontSize: arabicFontSize }} className="w-full max-w-[17em] mx-auto px-4 pt-28">
+      {/* Top margin removed on all screens – Layout handles spacing */}
+      <div style={{ fontSize: arabicFontSize }} className="w-full max-w-[19em] mx-auto pt-0 px-0">
         <SurahHeader
           surah={surah}
           fontClass={getFontClass()}
@@ -298,7 +270,7 @@ const Surah = () => {
               verseRefs={verseRefs}
               hideVerses={hideVerses}
               hideVerseMarkers={hideVerseMarkers}
-              pageFooter={pageFooter}   // <-- custom footer
+              pageFooter={pageFooter}
             />
           ) : (
             <AyahView
@@ -325,23 +297,21 @@ const Surah = () => {
             />
           )}
 
-          <div className="flex items-center justify-center gap-3 py-4 mt-8">
+          {/* Compact icon‑only navigation */}
+          <div className="flex items-center justify-center gap-2 py-2">
             {prevSurah && (
               <Link to={`/Quran/Surah/${prevSurah.id}`}>
-                <Button className="gap-2">
+                <Button size="icon" className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
-                  Previous Surah
                 </Button>
               </Link>
             )}
-            <Button onClick={scrollToTop} className="gap-2">
+            <Button onClick={scrollToTop} size="icon" className="h-8 w-8">
               <ChevronUp className="h-4 w-4" />
-              Beginning of Surah
             </Button>
             {nextSurah && (
               <Link to={`/Quran/Surah/${nextSurah.id}`}>
-                <Button className="gap-2">
-                  Next Surah
+                <Button size="icon" className="h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </Link>

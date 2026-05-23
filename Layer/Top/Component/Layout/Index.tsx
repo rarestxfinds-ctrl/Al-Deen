@@ -14,7 +14,7 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <PageTransition>
-        <main className="flex-1 pt-16 md:pt-20 px-2 sm:px-4 pb-6">
+        <main className="flex-1 pt-12 md:pt-16 px-2 sm:px-4 pb-6">
           {children}
         </main>
       </PageTransition>

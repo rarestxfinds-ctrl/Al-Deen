@@ -78,6 +78,16 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Uthmani-V4-3';
+  src: url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/3.woff2') format('woff2'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/3.woff') format('woff'),
+       url('./Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/3.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === Uthmani V4 OT-SVG Light (Firefox/fallback, light mode) === */
 @font-face {
   font-family: 'Uthmani V4 SVG Light';

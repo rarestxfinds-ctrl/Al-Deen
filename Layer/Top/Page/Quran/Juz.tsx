@@ -5,10 +5,8 @@ import { surahList, getSurah, getJuzSegments } from "@/Bottom/API/Quran";
 import { PageLines } from "@/Top/Component/Quran/Layout/Safhah/Main";
 import { VerseCard } from "@/Top/Component/Quran/Layout/Ayah/Main";
 import { Layout } from "@/Top/Component/Layout/Index";
-import { SurahNavbar } from "@/Top/Component/Quran/Surah/Navbar";
 import { useApp } from "@/Middle/Context/App";
 import { useAudio } from "@/Middle/Context/Audio";
-import { Skeleton } from "@/Top/Component/UI/Skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/Top/Component/UI/Alert";
 
@@ -24,10 +22,15 @@ interface ResolvedWord {
 export default function Juz() {
   const { juzNumber: juzParam } = useParams<{ juzNumber: string }>();
   const juzNumber = parseInt(juzParam || "1");
-  
+
   const {
-    layout, fontSize, translationFontSize, quranFont,
-    showArabicText, verseTranslation, hoverTranslation,
+    layout,
+    fontSize,
+    translationFontSize,
+    quranFont,
+    showArabicText,
+    verseTranslation,
+    hoverTranslation,
   } = useApp();
 
   const { stop: stopAudio, isPlaying } = useAudio();
@@ -39,11 +42,16 @@ export default function Juz() {
 
   const getFontClass = () => {
     switch (quranFont) {
-      case "indopak": return "font-indopak";
-      case "uthmani_v1": return "font-uthmani_v1";
-      case "uthmani_v2": return "font-uthmani_v2";
-      case "uthmani_v4": return "font-uthmani_v4";
-      default: return "font-uthmani";
+      case "indopak":
+        return "font-indopak";
+      case "uthmani_v1":
+        return "font-uthmani_v1";
+      case "uthmani_v2":
+        return "font-uthmani_v2";
+      case "uthmani_v4":
+        return "font-uthmani_v4";
+      default:
+        return "font-uthmani";
     }
   };
 
@@ -58,20 +66,23 @@ export default function Juz() {
   // Get unique surah IDs from segments
   const surahIds = useMemo(() => {
     if (!juzSegments) return [];
-    return [...new Set(juzSegments.map(segment => segment.surah))];
+    return [...new Set(juzSegments.map((segment) => segment.surah))];
   }, [juzSegments]);
 
   // Fetch surah data
   const queries = useQueries({
-    queries: surahIds.map(surahId => ({
-      queryKey: ['surah', surahId, 'juz', juzNumber],
-      queryFn: () => getSurah(surahId, { fontType: quranFont === "indopak" ? "Standard" : quranFont }),
+    queries: surahIds.map((surahId) => ({
+      queryKey: ["surah", surahId, "juz", juzNumber],
+      queryFn: () =>
+        getSurah(surahId, {
+          fontType: quranFont === "indopak" ? "Standard" : quranFont,
+        }),
       enabled: !!surahId && juzSegments !== null,
     })),
   });
 
-  const isLoading = queries.some(q => q.isLoading);
-  const error = queries.find(q => q.error)?.error;
+  // Loading skeleton removed – no isLoading state
+  const error = queries.find((q) => q.error)?.error;
 
   const surahDataMap = useMemo(() => {
     const map = new Map();
@@ -86,28 +97,28 @@ export default function Juz() {
   // Build resolved lines for page layout
   const resolvedLines = useMemo(() => {
     if (!juzSegments || !isPageLayout) return [];
-    
+
     const lines: ResolvedWord[][] = [];
     let currentLine: ResolvedWord[] = [];
-    
+
     for (const segment of juzSegments) {
       const surahData = surahDataMap.get(segment.surah);
       if (!surahData) continue;
-      
+
       const startIdx = segment.startVerse - 1;
       const endIdx = segment.endVerse;
       const verses = surahData.verses.slice(startIdx, endIdx);
-      
+
       for (let v = 0; v < verses.length; v++) {
         const verse = verses[v];
         const words = verse.words;
-        
+
         let startWord = 0;
         let endWord = words.length;
-        
+
         if (v === 0) startWord = segment.startWord - 1;
         if (v === verses.length - 1) endWord = segment.endWord;
-        
+
         for (let w = startWord; w < endWord; w++) {
           currentLine.push({
             glyph: words[w],
@@ -119,13 +130,13 @@ export default function Juz() {
           });
         }
       }
-      
+
       if (currentLine.length > 0) {
         lines.push([...currentLine]);
         currentLine = [];
       }
     }
-    
+
     if (currentLine.length > 0) lines.push(currentLine);
     return lines;
   }, [juzSegments, surahDataMap, isPageLayout]);
@@ -133,90 +144,61 @@ export default function Juz() {
   // Build juz verses for ayah layout
   const juzVerses = useMemo(() => {
     if (!juzSegments || isPageLayout) return [];
-    
+
     const result: { verse: any; surah: any }[] = [];
-    
+
     for (const segment of juzSegments) {
       const surahData = surahDataMap.get(segment.surah);
       if (!surahData) continue;
-      
+
       const startIdx = segment.startVerse - 1;
       const endIdx = segment.endVerse;
       const verses = surahData.verses.slice(startIdx, endIdx);
-      
+
       for (let v = 0; v < verses.length; v++) {
         const verse = verses[v];
         const words = verse.words;
-        
+
         let startWord = 0;
         let endWord = words.length;
-        
+
         if (v === 0) startWord = segment.startWord - 1;
         if (v === verses.length - 1) endWord = segment.endWord;
-        
+
         const filteredWords = words.slice(startWord, endWord);
         const filteredWbw = verse.wbwTranslation?.slice(startWord, endWord);
-        
+
         result.push({
           verse: {
             ...verse,
             words: filteredWords,
             wbwTranslation: filteredWbw,
-            arabic: filteredWords.join(' '),
+            arabic: filteredWords.join(" "),
           },
-          surah: surahList.find(s => s.id === segment.surah),
+          surah: surahList.find((s) => s.id === segment.surah),
         });
       }
     }
-    
+
     return result;
   }, [juzSegments, surahDataMap, isPageLayout]);
 
-  const pageNumber = 1;
-
-  if (isLoading) {
-    return (
-      <Layout hideFooter>
-        <SurahNavbar surahName={`Juz ${juzNumber}`} surahId={0} juz={juzNumber} hizb={0} page={pageNumber} />
-        <div className="container pt-28 max-w-4xl mx-auto pb-24">
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
+  // Error state
   if (error || !juzSegments) {
     return (
       <Layout hideFooter>
-        <SurahNavbar surahName={`Juz ${juzNumber}`} surahId={0} juz={juzNumber} hizb={0} page={pageNumber} />
-        <div className="container pt-28 max-w-4xl mx-auto pb-24">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load Juz {juzNumber}. Please try again later.
-            </AlertDescription>
-          </Alert>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load Juz {juzNumber}. Please try again later.
+          </AlertDescription>
+        </Alert>
       </Layout>
     );
   }
 
   return (
     <Layout hideFooter>
-      <SurahNavbar
-        surahName={`Juz ${juzNumber}`}
-        surahId={0}
-        juz={juzNumber}
-        hizb={0}
-        page={pageNumber}
-        onAudioToggle={() => setShowAudioPlayer(!showAudioPlayer)}
-        isAudioPlaying={isPlaying}
-      />
-
       <div className="container pt-28 max-w-4xl mx-auto pb-24">
         <div className="glass-container !rounded-xl !block w-full mb-6">
           <div className="p-4 sm:p-5">
@@ -239,7 +221,9 @@ export default function Juz() {
                   setHoveredVerse={setHoveredVerse}
                 />
               ) : (
-                <div className="text-center py-8 text-muted-foreground">No content available</div>
+                <div className="text-center py-8 text-muted-foreground">
+                  No content available
+                </div>
               )}
             </div>
           </div>
@@ -260,7 +244,9 @@ export default function Juz() {
                 />
               ))
             ) : (
-              <div className="text-center py-8 text-muted-foreground">No content available</div>
+              <div className="text-center py-8 text-muted-foreground">
+                No content available
+              </div>
             )}
           </div>
         )}

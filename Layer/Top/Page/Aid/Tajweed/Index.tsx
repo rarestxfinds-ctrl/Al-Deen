@@ -9,19 +9,17 @@ export default function TajweedIndex() {
 
   return (
     <Layout>
-      <div className="container py-8 max-w-4xl mx-auto px-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {categories.map((cat) => (
-            <Link key={cat.id} to={`/Aid/Tajweed/${cat.id}`}>
-              <Container className="!p-5 transition-all hover:scale-[1.02] flex items-center justify-between group">
-                <h2 className="font-semibold text-base group-hover:text-primary transition-colors">
-                  {cat.name}
-                </h2>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-              </Container>
-            </Link>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {categories.map((cat) => (
+          <Link key={cat.id} to={`/Aid/Tajweed/${cat.id}`}>
+            <Container className="!p-5 transition-all flex items-center justify-between group">
+              <h2 className="font-semibold text-base group-hover:text-primary transition-colors">
+                {cat.name}
+              </h2>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </Container>
+          </Link>
+        ))}
       </div>
     </Layout>
   );

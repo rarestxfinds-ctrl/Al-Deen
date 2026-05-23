@@ -1,4 +1,4 @@
-// @/Top/Component/Quran/Changer.tsx
+// @/Top/Component/Quran/Navigator.tsx   (renamed from Navigator)
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, ArrowLeft, Check, Search } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/Top/Component/UI/Dropdown-Menu";
 
-// ----- helpers -----
+// ----- helpers (unchanged) -----
 function parseQuranRoute(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
   const result: {
@@ -56,7 +56,7 @@ interface DrillState {
   currentStep: "surah" | "ayah" | "words";
 }
 
-export function Changer() {
+export function Quran_Navigator() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -94,7 +94,7 @@ export function Changer() {
       if (
         panelRef.current?.contains(target) ||
         buttonRef.current?.contains(target) ||
-        (target as Element)?.closest?.(".changer-dropdown")
+        (target as Element)?.closest?.(".navigator-dropdown")
       )
         return;
       setIsOpen(false);
@@ -359,13 +359,13 @@ export function Changer() {
         ref={buttonRef}
         onClick={toggle}
         className={cn(
-          "flex items-center justify-between text-sm font-medium px-3 py-1",   // py-1 added
+          "relative flex items-center justify-center text-sm font-medium px-3 py-1 h-8 sm:h-9",  // CENTERED TEXT, FULL HEIGHT
           !isMobile && isOpen ? "w-72 rounded-b-none" : "w-auto"
         )}
         variant="ghost"
       >
-        <span>Surah</span>
-        <ChevronDown className="h-3.5 w-3.5 ml-1 flex-shrink-0" />
+        <span className="truncate">Surah</span>
+        <ChevronDown className="absolute right-3 h-3.5 w-3.5 flex-shrink-0" />  {/* CHEVRON ABSOLUTE RIGHT */}
       </Button>
 
       {isOpen && (
@@ -388,7 +388,7 @@ export function Changer() {
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="changer-dropdown min-w-[120px]">
+                <DropdownMenuContent align="start" className="navigator-dropdown min-w-[120px]">
                   {pickerOptions.map((opt) => (
                     <DropdownMenuItem
                       key={opt.id}
@@ -423,7 +423,7 @@ export function Changer() {
               )}
             </div>
 
-            {/* Picker content – now uses the taller max-height */}
+            {/* Picker content */}
             <div className="overflow-y-auto" style={{ maxHeight: `calc(${mobilePanelStyle.maxHeight} - 4rem)` }}>
               {renderPicker()}
             </div>

@@ -1,12 +1,10 @@
 import { useRef, memo, useState, useEffect } from "react";
 import DOMPurify from "dompurify";
-import { Skeleton } from "@/Top/Component/UI/Skeleton";
-import { BookOpen, MapPin, FileText, Calendar, Hash, X } from "lucide-react";
+import { BookOpen, MapPin, FileText, Calendar, Hash } from "lucide-react";
 import { surahList } from "@/Bottom/API/Quran";
 import { useIsMobile } from "@/Middle/Hook/Use-Mobile";
 import { ScrollArea } from "@/Top/Component/UI/Scroll-Area";
 import { Container } from "@/Top/Component/UI/Container";
-import { Button } from "@/Top/Component/UI/Button";
 import { useApp } from "@/Middle/Context/App";
 
 interface ChapterInfo {
@@ -31,7 +29,7 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
   const isMobile = useIsMobile();
   const scrollRef = useRef<HTMLDivElement>(null);
   const surah = surahList.find((s) => s.id === surahId);
-  
+
   const { surahInfoProvider, surahInfoTextSize } = useApp();
 
   const [chapterInfo, setChapterInfo] = useState<ChapterInfo | null>(null);
@@ -43,20 +41,10 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
       import(`@/Bottom/Data/Quran/Surah/Info/${surahInfoProvider}/${surahId}.json`)
         .then((module) => {
           const data = module.default;
-          
           if (Array.isArray(data) && data.length >= 2) {
-            setChapterInfo({
-              chapter_id: surahId,
-              text: data[0],
-              source: data[1]
-            });
-          }
-          else if (data && typeof data === 'object' && data.text) {
-            setChapterInfo({
-              chapter_id: data.chapter_id || surahId,
-              text: data.text,
-              source: data.source || ""
-            });
+            setChapterInfo({ chapter_id: surahId, text: data[0], source: data[1] });
+          } else if (data && typeof data === "object" && data.text) {
+            setChapterInfo({ chapter_id: data.chapter_id || surahId, text: data.text, source: data.source || "" });
           }
           setIsLoading(false);
         })
@@ -69,7 +57,6 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
 
   if (!open || !surah) return null;
 
-  // Map text size to Tailwind classes
   const getTextSizeClass = () => {
     switch (surahInfoTextSize) {
       case 2: return "text-xs";
@@ -111,15 +98,10 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
         </div>
       </Container>
 
-      {/* Detailed Info with dynamic text size */}
+      {/* Detailed Info – no skeletons */}
       {isLoading ? (
-        <Container className="!py-5 !px-6">
-          <div className="space-y-4">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
+        <Container className="!py-5 !px-6 text-center">
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </Container>
       ) : chapterInfo ? (
         <Container className="!py-5 !px-6">
@@ -127,9 +109,9 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
             <h2 className="text-lg font-semibold flex items-center gap-2 group-hover:text-white dark:group-hover:text-black">
               <BookOpen className="h-5 w-5 text-primary" />About this Surah
             </h2>
-            <div 
+            <div
               className={`prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed group-hover:text-white/80 dark:group-hover:text-black/80 ${getTextSizeClass()}`}
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(chapterInfo.text) }} 
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(chapterInfo.text) }}
             />
             {chapterInfo.source && (
               <p className={`text-xs text-muted-foreground mt-6 pt-4 border-t border-border/50 group-hover:text-white/70 dark:group-hover:text-black/70 ${getTextSizeClass()}`}>
@@ -150,19 +132,7 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
     return (
       <div className="fixed inset-0 z-40 bg-background pt-[72px]">
         <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
-                Surah Info – {surah.englishName}
-              </h2>
-              <Button
-                size="sm"
-                className="w-8 h-8 p-0 rounded-full"
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="p-4">
             {renderContent()}
           </div>
         </div>
@@ -174,18 +144,6 @@ export const SurahInfoDialog = memo(function SurahInfoDialog({ open, onOpenChang
     <div className="fixed inset-0 z-40 bg-background pt-[72px]">
       <ScrollArea className="h-full" ref={scrollRef}>
         <div className="p-6 mx-auto max-w-2xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-foreground">
-              Surah Info – {surah.englishName}
-            </h2>
-            <Button
-              size="sm"
-              className="w-8 h-8 p-0 rounded-full"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
           {renderContent()}
         </div>
       </ScrollArea>

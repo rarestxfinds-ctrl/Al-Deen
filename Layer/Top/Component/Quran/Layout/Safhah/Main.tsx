@@ -16,7 +16,7 @@ export const PageLines = memo(function PageLines({
   resolvedLines,
   fontClass,
   arabicFontSize,
-  wordSpacing,
+  wordSpacing: defaultWordSpacing = "1.8px",
   surahId,
   verseRefs,
   hoveredVerse,
@@ -36,6 +36,7 @@ export const PageLines = memo(function PageLines({
   isIndoPakFont = false,
   verseMarkerMap = [],
   isUthmaniV4Font = false,
+  justifyLines = true,          // ← new prop: false for first page
 }: PageLinesProps) {
   const { hoverRecitation, hifz } = useApp();
   const { activeVerse, activeWord, playAyah } = useAudio();
@@ -48,7 +49,7 @@ export const PageLines = memo(function PageLines({
 
   const isHoverTranslationEnabled = useMemo(
     () => hoverTranslation !== "None" && hoverTranslation !== false,
-    [hoverTranslation],
+    [hoverTranslation]
   );
 
   const showInlineTranslation = inlineTranslation !== "None";
@@ -230,6 +231,7 @@ export const PageLines = memo(function PageLines({
         key={idx}
         className={`flex flex-col items-center ${opacityClass} ${transitionClass}`}
         style={anyInlineActive ? { minWidth: "2rem" } : undefined}
+        data-word={wordIndex}
       >
         <WordTooltip
           translation={hoverTranslationText}
@@ -278,15 +280,18 @@ export const PageLines = memo(function PageLines({
     );
   };
 
+  // Determine flex justification class
+  const flexJustifyClass = justifyLines ? "justify-between" : "justify-center";
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 p-4"> {/* Added padding: top, right, bottom, left */}
       {bismillahWords.length > 0 && (
         <Bismillah
           words={bismillahWords}
           fontClass={bismillahFontClass}
           fontSize={bismillahFontSize}
           fontFamily={bismillahFontFamily}
-          wordSpacing={wordSpacing}
+          wordSpacing={defaultWordSpacing}
           showInlineTranslation={showInlineTranslation}
           showInlineTransliteration={showInlineTransliteration}
           hoverTranslationEnabled={isHoverTranslationEnabled}
@@ -300,7 +305,6 @@ export const PageLines = memo(function PageLines({
         style={{
           fontSize: arabicFontSize,
           lineHeight: 1.8,
-          wordSpacing,
           fontFamily: pageFontFamily || fontClass,
         }}
         dir="rtl"
@@ -308,7 +312,8 @@ export const PageLines = memo(function PageLines({
         {resolvedLines.map((line, lineIdx) => (
           <div
             key={lineIdx}
-            className={`flex justify-center items-start flex-wrap ${anyInlineActive ? "gap-x-3 mb-6" : "gap-x-0 mb-0"}`}
+            className={`flex ${flexJustifyClass} items-start flex-wrap ${anyInlineActive ? "gap-x-3 mb-6" : "mb-0"}`}
+            style={{ width: "100%" }}
             dir="rtl"
             data-line-container
           >

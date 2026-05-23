@@ -21,7 +21,6 @@ import { useReadingProgress } from "@/Middle/Hook/Use-Reading-Progress";
 import { useReadingSession } from "@/Middle/Hook/Use-Reading-Session";
 import { useQuranGoals } from "@/Middle/Hook/Use-Quran-Goals";
 import { Button } from "@/Top/Component/UI/button";
-import { Skeleton } from "@/Top/Component/UI/Skeleton";
 import { TafsirDialog } from "@/Top/Component/Dialog/Tafsir";
 import { Container } from "@/Top/Component/UI/Container";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -251,41 +250,14 @@ const AyahIndex = () => {
 
   // ---------- Render ----------
   if (isLoading) {
-    return (
-      <Layout hideFooter>
-        <div
-          className="w-full max-w-[17em] mx-auto px-4 pt-28"
-          style={{ fontSize: arabicFontSize }}
-        >
-          {showHeader && (
-            <SurahHeader
-              surah={surah}
-              fontClass={getFontClass()}
-              arabicFontSize={arabicFontSize}
-              onInfoClick={() => setSurahInfoDialog(true)}
-              onAudioClick={() => setShowAudioPlayer(true)}
-              onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: 1 })}
-            />
-          )}
-          <Container
-            className={`w-full ${
-              showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"
-            } mb-12`}
-          >
-            <div className="p-6">
-              <Skeleton className="h-8 w-full mb-4" />
-            </div>
-          </Container>
-        </div>
-      </Layout>
-    );
+    return null; // No skeleton
   }
 
   if (error || !verse) {
     return (
       <Layout hideFooter>
         <div
-          className="w-full max-w-[17em] mx-auto px-4 pt-28"
+          className="w-full max-w-[17em] mx-auto px-4 pt-0 md:pt-0"
           style={{ fontSize: arabicFontSize }}
         >
           <Alert variant="destructive" className="mb-8">
@@ -307,7 +279,7 @@ const AyahIndex = () => {
     <Layout hideFooter>
       <div
         style={{ fontSize: arabicFontSize }}
-        className="w-full max-w-[17em] mx-auto px-4 pt-28"
+        className="w-full max-w-[17em] mx-auto pt-0 px-0 md:px-4"
       >
         {/* Header – only for the first verse */}
         {showHeader && (
@@ -323,7 +295,6 @@ const AyahIndex = () => {
 
         <div ref={containerRef} className="w-full">
           {isPageLayout ? (
-            /* ---------- Page layout: PageLines inside a Container ---------- */
             <Container
               className={`w-full ${
                 showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"
@@ -357,7 +328,6 @@ const AyahIndex = () => {
                 />
               </div>
 
-              {/* Juz - Page - Hizb info */}
               <div className="flex items-center justify-center pb-1">
                 <span className="text-sm text-muted-foreground font-medium">
                   Juz - {currentJuz} | Page - {pageNumber} | Hizb - {currentHizb}
@@ -365,7 +335,6 @@ const AyahIndex = () => {
               </div>
             </Container>
           ) : (
-            /* ---------- Ayah layout: AyahView (uses Container internally) ---------- */
             <AyahView
               surah={surah}
               verses={[verse]}
@@ -390,35 +359,31 @@ const AyahIndex = () => {
             />
           )}
 
-          {/* ---------- Navigation: Previous / Next Ayah (with Surah boundaries) ---------- */}
-          <div className="flex items-center justify-center gap-3 py-4 mt-8">
+          {/* Navigation – icon-only, same style as Surah page */}
+          <div className="flex items-center justify-center gap-2 py-2 mt-2">
             {verseNum > 1 ? (
               <Link to={`/Quran/Surah/${surahId}/Ayah/${verseNum - 1}`}>
-                <Button className="gap-2">
+                <Button size="icon" className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
-                  Previous Ayah
                 </Button>
               </Link>
             ) : prevSurah ? (
               <Link to={`/Quran/Surah/${prevSurah.id}/Ayah/1`}>
-                <Button className="gap-2">
+                <Button size="icon" className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
-                  Previous Surah
                 </Button>
               </Link>
             ) : null}
 
             {verseNum < surah.numberOfAyahs ? (
               <Link to={`/Quran/Surah/${surahId}/Ayah/${verseNum + 1}`}>
-                <Button className="gap-2">
-                  Next Ayah
+                <Button size="icon" className="h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </Link>
             ) : nextSurah ? (
               <Link to={`/Quran/Surah/${nextSurah.id}/Ayah/1`}>
-                <Button className="gap-2">
-                  Next Surah
+                <Button size="icon" className="h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </Link>

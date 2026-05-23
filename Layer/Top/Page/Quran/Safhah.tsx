@@ -5,10 +5,8 @@ import { surahList, getSurah, getPageSegments } from "@/Bottom/API/Quran";
 import { PageLines } from "@/Top/Component/Quran/Layout/Safhah/Main";
 import { VerseCard } from "@/Top/Component/Quran/Layout/Ayah/Main";
 import { Layout } from "@/Top/Component/Layout/Index";
-import { SurahNavbar } from "@/Top/Component/Quran/Surah/Navbar";
 import { useApp } from "@/Middle/Context/App";
 import { useAudio } from "@/Middle/Context/Audio";
-import { Skeleton } from "@/Top/Component/UI/Skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/Top/Component/UI/Alert";
 
@@ -24,10 +22,15 @@ interface ResolvedWord {
 export default function Safhah() {
   const { pageNumber: pageNumParam } = useParams<{ pageNumber: string }>();
   const pageNumber = parseInt(pageNumParam || "1");
-  
+
   const {
-    layout, fontSize, translationFontSize, quranFont,
-    showArabicText, verseTranslation, hoverTranslation,
+    layout,
+    fontSize,
+    translationFontSize,
+    quranFont,
+    showArabicText,
+    verseTranslation,
+    hoverTranslation,
   } = useApp();
 
   const { stop: stopAudio, isPlaying } = useAudio();
@@ -39,11 +42,16 @@ export default function Safhah() {
 
   const getFontClass = () => {
     switch (quranFont) {
-      case "indopak": return "font-indopak";
-      case "uthmani_v1": return "font-uthmani_v1";
-      case "uthmani_v2": return "font-uthmani_v2";
-      case "uthmani_v4": return "font-uthmani_v4";
-      default: return "font-uthmani";
+      case "indopak":
+        return "font-indopak";
+      case "uthmani_v1":
+        return "font-uthmani_v1";
+      case "uthmani_v2":
+        return "font-uthmani_v2";
+      case "uthmani_v4":
+        return "font-uthmani_v4";
+      default:
+        return "font-uthmani";
     }
   };
 
@@ -56,19 +64,22 @@ export default function Safhah() {
 
   const surahIds = useMemo(() => {
     if (!pageSegments) return [];
-    return [...new Set(pageSegments.map(segment => segment.surah))];
+    return [...new Set(pageSegments.map((segment) => segment.surah))];
   }, [pageSegments]);
 
   const queries = useQueries({
-    queries: surahIds.map(surahId => ({
-      queryKey: ['surah', surahId, 'page', pageNumber],
-      queryFn: () => getSurah(surahId, { fontType: quranFont === "indopak" ? "Standard" : quranFont }),
+    queries: surahIds.map((surahId) => ({
+      queryKey: ["surah", surahId, "page", pageNumber],
+      queryFn: () =>
+        getSurah(surahId, {
+          fontType: quranFont === "indopak" ? "Standard" : quranFont,
+        }),
       enabled: !!surahId && pageSegments !== null,
     })),
   });
 
-  const isLoading = queries.some(q => q.isLoading);
-  const error = queries.find(q => q.error)?.error;
+  // Loading skeletons completely removed – no isLoading state
+  const error = queries.find((q) => q.error)?.error;
 
   const surahDataMap = useMemo(() => {
     const map = new Map();
@@ -82,28 +93,28 @@ export default function Safhah() {
 
   const resolvedLines = useMemo(() => {
     if (!pageSegments || !isPageLayout) return [];
-    
+
     const lines: ResolvedWord[][] = [];
     let currentLine: ResolvedWord[] = [];
-    
+
     for (const segment of pageSegments) {
       const surahData = surahDataMap.get(segment.surah);
       if (!surahData) continue;
-      
+
       const startIdx = segment.startVerse - 1;
       const endIdx = segment.endVerse;
       const verses = surahData.verses.slice(startIdx, endIdx);
-      
+
       for (let v = 0; v < verses.length; v++) {
         const verse = verses[v];
         const words = verse.words;
-        
+
         let startWord = 0;
         let endWord = words.length;
-        
+
         if (v === 0) startWord = segment.startWord - 1;
         if (v === verses.length - 1) endWord = segment.endWord;
-        
+
         for (let w = startWord; w < endWord; w++) {
           currentLine.push({
             glyph: words[w],
@@ -115,75 +126,62 @@ export default function Safhah() {
           });
         }
       }
-      
+
       if (currentLine.length > 0) {
         lines.push([...currentLine]);
         currentLine = [];
       }
     }
-    
+
     if (currentLine.length > 0) lines.push(currentLine);
     return lines;
   }, [pageSegments, surahDataMap, isPageLayout]);
 
   const pageVerses = useMemo(() => {
     if (!pageSegments || isPageLayout) return [];
-    
+
     const result: { verse: any; surah: any }[] = [];
-    
+
     for (const segment of pageSegments) {
       const surahData = surahDataMap.get(segment.surah);
       if (!surahData) continue;
-      
+
       const startIdx = segment.startVerse - 1;
       const endIdx = segment.endVerse;
       const verses = surahData.verses.slice(startIdx, endIdx);
-      
+
       for (let v = 0; v < verses.length; v++) {
         const verse = verses[v];
         const words = verse.words;
-        
+
         let startWord = 0;
         let endWord = words.length;
-        
+
         if (v === 0) startWord = segment.startWord - 1;
         if (v === verses.length - 1) endWord = segment.endWord;
-        
+
         const filteredWords = words.slice(startWord, endWord);
         const filteredWbw = verse.wbwTranslation?.slice(startWord, endWord);
-        
+
         result.push({
           verse: {
             ...verse,
             words: filteredWords,
             wbwTranslation: filteredWbw,
-            arabic: filteredWords.join(' '),
+            arabic: filteredWords.join(" "),
           },
-          surah: surahList.find(s => s.id === segment.surah),
+          surah: surahList.find((s) => s.id === segment.surah),
         });
       }
     }
-    
+
     return result;
   }, [pageSegments, surahDataMap, isPageLayout]);
 
-  if (isLoading) {
-    return (
-      <Layout hideFooter noHorizontalPadding={isPageLayout}>
-        <SurahNavbar surahName={`Page ${pageNumber}`} surahId={0} juz={0} hizb={0} page={pageNumber} />
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
-      </Layout>
-    );
-  }
-
+  // Error state – only show if the whole page failed
   if (error || !pageSegments) {
     return (
       <Layout hideFooter noHorizontalPadding={isPageLayout}>
-        <SurahNavbar surahName={`Page ${pageNumber}`} surahId={0} juz={0} hizb={0} page={pageNumber} />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -196,16 +194,6 @@ export default function Safhah() {
 
   return (
     <Layout hideFooter noHorizontalPadding={isPageLayout}>
-      <SurahNavbar
-        surahName={`Page ${pageNumber}`}
-        surahId={0}
-        juz={0}
-        hizb={0}
-        page={pageNumber}
-        onAudioToggle={() => setShowAudioPlayer(!showAudioPlayer)}
-        isAudioPlaying={isPlaying}
-      />
-
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Page {pageNumber}</h1>
       </div>
@@ -225,7 +213,9 @@ export default function Safhah() {
                 setHoveredVerse={setHoveredVerse}
               />
             ) : (
-              <div className="text-center py-8 text-muted-foreground">No content available</div>
+              <div className="text-center py-8 text-muted-foreground">
+                No content available
+              </div>
             )}
           </div>
         </div>
@@ -233,7 +223,10 @@ export default function Safhah() {
         <div>
           {pageVerses.length > 0 ? (
             pageVerses.map(({ verse, surah }, idx) => (
-              <div key={`${surah?.id}-${verse.verseNumber}-${idx}`} className="glass-container !rounded-xl !block">
+              <div
+                key={`${surah?.id}-${verse.verseNumber}-${idx}`}
+                className="glass-container !rounded-xl !block"
+              >
                 <div className="p-6">
                   <VerseCard
                     verse={verse}
@@ -249,7 +242,9 @@ export default function Safhah() {
               </div>
             ))
           ) : (
-            <div className="text-center py-8 text-muted-foreground">No content available</div>
+            <div className="text-center py-8 text-muted-foreground">
+              No content available
+            </div>
           )}
         </div>
       )}

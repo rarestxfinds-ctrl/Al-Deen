@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/Top/Component/UI/Button";
 import { SearchInput } from "../Search/Input";
 import { useSearch } from "@/Middle/Hook/Use-Search";
-import { Changer } from "@/Top/Component/Quran/Changer";
+import { Quran_Navigator } from "@/Top/Component/Quran/Navigator";
 
 // Helper to extract and format page title from current path
 function getPageTitle(pathname: string): string {
@@ -134,7 +134,7 @@ export const Header = memo(function Header() {
       )}
       dir={isRtl ? "rtl" : "ltr"}
     >
-      {/* Left section: back button + title / breadcrumb – flex-1 allows Changer to stretch */}
+      {/* Left section: back button + title / breadcrumb – flex-1 allows Navigator to stretch */}
       <div className="flex items-center gap-2 h-8 sm:h-9 flex-1 min-w-0">
         {showBackButton && (
           <>
@@ -143,11 +143,11 @@ export const Header = memo(function Header() {
             </Button>
             {!isSearchMode && (
               isQuranPath ? (
-                <Changer />
+                <Quran_Navigator />
               ) : (
                 <Button
                   variant="ghost"
-                  className="text-sm font-medium truncate max-w-[150px] sm:max-w-[250px] px-2"
+                  className="text-sm font-medium truncate max-w-[150px] sm:max-w-[250px] px-2 py-1 h-8 sm:h-9"   // fixed height and vertical padding
                 >
                   {getPageTitle(location.pathname)}
                 </Button>
@@ -199,7 +199,12 @@ export const Header = memo(function Header() {
             {!user && (
               <Link
                 to="/Sign-In"
-                className="inline-flex items-center justify-center px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-white dark:bg-black border-2 border-black dark:border-white text-primary hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-all"
+                className={cn(
+                  "inline-flex items-center justify-center px-3 py-1 text-xs sm:text-sm font-medium rounded-full",
+                  "bg-white dark:bg-black border-2 border-black dark:border-white",
+                  "text-primary hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black",
+                  "transition-all h-8 sm:h-9"   // force consistent height
+                )}
               >
                 Sign In
               </Link>

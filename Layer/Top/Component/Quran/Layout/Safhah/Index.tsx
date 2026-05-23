@@ -10,8 +10,6 @@ import { Container } from "@/Top/Component/UI/Container";
 import { useQuranData } from "@/Middle/Hook/Use-Quran-Data";
 import indoPakMarkers from "@/Bottom/Data/Quran/Meta/Indo-Pak-Verse-Markers.json";
 
-const DEBUG_OVERFLOW = true;
-
 export function PageView({
   surah,
   assembledSurah,
@@ -28,7 +26,7 @@ export function PageView({
   wordSpacing = "1.8px",
   hideVerses = false,
   hideVerseMarkers = false,
-  pageFooter,
+  pageFooter, // deprecated – kept for compatibility but not used
 }: PageViewProps) {
   const { verses, lines } = assembledSurah;
   const { activeVerse, activeWord, playAyah } = useAudio();
@@ -36,9 +34,7 @@ export function PageView({
   const [hoveredVerse, setHoveredVerse] = useState<number | null>(null);
   const [overflowPages, setOverflowPages] = useState<Set<number>>(new Set());
 
-  // Word‑level audio (same hook used by PageLines)
   const { playWordAudio, isPlaying } = useAudioPlayback(surah.id);
-
   const surah1Data = useQuranData(1);
 
   const isHoverTranslationEnabled = useMemo(
@@ -172,7 +168,7 @@ export function PageView({
 
   const shouldShowBismillah = surah.id !== 1 && surah.id !== 9 && showArabicText;
 
-  // ---- Overflow detection (hidden PageLines always present) ----
+  // Overflow detection (hidden PageLines always present)
   const pageLinesRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   useEffect(() => {
@@ -190,7 +186,7 @@ export function PageView({
           if (words.length < 2) continue;
           const firstTop = words[0].getBoundingClientRect().top;
           for (let i = 1; i < words.length; i++) {
-            if (Math.abs(words[i].getBoundingClientRect().top - firstTop) > 0.5) {
+            if (Math.abs(words[i].getBoundingClientRect().top - firstTop) > 2) {
               return true;
             }
           }
@@ -203,12 +199,11 @@ export function PageView({
           const wrapped = checkWrapping();
           setOverflowPages((prev) => {
             const next = new Set(prev);
-            const currentlyOverflow = next.has(page.pageNumber);
-            if (wrapped && !currentlyOverflow) {
+            if (wrapped && !next.has(page.pageNumber)) {
               console.log(`[DEBUG] Page ${page.pageNumber} overflow → fluid layout`);
               next.add(page.pageNumber);
-            } else if (!wrapped && currentlyOverflow) {
-              console.log(`[DEBUG] Page ${page.pageNumber} restored → PageLines`);
+            } else if (!wrapped && next.has(page.pageNumber)) {
+              console.log(`[DEBUG] Page ${page.pageNumber} restored → fixed layout`);
               next.delete(page.pageNumber);
             }
             return next;
@@ -223,7 +218,7 @@ export function PageView({
     return () => observers.forEach(o => o.disconnect());
   }, [pages, resolvedLinesByPage, showArabicText]);
 
-  // ---- Rich fluid fallback (word‑by‑word, full interactivity) ----
+  // Fluid fallback – uses justify-content: space-between, no fixed layout
   const renderFluidArabic = (verses: AssembledVerse[], pageFont: string) => (
     <div
       dir="rtl"
@@ -231,77 +226,89 @@ export function PageView({
       style={{
         fontSize: arabicFontSize,
         lineHeight: 1.8,
-        wordSpacing,                     // ← essential Arabic word spacing
-        fontFamily: pageFont || fontClass, // ← page‑specific font
+        wordSpacing,
+        fontFamily: pageFont || fontClass,
         textAlign: "right",
         padding: "1rem 0",
       }}
     >
-      {verses.map((verse) =>
-        verse.words.map((glyph, wordIdx) => {
-          const isVerseEnd = wordIdx === verse.words.length - 1;
-          const isVerseMarker = isVerseEnd;
-          const verseNumber = verse.verseNumber;
+      {verses.map((verse) => (
+        <div
+          key={verse.verseNumber}
+          style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", width: "100%" }}
+        >
+          {verse.words.map((glyph, wordIdx) => {
+            const isVerseEnd = wordIdx === verse.words.length - 1;
+            const isVerseMarker = isVerseEnd;
+            const verseNumber = verse.verseNumber;
 
-          const hoverTranslationText =
-            !isVerseEnd && verse.wbwTranslationHover?.[wordIdx];
-          const hoverTransliterationText =
-            !isVerseEnd && verse.wbwTransliterationHover?.[wordIdx];
+            const hoverTranslationText =
+              !isVerseEnd && verse.wbwTranslationHover?.[wordIdx];
+            const hoverTransliterationText =
+              !isVerseEnd && verse.wbwTransliterationHover?.[wordIdx];
 
-          const handleClick = isVerseEnd
-            ? () => playAyah(surah.id, verseNumber)
-            : () => playWordAudio(verseNumber, wordIdx);
+            const handleClick = isVerseEnd
+              ? () => playAyah(surah.id, verseNumber)
+              : () => playWordAudio(verseNumber, wordIdx);
 
-          const handleMouseEnter = () => {
-            if (isVerseEnd) setHoveredVerse(verseNumber);
-          };
-          const handleMouseLeave = () => {
-            if (isVerseEnd) setHoveredVerse(null);
-          };
+            const handleMouseEnter = () => {
+              if (isVerseEnd) setHoveredVerse(verseNumber);
+            };
+            const handleMouseLeave = () => {
+              if (isVerseEnd) setHoveredVerse(null);
+            };
 
-          const isVerseHighlighted =
-            hoveredVerse !== null && hoveredVerse === verseNumber;
-          const isActive =
-            !isVerseEnd && verseNumber === activeVerse && wordIdx === activeWord;
-          const wordKey = `word-${verseNumber}-${wordIdx}`;
-          const ayahKey = `ayah-${verseNumber}`;
-          const isPlayingAudio =
-            isPlaying(wordKey) || isPlaying(ayahKey);
+            const isVerseHighlighted =
+              hoveredVerse !== null && hoveredVerse === verseNumber;
+            const isActive =
+              !isVerseEnd && verseNumber === activeVerse && wordIdx === activeWord;
+            const wordKey = `word-${verseNumber}-${wordIdx}`;
+            const ayahKey = `ayah-${verseNumber}`;
+            const isPlayingAudio =
+              isPlaying(wordKey) || isPlaying(ayahKey);
 
-          let spanClass = "select-text transition-colors duration-200 inline ";
-          if (isVerseHighlighted && !isVerseMarker) spanClass += "text-primary";
-          else if (isActive) spanClass += "text-emerald-500 animate-pulse";
-          else if (isPlayingAudio) spanClass += "text-primary animate-pulse";
-          else if (isVerseEnd || isVerseMarker)
-            spanClass += "text-muted-foreground hover:text-primary cursor-pointer";
-          else spanClass += "text-foreground hover:text-primary";
+            let spanClass = "select-text transition-colors duration-200 inline ";
+            if (isVerseHighlighted && !isVerseMarker) spanClass += "text-primary";
+            else if (isActive) spanClass += "text-emerald-500 animate-pulse";
+            else if (isPlayingAudio) spanClass += "text-primary animate-pulse";
+            else if (isVerseEnd || isVerseMarker)
+              spanClass += "text-muted-foreground hover:text-primary cursor-pointer";
+            else spanClass += "text-foreground hover:text-primary";
 
-          return (
-            <WordTooltip
-              key={`${verseNumber}-${wordIdx}`}
-              translation={hoverTranslationText}
-              transliteration={hoverTransliterationText}
-              enabled={isHoverTranslationEnabled}
-              onClick={handleClick}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <span
-                className={spanClass}
-                style={{ cursor: "pointer" }}
+            return (
+              <WordTooltip
+                key={`${verseNumber}-${wordIdx}`}
+                translation={hoverTranslationText}
+                transliteration={hoverTransliterationText}
+                enabled={isHoverTranslationEnabled}
                 onClick={handleClick}
-                data-verse={verseNumber}
-                data-word={wordIdx}
-                {...(isVerseMarker ? { "data-is-verse-marker": "true" } : {})}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
-                {glyph}{" "}
-              </span>
-            </WordTooltip>
-          );
-        })
-      )}
+                <span
+                  className={spanClass}
+                  style={{ cursor: "pointer" }}
+                  onClick={handleClick}
+                  data-verse={verseNumber}
+                  data-word={wordIdx}
+                  {...(isVerseMarker ? { "data-is-verse-marker": "true" } : {})}
+                >
+                  {glyph}{" "}
+                </span>
+              </WordTooltip>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
+
+  // Helper to extract juz, page, hizb numbers (replace with your actual data)
+  const getFooterParts = (pageNumber: number) => {
+    const juzNumber = Math.ceil(pageNumber / 20); // approximate, use real data
+    const hizbNumber = Math.ceil(pageNumber / 10); // approximate, use real data
+    return { juz: juzNumber, page: pageNumber, hizb: hizbNumber };
+  };
 
   return (
     <div id="quran-container">
@@ -309,69 +316,38 @@ export function PageView({
         const pageFontFamily = getPageFontFamily(page.pageNumber);
         const bismillahFontFamily = getBismillahFontFamily();
         const showBismillahOnThisPage = pageIdx === 0 && shouldShowBismillah;
+        // Reduced bottom margin from mb-12 to mb-4
         const containerClassName = pageIdx === 0
-          ? "rounded-t-none rounded-b-[48px] mb-12"
-          : "rounded-[48px] mb-12";
+          ? "rounded-t-none rounded-b-[48px] mb-2"
+          : "rounded-[48px] mb-2";
         const isOverflow = overflowPages.has(page.pageNumber);
+        const useFluid = pageIdx !== 0 && isOverflow;
+        const justifyLines = pageIdx !== 0;
+
+        const { juz, page: pageNum, hizb } = getFooterParts(page.pageNumber);
 
         return (
-          <Container
-            key={page.pageNumber}
-            className={`w-full ${containerClassName} ${
-              DEBUG_OVERFLOW && isOverflow ? "ring-2 ring-red-500" : ""
-            }`}
-          >
-            <div className="relative">
-              {showArabicText && (
-                <>
-                  {/* Fluid fallback shown when overflowing */}
-                  {isOverflow && renderFluidArabic(page.verses, pageFontFamily)}
+          <React.Fragment key={page.pageNumber}>
+            <Container className={`w-full ${containerClassName}`}>
+              <div className="relative">
+                {showArabicText && (
+                  <>
+                    {useFluid && renderFluidArabic(page.verses, pageFontFamily)}
 
-                  {/* Always‑rendered hidden measurement copy of PageLines */}
-                  <div
-                    ref={(el) => {
-                      if (el) pageLinesRefs.current.set(page.pageNumber, el);
-                      else pageLinesRefs.current.delete(page.pageNumber);
-                    }}
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      visibility: "hidden",
-                      top: 0, left: 0,
-                      width: "100%",
-                      zIndex: -1,
-                    }}
-                  >
-                    <PageLines
-                      resolvedLines={resolvedLinesByPage[pageIdx]}
-                      fontClass={fontClass}
-                      arabicFontSize={arabicFontSize}
-                      wordSpacing={wordSpacing}
-                      surahId={surah.id}
-                      verseRefs={verseRefs}
-                      hoveredVerse={hoveredVerse}
-                      setHoveredVerse={setHoveredVerse}
-                      showTransliteration={showTransliteration}
-                      transliterationFontSize={transliterationFontSize}
-                      hoverTranslation={hoverTranslation}
-                      inlineTranslation={inlineTranslation}
-                      inlineTransliteration={inlineTransliteration}
-                      hideVerses={hideVerses}
-                      hideVerseMarkers={hideVerseMarkers}
-                      bismillahWords={showBismillahOnThisPage ? bismillahWords : []}
-                      bismillahFontFamily={showBismillahOnThisPage ? bismillahFontFamily : undefined}
-                      bismillahFontClass={fontClass}
-                      bismillahFontSize={arabicFontSize}
-                      pageFontFamily={pageFontFamily}
-                      isIndoPakFont={isIndoPakFont}
-                      verseMarkerMap={verseMarkerMap}
-                      isUthmaniV4Font={isUthmaniV4Font}
-                    />
-                  </div>
-
-                  {/* Visible PageLines (normal mode) */}
-                  {!isOverflow && (
-                    <div>
+                    <div
+                      ref={(el) => {
+                        if (el) pageLinesRefs.current.set(page.pageNumber, el);
+                        else pageLinesRefs.current.delete(page.pageNumber);
+                      }}
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        visibility: "hidden",
+                        top: 0, left: 0,
+                        width: "100%",
+                        zIndex: -1,
+                      }}
+                    >
                       <PageLines
                         resolvedLines={resolvedLinesByPage[pageIdx]}
                         fontClass={fontClass}
@@ -396,65 +372,100 @@ export function PageView({
                         isIndoPakFont={isIndoPakFont}
                         verseMarkerMap={verseMarkerMap}
                         isUthmaniV4Font={isUthmaniV4Font}
+                        justifyLines={justifyLines}
                       />
                     </div>
-                  )}
-                </>
-              )}
 
-              {!showArabicText && (
-                <div className="space-y-4">
-                  {showTransliteration && (
+                    {!useFluid && (
+                      <div>
+                        <PageLines
+                          resolvedLines={resolvedLinesByPage[pageIdx]}
+                          fontClass={fontClass}
+                          arabicFontSize={arabicFontSize}
+                          wordSpacing={wordSpacing}
+                          surahId={surah.id}
+                          verseRefs={verseRefs}
+                          hoveredVerse={hoveredVerse}
+                          setHoveredVerse={setHoveredVerse}
+                          showTransliteration={showTransliteration}
+                          transliterationFontSize={transliterationFontSize}
+                          hoverTranslation={hoverTranslation}
+                          inlineTranslation={inlineTranslation}
+                          inlineTransliteration={inlineTransliteration}
+                          hideVerses={hideVerses}
+                          hideVerseMarkers={hideVerseMarkers}
+                          bismillahWords={showBismillahOnThisPage ? bismillahWords : []}
+                          bismillahFontFamily={showBismillahOnThisPage ? bismillahFontFamily : undefined}
+                          bismillahFontClass={fontClass}
+                          bismillahFontSize={arabicFontSize}
+                          pageFontFamily={pageFontFamily}
+                          isIndoPakFont={isIndoPakFont}
+                          verseMarkerMap={verseMarkerMap}
+                          isUthmaniV4Font={isUthmaniV4Font}
+                          justifyLines={justifyLines}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!showArabicText && (
+                  <div className="space-y-4">
+                    {showTransliteration && (
+                      <div className="space-y-1">
+                        {page.verses.map((verse) => {
+                          const translit = getVerseTransliteration(verse);
+                          if (!translit) return null;
+                          return (
+                            <p
+                              key={`translit-${verse.verseNumber}`}
+                              className={`text-muted-foreground leading-relaxed transition-colors duration-200 ${
+                                hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
+                              }`}
+                              style={{ fontSize: transliterationFontSize }}
+                              onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
+                              onMouseLeave={() => setHoveredVerse(null)}
+                            >
+                              {translit}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div className="space-y-1">
-                      {page.verses.map((verse) => {
-                        const translit = getVerseTransliteration(verse);
-                        if (!translit) return null;
-                        return (
-                          <p
-                            key={`translit-${verse.verseNumber}`}
-                            className={`text-muted-foreground leading-relaxed transition-colors duration-200 ${
-                              hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
-                            }`}
-                            style={{ fontSize: transliterationFontSize }}
-                            onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
-                            onMouseLeave={() => setHoveredVerse(null)}
-                          >
-                            {translit}
-                          </p>
-                        );
-                      })}
+                      {page.verses.map((verse) => (
+                        <p
+                          key={verse.verseNumber}
+                          className={`text-foreground leading-relaxed transition-colors duration-200 ${
+                            hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
+                          }`}
+                          style={{ fontSize: translationFontSize }}
+                          onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
+                          onMouseLeave={() => setHoveredVerse(null)}
+                        >
+                          {verse.translation ?? null}
+                        </p>
+                      ))}
                     </div>
-                  )}
-
-                  <div className="space-y-1">
-                    {page.verses.map((verse) => (
-                      <p
-                        key={verse.verseNumber}
-                        className={`text-foreground leading-relaxed transition-colors duration-200 ${
-                          hoveredVerse === verse.verseNumber ? "bg-primary/10 rounded px-1" : ""
-                        }`}
-                        style={{ fontSize: translationFontSize }}
-                        onMouseEnter={() => setHoveredVerse(verse.verseNumber)}
-                        onMouseLeave={() => setHoveredVerse(null)}
-                      >
-                        {verse.translation ?? null}
-                      </p>
-                    ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </Container>
 
-            <div className="flex items-center justify-center pb-1">
-              {pageFooter ? (
-                pageFooter(page.pageNumber)
-              ) : (
-                <span className="text-sm text-muted-foreground font-medium">
-                  {page.pageNumber}
-                </span>
-              )}
+            {/* Footer: three separate Container components, placed outside the main container */}
+            <div className="flex justify-center gap-4 py-2 mb-2">
+              <Container className="px-3 py-1 text-sm font-medium text-center rounded-full shadow-sm min-w-[70px]">
+                Juz {juz}
+              </Container>
+              <Container className="px-3 py-1 text-sm font-medium text-center rounded-full shadow-sm min-w-[70px]">
+                Page {pageNum}
+              </Container>
+              <Container className="px-3 py-1 text-sm font-medium text-center rounded-full shadow-sm min-w-[70px]">
+                Hizb {hizb}
+              </Container>
             </div>
-          </Container>
+          </React.Fragment>
         );
       })}
     </div>
