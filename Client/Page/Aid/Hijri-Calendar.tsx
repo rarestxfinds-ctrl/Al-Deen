@@ -183,17 +183,7 @@ const HijriCalendarPage = () => {
             </div>
           </Container>
 
-          {loading ? (
-            <Container className="p-12 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </Container>
-          ) : error ? (
-            <Container className="p-8 text-center flex flex-col items-center gap-3">
-              <AlertCircle className="h-6 w-6 text-destructive" />
-              <p className="text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
-            </Container>
-          ) : (
+          {(
             <>
               {/* Weekday labels */}
               <div className="grid grid-cols-7 gap-1 mb-1">
