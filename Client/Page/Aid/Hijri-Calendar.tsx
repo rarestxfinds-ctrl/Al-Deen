@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "Client/Component/Layout/Index";
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "Client/Component/UI/Button";
 import { Container } from "Client/Component/UI/Container";
 import { DateDialog } from "Client/Component/Dialog/Date";
+import uq from "@umalqura/core";
+import { computeHijri } from "Client/Hook/usePrayerTimes";
 
 // --- Types ---
 interface CalendarDay {
@@ -28,6 +30,57 @@ interface Holiday {
   gregorianDate: string; // "YYYY-MM-DD" for logic
   hijriDay: number;
   hijriMonth: number;
+  type: string;
+}
+
+const HIJRI_MONTHS_EN = ["Muharram","Safar","Rabi' al-Awwal","Rabi' al-Thani","Jumada al-Awwal","Jumada al-Thani","Rajab","Sha'ban","Ramadan","Shawwal","Dhu al-Qi'dah","Dhu al-Hijjah"];
+const HIJRI_MONTHS_AR = ["محرم","صفر","ربيع الأول","ربيع الثاني","جمادى الأولى","جمادى الثانية","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"];
+const GREG_MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WEEK_FULL_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+// Fixed-date Islamic holidays (Hijri month, day)
+const ISLAMIC_HOLIDAYS: Array<{ month: number; day: number; name: string }> = [
+  { month: 1, day: 1, name: "Islamic New Year" },
+  { month: 1, day: 10, name: "Day of Ashura" },
+  { month: 3, day: 12, name: "Mawlid al-Nabi" },
+  { month: 7, day: 27, name: "Isra and Mi'raj" },
+  { month: 8, day: 15, name: "Shab-e-Barat" },
+  { month: 9, day: 1, name: "First day of Ramadan" },
+  { month: 9, day: 27, name: "Laylat al-Qadr" },
+  { month: 10, day: 1, name: "Eid al-Fitr" },
+  { month: 12, day: 8, name: "Day of Tarwiyah" },
+  { month: 12, day: 9, name: "Day of Arafah" },
+  { month: 12, day: 10, name: "Eid al-Adha" },
+];
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+
+function buildMonth(hYear: number, hMonth: number): CalendarDay[] {
+  // @umalqura/core: lengthOfMonth via uq(year, month, 1).daysInMonth
+  const first = uq(hYear, hMonth, 1);
+  const len = first.daysInMonth;
+  const out: CalendarDay[] = [];
+  for (let d = 1; d <= len; d++) {
+    const h = uq(hYear, hMonth, d);
+    const g = h.date as Date;
+    out.push({
+      hijri: {
+        day: String(d),
+        month: { number: hMonth, en: HIJRI_MONTHS_EN[hMonth - 1], ar: HIJRI_MONTHS_AR[hMonth - 1] },
+        year: String(hYear),
+        weekday: { en: WEEK_FULL_EN[g.getDay()], ar: "" },
+        designation: { abbreviated: "AH" },
+      },
+      gregorian: {
+        date: `${pad(g.getDate())}-${pad(g.getMonth() + 1)}-${g.getFullYear()}`,
+        day: String(g.getDate()),
+        month: { number: g.getMonth() + 1, en: GREG_MONTHS_EN[g.getMonth()] },
+        year: String(g.getFullYear()),
+        weekday: { en: WEEK_FULL_EN[g.getDay()] },
+      },
+    });
+  }
+  return out;
 }
 
 const HijriCalendarPage = () => {
@@ -36,86 +89,35 @@ const HijriCalendarPage = () => {
   const todayISO = today.toISOString().slice(0, 10);
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // State
-  const [hijriMonth, setHijriMonth] = useState<number | null>(null);
-  const [hijriYear, setHijriYear] = useState<number | null>(null);
-  const [days, setDays] = useState<CalendarDay[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Holiday State
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const todayHijri = useMemo(() => computeHijri(today), []);
+  const [hijriMonth, setHijriMonth] = useState<number>(todayHijri.month.number);
+  const [hijriYear, setHijriYear] = useState<number>(parseInt(todayHijri.year));
   const [holidaysPage, setHolidaysPage] = useState(0);
-  const [holidaysLoading, setHolidaysLoading] = useState(true);
   const HOLIDAYS_PER_PAGE = 7;
 
   // Dialog State
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // 1. Initial Load: Get current Hijri status
-  useEffect(() => {
-    fetch(`https://api.aladhan.com/v1/gToH/${todayStr}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.data?.hijri) {
-          setHijriMonth(data.data.hijri.month.number);
-          setHijriYear(parseInt(data.data.hijri.year));
-        }
-      })
-      .catch(console.error);
-  }, []);
+  // Compute month grid locally
+  const days: CalendarDay[] = useMemo(() => buildMonth(hijriYear, hijriMonth), [hijriYear, hijriMonth]);
+  const loading = false;
+  const error: string | null = null;
 
-  // 2. Fetch Monthly Grid
-  useEffect(() => {
-    if (hijriMonth === null || hijriYear === null) return;
-
-    setLoading(true);
-    fetch(`https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${hijriYear}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.code === 200) {
-          setDays(data.data);
-          setError(null);
-        } else {
-          setError("Failed to load calendar data.");
-        }
-      })
-      .catch(() => setError("Unable to connect to the calendar server."))
-      .finally(() => setLoading(false));
-  }, [hijriMonth, hijriYear]);
-
-  // 3. Fetch Year Holidays (Using exact paths from your provided JSON model)
-  useEffect(() => {
-    if (hijriYear === null) return;
-
-    setHolidaysLoading(true);
-    fetch(`https://api.aladhan.com/v1/islamicHolidaysByHijriYear/${hijriYear}?calendarMethod=UAQ`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.code === 200 && Array.isArray(data.data)) {
-          const mappedHolidays = data.data.map((item: any) => {
-            // Path: item.gregorian.date & item.hijri.holidays
-            const rawGregorian = item.gregorian?.date; // "DD-MM-YYYY"
-            const holidayNames = item.hijri?.holidays;
-
-            if (!rawGregorian || !holidayNames || holidayNames.length === 0) return null;
-
-            const [d, m, y] = rawGregorian.split("-");
-            return {
-              name: holidayNames[0],
-              gregorianDate: `${y}-${m}-${d}`, // Correctly reversed for sorting
-              hijriDay: parseInt(item.hijri.day),
-              hijriMonth: item.hijri.month.number,
-            };
-          }).filter(Boolean) as Holiday[];
-
-          setHolidays(mappedHolidays);
-        }
-      })
-      .catch((err) => console.error("Holiday API Error:", err))
-      .finally(() => setHolidaysLoading(false));
+  // Compute holidays for the year locally
+  const holidays: Holiday[] = useMemo(() => {
+    return ISLAMIC_HOLIDAYS.map((h) => {
+      const g = uq(hijriYear, h.month, h.day).date as Date;
+      return {
+        name: h.name,
+        gregorianDate: `${g.getFullYear()}-${pad(g.getMonth() + 1)}-${pad(g.getDate())}`,
+        hijriDay: h.day,
+        hijriMonth: h.month,
+        type: "Religious",
+      };
+    }).sort((a, b) => a.gregorianDate.localeCompare(b.gregorianDate));
   }, [hijriYear]);
+  const holidaysLoading = false;
 
   // Pagination Logic
   const upcomingHolidays = useMemo(() => {
@@ -131,18 +133,18 @@ const HijriCalendarPage = () => {
   const goNext = () => {
     if (hijriMonth === 12) {
       setHijriMonth(1);
-      setHijriYear((y) => (y ? y + 1 : null));
+      setHijriYear((y) => y + 1);
     } else {
-      setHijriMonth((m) => (m ? m + 1 : null));
+      setHijriMonth((m) => m + 1);
     }
   };
 
   const goPrev = () => {
     if (hijriMonth === 1) {
       setHijriMonth(12);
-      setHijriYear((y) => (y ? y - 1 : null));
+      setHijriYear((y) => y - 1);
     } else {
-      setHijriMonth((m) => (m ? m - 1 : null));
+      setHijriMonth((m) => m - 1);
     }
   };
 
@@ -166,7 +168,7 @@ const HijriCalendarPage = () => {
           {/* Calendar Header */}
           <Container className="!py-3 !px-4 mb-4">
             <div className="flex items-center justify-between">
-              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goPrev} disabled={loading}>
+              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goPrev}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="text-center">
@@ -177,23 +179,13 @@ const HijriCalendarPage = () => {
                   {days[0]?.gregorian.month.en} {days[0]?.gregorian.year}
                 </p>
               </div>
-              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goNext} disabled={loading}>
+              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goNext}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </Container>
 
-          {loading ? (
-            <Container className="p-12 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </Container>
-          ) : error ? (
-            <Container className="p-8 text-center flex flex-col items-center gap-3">
-              <AlertCircle className="h-6 w-6 text-destructive" />
-              <p className="text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
-            </Container>
-          ) : (
+          {(
             <>
               {/* Weekday labels */}
               <div className="grid grid-cols-7 gap-1 mb-1">
@@ -254,9 +246,8 @@ const HijriCalendarPage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-full w-8 h-8 p-0"
+                        className={`rounded-full w-8 h-8 p-0 ${holidaysPage === 0 ? "opacity-40 pointer-events-none" : ""}`}
                         onClick={() => setHolidaysPage(p => p - 1)}
-                        disabled={holidaysPage === 0}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
@@ -266,9 +257,8 @@ const HijriCalendarPage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-full w-8 h-8 p-0"
+                        className={`rounded-full w-8 h-8 p-0 ${(holidaysPage + 1) * HOLIDAYS_PER_PAGE >= upcomingHolidays.length ? "opacity-40 pointer-events-none" : ""}`}
                         onClick={() => setHolidaysPage(p => p + 1)}
-                        disabled={(holidaysPage + 1) * HOLIDAYS_PER_PAGE >= upcomingHolidays.length}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -276,11 +266,7 @@ const HijriCalendarPage = () => {
                   )}
                 </div>
 
-                {holidaysLoading ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                ) : upcomingHolidays.length === 0 ? (
+                {upcomingHolidays.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground text-sm">
                     No upcoming holidays found for this year.
                   </div>

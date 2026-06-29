@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "Client/Context/App";
 import { AudioProvider } from "Client/Context/Audio";
 import { AuthProvider } from "Client/Context/Auth";
+import { AdminProvider } from "Client/Context/Admin";
 import { ErrorBoundary } from "Client/Component/Error-Boundary";
+import { VisitTracker } from "Client/Component/Admin/Visit-Tracker";
 
 import Index from "Client/Page/Index";
 
@@ -39,6 +41,7 @@ import TajweedDetail    from "Client/Page/Aid/Arabic/Tajweed/Detail"
 import PrayerTimes      from "Client/Page/Aid/Prayer-Times";
 import QiblaPage        from "Client/Page/Aid/Qibla";
 import HijriCalendar    from "Client/Page/Aid/Hijri-Calendar";
+import MasjidFinder     from "Client/Page/Aid/Masjid-Finder";
 import ZakatCalculator  from "Client/Page/Aid/Zakat-Calculator";
 import TasbihCounter    from "Client/Page/Aid/Tasbih-Counter";
 import ArabicIndex      from "Client/Page/Aid/Arabic/Index";
@@ -71,6 +74,10 @@ import ForgotPassword from "Client/Page/Auth/Forgot-Password";
 import SearchResults  from "Client/Page/Search";
 import Not_Found      from "Client/Page/404";
 
+// Admin
+import AdminLogin     from "Client/Page/Admin/Login";
+import AdminDashboard from "Client/Page/Admin/Dashboard";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -86,11 +93,13 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
+          <AdminProvider>
           <AppProvider>
             <AudioProvider>
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
+                <VisitTracker />
                 {/* No Suspense – all components load synchronously */}
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -128,6 +137,7 @@ const App = () => (
                   <Route path="/Aid/Prayers" element={<PrayerTimes />} />
                   <Route path="/Aid/Qibla" element={<QiblaPage />} />
                   <Route path="/Aid/Hijri-Calendar" element={<HijriCalendar />} />
+                  <Route path="/Aid/Masjid-Finder" element={<MasjidFinder />} />
                   <Route path="/Aid/Zakat-Calculator" element={<ZakatCalculator />} />
 
                   {/* Arabic vocabulary */}
@@ -162,11 +172,17 @@ const App = () => (
                   <Route path="/Sign-Up" element={<SignUp />} />
                   <Route path="/Forgot-Password" element={<ForgotPassword />} />
                   <Route path="/Search" element={<SearchResults />} />
+
+                  {/* Admin */}
+                  <Route path="/Admin" element={<AdminDashboard />} />
+                  <Route path="/Admin/Login" element={<AdminLogin />} />
+
                   <Route path="*" element={<Not_Found />} />
                 </Routes>
               </TooltipProvider>
             </AudioProvider>
           </AppProvider>
+          </AdminProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

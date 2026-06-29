@@ -1,6 +1,45 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Coordinates, CalculationMethod, PrayerTimes as AdhanPrayerTimes, Madhab, HighLatitudeRule, SunnahTimes } from "adhan";
+import uq from "@umalqura/core";
 import { useApp } from "Client/Context/App";
 import type { PrayerTimesData, HijriDate, LocationData, PrayerSettings } from "Client/Component/Aid/Prayer/Types";
+
+function methodFromId(id: number) {
+  switch (id) {
+    case 1: return CalculationMethod.Karachi();
+    case 2: return CalculationMethod.NorthAmerica();
+    case 3: return CalculationMethod.MuslimWorldLeague();
+    case 4: return CalculationMethod.UmmAlQura();
+    case 5: return CalculationMethod.Egyptian();
+    case 7: case 0: return CalculationMethod.Tehran();
+    case 8: case 16: return CalculationMethod.Dubai();
+    case 9: return CalculationMethod.Kuwait();
+    case 10: return CalculationMethod.Qatar();
+    case 11: return CalculationMethod.Singapore();
+    case 13: return CalculationMethod.Turkey();
+    default: return CalculationMethod.MuslimWorldLeague();
+  }
+}
+
+function fmt(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+const HIJRI_MONTHS_EN = ["Muharram","Safar","Rabi' al-Awwal","Rabi' al-Thani","Jumada al-Awwal","Jumada al-Thani","Rajab","Sha'ban","Ramadan","Shawwal","Dhu al-Qi'dah","Dhu al-Hijjah"];
+const HIJRI_MONTHS_AR = ["محرم","صفر","ربيع الأول","ربيع الثاني","جمادى الأولى","جمادى الثانية","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"];
+const WEEKDAYS_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const WEEKDAYS_AR = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+
+export function computeHijri(date: Date): HijriDate {
+  const h = uq(date);
+  return {
+    day: String(h.hd),
+    month: { number: h.hm, en: HIJRI_MONTHS_EN[h.hm - 1], ar: HIJRI_MONTHS_AR[h.hm - 1] },
+    year: String(h.hy),
+    weekday: { en: WEEKDAYS_EN[date.getDay()], ar: WEEKDAYS_AR[date.getDay()] },
+    designation: { abbreviated: "AH", expanded: "Anno Hegirae" },
+  };
+}
 
 export function usePrayerTimes() {
   const {
@@ -33,7 +72,6 @@ export function usePrayerTimes() {
   }), [prayerCalculationMethod, prayerSchool, prayerLatitudeMethod, prayerTimeFormat]);
 
   const fetchPrayerTimes = useCallback(async (lat: number, lng: number) => {
-    // Prevent concurrent fetches
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
     setLoading(true);
@@ -46,46 +84,32 @@ export function usePrayerTimes() {
       const yyyy = today.getFullYear();
       setDateStr(`${dd}-${mm}-${yyyy}`);
 
-      const params = new URLSearchParams({
-        latitude: String(lat),
-        longitude: String(lng),
-        method: String(settings.method),
-        school: String(settings.school),
-        latitudeAdjustmentMethod: String(settings.latitudeAdjustmentMethod),
+      const coords = new Coordinates(lat, lng);
+      const params = methodFromId(settings.method);
+      params.madhab = settings.school === 1 ? Madhab.Hanafi : Madhab.Shafi;
+      const hl = [HighLatitudeRule.MiddleOfTheNight, HighLatitudeRule.SeventhOfTheNight, HighLatitudeRule.TwilightAngle];
+      params.highLatitudeRule = hl[Math.max(0, Math.min(2, settings.latitudeAdjustmentMethod - 1))] ?? HighLatitudeRule.MiddleOfTheNight;
+
+      const pt = new AdhanPrayerTimes(coords, today, params);
+      const sunnah = new SunnahTimes(pt);
+      // Imsak ≈ Fajr - 10 minutes
+      const imsak = new Date(pt.fajr.getTime() - 10 * 60 * 1000);
+
+      setTimings({
+        Fajr: fmt(pt.fajr),
+        Sunrise: fmt(pt.sunrise),
+        Dhuhr: fmt(pt.dhuhr),
+        Asr: fmt(pt.asr),
+        Maghrib: fmt(pt.maghrib),
+        Isha: fmt(pt.isha),
+        Imsak: fmt(imsak),
+        Midnight: fmt(sunnah.middleOfTheNight),
       });
 
-      const res = await fetch(`https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?${params}`);
-      const data = await res.json();
-
-      if (data.code === 200) {
-        const strip = (v: string) => v.replace(/\s*\(.*\)/, "");
-        const ti = data.data.timings;
-        setTimings({
-          Fajr: strip(ti.Fajr),
-          Sunrise: strip(ti.Sunrise),
-          Dhuhr: strip(ti.Dhuhr),
-          Asr: strip(ti.Asr),
-          Maghrib: strip(ti.Maghrib),
-          Isha: strip(ti.Isha),
-          Imsak: strip(ti.Imsak),
-          Midnight: strip(ti.Midnight),
-        });
-
-        if (data.data.date?.hijri) {
-          setHijri(data.data.date.hijri);
-        }
-
-        if (data.data.meta?.timezone) {
-          const city = data.data.meta.timezone.split("/").pop()?.replace(/_/g, " ") || "";
-          setLocation((prev) => (prev ? { ...prev, city } : null));
-        }
-        setError(null);
-      } else {
-        setError("Failed to fetch prayer times");
-      }
+      setHijri(computeHijri(today));
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch prayer times. Please check your connection.");
+      setError("Failed to compute prayer times.");
     } finally {
       setLoading(false);
       isFetchingRef.current = false;
@@ -117,63 +141,22 @@ export function usePrayerTimes() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const loc = { 
-          latitude: position.coords.latitude, 
-          longitude: position.coords.longitude 
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+        const city = tz.split("/").pop()?.replace(/_/g, " ") || "";
+        const loc = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          city,
         };
         setLocation(loc);
         fetchPrayerTimes(loc.latitude, loc.longitude);
-        
-        // Optionally save the location (but don't wait for it)
         if (prayerAutoLocation && !prayerSavedLocation) {
-          fetch(`https://api.aladhan.com/v1/timings/now?latitude=${loc.latitude}&longitude=${loc.longitude}`)
-            .then(r => r.json())
-            .then(data => {
-              if (data.data?.meta?.timezone) {
-                const city = data.data.meta.timezone.split("/").pop()?.replace(/_/g, " ") || "";
-                setPrayerSavedLocation({
-                  city,
-                  country: "",
-                  lat: loc.latitude,
-                  lng: loc.longitude
-                });
-              }
-            })
-            .catch(() => {});
+          setPrayerSavedLocation({ city, country: "", lat: loc.latitude, lng: loc.longitude });
         }
       },
       () => {
-        // Fallback to IP
-        fetch("https://ipapi.co/json/")
-          .then((r) => r.json())
-          .then((data) => {
-            if (data.latitude && data.longitude) {
-              const loc = { 
-                latitude: data.latitude, 
-                longitude: data.longitude, 
-                city: data.city, 
-                country: data.country_name 
-              };
-              setLocation(loc);
-              fetchPrayerTimes(loc.latitude, loc.longitude);
-              
-              if (prayerAutoLocation && !prayerSavedLocation) {
-                setPrayerSavedLocation({
-                  city: data.city,
-                  country: data.country_name,
-                  lat: data.latitude,
-                  lng: data.longitude
-                });
-              }
-            } else {
-              setError("Unable to determine your location. Please select a location in Settings.");
-              setLoading(false);
-            }
-          })
-          .catch(() => {
-            setError("Unable to determine your location. Please select a location in Settings.");
-            setLoading(false);
-          });
+        setError("Unable to determine your location. Please select a location in Settings.");
+        setLoading(false);
       },
       { timeout: 5000 }
     );

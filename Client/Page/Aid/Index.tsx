@@ -10,6 +10,7 @@ const Aid = () => {
     { to: "/Aid/Prayers", label: "Prayer Time" },
     { to: "/Aid/Qibla", label: "Qibla Direction" },
     { to: "/Aid/Hijri-Calendar", label: "Hijri Calendar" },
+    { to: "/Aid/Masjid-Finder", label: "Masjid Finder" },
     { to: "/Aid/Zakat-Calculator", label: "Zakat Calculator" },
     { to: "/Aid/Tasbih", label: "Tasbih Counter" },
     { to: "/Aid/Dua", label: "Dua" },
