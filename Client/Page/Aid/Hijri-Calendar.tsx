@@ -168,7 +168,7 @@ const HijriCalendarPage = () => {
           {/* Calendar Header */}
           <Container className="!py-3 !px-4 mb-4">
             <div className="flex items-center justify-between">
-              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goPrev} disabled={loading}>
+              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goPrev}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="text-center">
@@ -179,7 +179,7 @@ const HijriCalendarPage = () => {
                   {days[0]?.gregorian.month.en} {days[0]?.gregorian.year}
                 </p>
               </div>
-              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goNext} disabled={loading}>
+              <Button size="sm" className="w-9 h-9 p-0 rounded-full" onClick={goNext}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
