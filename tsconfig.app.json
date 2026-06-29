@@ -16,8 +16,8 @@
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "baseUrl": ".",
     "paths": {
+      "*": ["./*"],
       "@/*": ["./Client/*"],
       "Client/*": ["./Client/*"],
       "Server/*": ["./Server/*"]
