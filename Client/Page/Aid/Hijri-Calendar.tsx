@@ -246,9 +246,8 @@ const HijriCalendarPage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-full w-8 h-8 p-0"
+                        className={`rounded-full w-8 h-8 p-0 ${holidaysPage === 0 ? "opacity-40 pointer-events-none" : ""}`}
                         onClick={() => setHolidaysPage(p => p - 1)}
-                        disabled={holidaysPage === 0}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
@@ -258,9 +257,8 @@ const HijriCalendarPage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-full w-8 h-8 p-0"
+                        className={`rounded-full w-8 h-8 p-0 ${(holidaysPage + 1) * HOLIDAYS_PER_PAGE >= upcomingHolidays.length ? "opacity-40 pointer-events-none" : ""}`}
                         onClick={() => setHolidaysPage(p => p + 1)}
-                        disabled={(holidaysPage + 1) * HOLIDAYS_PER_PAGE >= upcomingHolidays.length}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
