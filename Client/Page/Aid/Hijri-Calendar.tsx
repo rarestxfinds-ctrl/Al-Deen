@@ -276,11 +276,7 @@ const HijriCalendarPage = () => {
                   )}
                 </div>
 
-                {holidaysLoading ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                ) : upcomingHolidays.length === 0 ? (
+                {upcomingHolidays.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground text-sm">
                     No upcoming holidays found for this year.
                   </div>
