@@ -30,6 +30,7 @@ interface Holiday {
   gregorianDate: string; // "YYYY-MM-DD" for logic
   hijriDay: number;
   hijriMonth: number;
+  type: string;
 }
 
 const HIJRI_MONTHS_EN = ["Muharram","Safar","Rabi' al-Awwal","Rabi' al-Thani","Jumada al-Awwal","Jumada al-Thani","Rajab","Sha'ban","Ramadan","Shawwal","Dhu al-Qi'dah","Dhu al-Hijjah"];
@@ -112,6 +113,7 @@ const HijriCalendarPage = () => {
         gregorianDate: `${g.getFullYear()}-${pad(g.getMonth() + 1)}-${pad(g.getDate())}`,
         hijriDay: h.day,
         hijriMonth: h.month,
+        type: "Religious",
       };
     }).sort((a, b) => a.gregorianDate.localeCompare(b.gregorianDate));
   }, [hijriYear]);
