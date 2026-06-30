@@ -1,0 +1,339 @@
+{
+  "vocabulary": [
+    {
+      "id": "Vocabulary",
+      "name": "Vocabulary",
+      "arabicName": "مُفْرَدَات",
+      "subcategories": [
+        {
+          "id": "Noun",
+          "name": "Noun",
+          "arabicName": "اِسْم",
+          "subcategories": [
+            {
+              "id": "Fruits",
+              "name": "Fruits",
+              "arabicName": "فَوَاكِه",
+              "words": [
+                {
+                  "id": "Apple",
+                  "english": "Apple",
+                  "arabic": "تُفَّاحَة",
+                  "transliteration": "tuffāḥah",
+                  "definition": "A round fruit with red, green, or yellow skin and crisp white flesh.",
+                  "root": "t-f-ḥ",
+                  "diminutive": "تُفَيْحَة"
+                },
+                {
+                  "id": "Banana",
+                  "english": "Banana",
+                  "arabic": "مَوْز",
+                  "transliteration": "mawz",
+                  "definition": "A long curved yellow fruit with soft sweet flesh."
+                },
+                {
+                  "id": "Orange",
+                  "english": "Orange",
+                  "arabic": "بُرْتُقَال",
+                  "transliteration": "burtuqāl",
+                  "definition": "A round citrus fruit with a tough bright orange skin."
+                },
+                {
+                  "id": "Grape",
+                  "english": "Grape",
+                  "arabic": "عِنَب",
+                  "transliteration": "ʿinab",
+                  "definition": "A small round juicy berry that grows in clusters on vines.",
+                  "root": "ʿ-n-b"
+                },
+                {
+                  "id": "Date",
+                  "english": "Date",
+                  "arabic": "تَمْر",
+                  "transliteration": "tamr",
+                  "definition": "Sweet fruit of the date palm, commonly eaten dried.",
+                  "root": "t-m-r"
+                }
+              ]
+            },
+            {
+              "id": "Animals",
+              "name": "Animals",
+              "arabicName": "حَيَوَانَات",
+              "words": [
+                {
+                  "id": "cat",
+                  "english": "Cat",
+                  "arabic": "قِطَّة",
+                  "transliteration": "qiṭṭah",
+                  "definition": "A small domesticated carnivorous mammal.",
+                  "root": "q-ṭ-ṭ",
+                  "diminutive": "قُطَيْطَة"
+                },
+                {
+                  "id": "dog",
+                  "english": "Dog",
+                  "arabic": "كَلْب",
+                  "transliteration": "kalb",
+                  "definition": "A domesticated carnivorous mammal kept as a pet or for work.",
+                  "root": "k-l-b",
+                  "diminutive": "كُلَيْب"
+                },
+                {
+                  "id": "horse",
+                  "english": "Horse",
+                  "arabic": "حِصَان",
+                  "transliteration": "ḥiṣān",
+                  "definition": "A large four-legged mammal used for riding and pulling loads.",
+                  "root": "ḥ-ṣ-n"
+                },
+                {
+                  "id": "camel",
+                  "english": "Camel",
+                  "arabic": "جَمَل",
+                  "transliteration": "jamal",
+                  "definition": "A large desert mammal with one or two humps on its back.",
+                  "root": "j-m-l",
+                  "diminutive": "جُمَيْل"
+                },
+                {
+                  "id": "bird",
+                  "english": "Bird",
+                  "arabic": "طَائِر",
+                  "transliteration": "ṭāʾir",
+                  "definition": "A warm-blooded egg-laying animal with feathers and wings.",
+                  "root": "ṭ-y-r"
+                }
+              ]
+            },
+            {
+              "id": "family",
+              "name": "Family",
+              "arabicName": "عَائِلَة",
+              "words": [
+                {
+                  "id": "father",
+                  "english": "Father",
+                  "arabic": "أَب",
+                  "transliteration": "ab",
+                  "definition": "A male parent.",
+                  "root": "ʾ-b-w"
+                },
+                {
+                  "id": "mother",
+                  "english": "Mother",
+                  "arabic": "أُمّ",
+                  "transliteration": "umm",
+                  "definition": "A female parent.",
+                  "root": "ʾ-m-m"
+                },
+                {
+                  "id": "brother",
+                  "english": "Brother",
+                  "arabic": "أَخ",
+                  "transliteration": "akh",
+                  "definition": "A male sibling.",
+                  "root": "ʾ-kh-w"
+                },
+                {
+                  "id": "sister",
+                  "english": "Sister",
+                  "arabic": "أُخْت",
+                  "transliteration": "ukht",
+                  "definition": "A female sibling."
+                },
+                {
+                  "id": "son",
+                  "english": "Son",
+                  "arabic": "اِبْن",
+                  "transliteration": "ibn",
+                  "definition": "A male child.",
+                  "root": "b-n-w",
+                  "diminutive": "بُنَيّ"
+                }
+              ]
+            },
+            {
+              "id": "colors",
+              "name": "Colors",
+              "arabicName": "أَلْوَان",
+              "words": [
+                {
+                  "id": "red",
+                  "english": "Red",
+                  "arabic": "أَحْمَر",
+                  "transliteration": "aḥmar",
+                  "definition": "The color of blood or fire.",
+                  "root": "ḥ-m-r"
+                },
+                {
+                  "id": "blue",
+                  "english": "Blue",
+                  "arabic": "أَزْرَق",
+                  "transliteration": "azraq",
+                  "definition": "The color of a clear sky.",
+                  "root": "z-r-q"
+                },
+                {
+                  "id": "green",
+                  "english": "Green",
+                  "arabic": "أَخْضَر",
+                  "transliteration": "akhḍar",
+                  "definition": "The color of grass and leaves.",
+                  "root": "kh-ḍ-r"
+                },
+                {
+                  "id": "white",
+                  "english": "White",
+                  "arabic": "أَبْيَض",
+                  "transliteration": "abyaḍ",
+                  "definition": "The color of fresh snow or milk.",
+                  "root": "b-y-ḍ"
+                },
+                {
+                  "id": "black",
+                  "english": "Black",
+                  "arabic": "أَسْوَد",
+                  "transliteration": "aswad",
+                  "definition": "The darkest color, the opposite of white.",
+                  "root": "s-w-d"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "verb",
+          "name": "Verb",
+          "arabicName": "فِعْل",
+          "subcategories": [
+            {
+              "id": "common-actions",
+              "name": "Common Actions",
+              "arabicName": "أَفْعَال شَائِعَة",
+              "words": [
+                {
+                  "id": "to-read",
+                  "english": "To Read",
+                  "arabic": "قَرَأَ",
+                  "transliteration": "qaraʾa",
+                  "definition": "To look at and understand written words.",
+                  "root": "q-r-ʾ"
+                },
+                {
+                  "id": "to-write",
+                  "english": "To Write",
+                  "arabic": "كَتَبَ",
+                  "transliteration": "kataba",
+                  "definition": "To form letters or words on a surface.",
+                  "root": "k-t-b"
+                },
+                {
+                  "id": "to-eat",
+                  "english": "To Eat",
+                  "arabic": "أَكَلَ",
+                  "transliteration": "akala",
+                  "definition": "To take food into the body through the mouth.",
+                  "root": "ʾ-k-l"
+                },
+                {
+                  "id": "to-drink",
+                  "english": "To Drink",
+                  "arabic": "شَرِبَ",
+                  "transliteration": "shariba",
+                  "definition": "To take liquid into the mouth and swallow.",
+                  "root": "sh-r-b"
+                },
+                {
+                  "id": "to-go",
+                  "english": "To Go",
+                  "arabic": "ذَهَبَ",
+                  "transliteration": "dhahaba",
+                  "definition": "To move from one place to another.",
+                  "root": "dh-h-b"
+                }
+              ]
+            },
+            {
+              "id": "worship",
+              "name": "Worship",
+              "arabicName": "عِبَادَة",
+              "words": [
+                {
+                  "id": "to-pray",
+                  "english": "To Pray",
+                  "arabic": "صَلَّى",
+                  "transliteration": "ṣallā",
+                  "definition": "To perform the Islamic prayer (salah).",
+                  "root": "ṣ-l-w"
+                },
+                {
+                  "id": "to-fast",
+                  "english": "To Fast",
+                  "arabic": "صَامَ",
+                  "transliteration": "ṣāma",
+                  "definition": "To abstain from food and drink from dawn to sunset.",
+                  "root": "ṣ-w-m"
+                },
+                {
+                  "id": "to-recite",
+                  "english": "To Recite",
+                  "arabic": "تَلَا",
+                  "transliteration": "talā",
+                  "definition": "To read the Qur'an aloud with proper rules.",
+                  "root": "t-l-w"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "adjective",
+          "name": "Adjective",
+          "arabicName": "صِفَة",
+          "subcategories": [
+            {
+              "id": "qualities",
+              "name": "Qualities",
+              "arabicName": "صِفَات",
+              "words": [
+                {
+                  "id": "big",
+                  "english": "Big",
+                  "arabic": "كَبِير",
+                  "transliteration": "kabīr",
+                  "definition": "Of considerable size or extent.",
+                  "root": "k-b-r"
+                },
+                {
+                  "id": "small",
+                  "english": "Small",
+                  "arabic": "صَغِير",
+                  "transliteration": "ṣaghīr",
+                  "definition": "Of a size that is less than normal.",
+                  "root": "ṣ-gh-r"
+                },
+                {
+                  "id": "beautiful",
+                  "english": "Beautiful",
+                  "arabic": "جَمِيل",
+                  "transliteration": "jamīl",
+                  "definition": "Pleasing to the senses or the mind.",
+                  "root": "j-m-l"
+                },
+                {
+                  "id": "good",
+                  "english": "Good",
+                  "arabic": "جَيِّد",
+                  "transliteration": "jayyid",
+                  "definition": "Of high quality; pleasant.",
+                  "root": "j-w-d"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

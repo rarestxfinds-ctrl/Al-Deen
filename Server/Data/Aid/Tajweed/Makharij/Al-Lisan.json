@@ -1,0 +1,15 @@
+[
+  "The Tongue — 10 articulation points producing 18 letters",
+  [
+    ["ق", "Qaf", "Back of the tongue touching the soft palate (closest to the throat)", "قُلْ", "Say"],
+    ["ك", "Kaf", "Back of the tongue touching the hard palate, slightly forward from Qaf", "كَبِيرٌ", "Great"],
+    ["ج ش ي", "Jim, Shin, Ya (non-Madd)", "Middle of the tongue touching the hard palate", "جَمِيلٌ", "Beautiful"],
+    ["ض", "Dhad", "Side of the tongue touching the upper molars — unique to Arabic", "ضَرَبَ", "He struck"],
+    ["ل", "Lam", "Tip of the tongue touching the gums above the front teeth (upper palate)", "لِلَّهِ", "For Allah"],
+    ["ن", "Nun", "Tip of the tongue touching the gum area just below where Lam is articulated", "نُورٌ", "Light"],
+    ["ر", "Ra", "Tip of the tongue touching the gums behind the upper front teeth with a slight trill", "رَبِّ", "My Lord"],
+    ["ت د ط", "Ta, Dal, Taa", "Tip of the tongue touching the base of the upper front teeth", "تَدَبَّرَ", "He reflected"],
+    ["ث ذ ظ", "Tha, Dhal, Dhaa", "Tip of the tongue touching the edge of the upper front teeth", "ذَلِكَ", "That"],
+    ["ص س ز", "Sad, Sin, Zay", "Tip of the tongue near the lower front teeth with air passing through", "سَلَامٌ", "Peace"]
+  ]
+]
