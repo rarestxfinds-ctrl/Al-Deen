@@ -43,6 +43,13 @@ import QiblaPage        from "Client/Page/Aid/Qibla";
 import HijriCalendar    from "Client/Page/Aid/Hijri-Calendar";
 import MasjidFinder     from "Client/Page/Aid/Masjid-Finder";
 import ZakatCalculator  from "Client/Page/Aid/Zakat-Calculator";
+import InheritanceCalculator from "Client/Page/Aid/Inheritance-Calculator";
+import IslamicWill from "Client/Page/Aid/Islamic-Will";
+import Ummah from "Client/Page/Aid/Ummah";
+import GamesIndex from "Client/Page/Aid/Games/Index";
+import GuessWhatIndex from "Client/Page/Aid/Games/Guess-What/Index";
+import GuessSurah from "Client/Page/Aid/Games/Guess-What/Surah";
+import GuessProphet from "Client/Page/Aid/Games/Guess-What/Prophet";
 import TasbihCounter    from "Client/Page/Aid/Tasbih-Counter";
 import ArabicIndex      from "Client/Page/Aid/Arabic/Index";
 import ArabicCategory   from "Client/Page/Aid/Arabic/Category";
@@ -139,6 +146,13 @@ const App = () => (
                   <Route path="/Aid/Hijri-Calendar" element={<HijriCalendar />} />
                   <Route path="/Aid/Masjid-Finder" element={<MasjidFinder />} />
                   <Route path="/Aid/Zakat-Calculator" element={<ZakatCalculator />} />
+                  <Route path="/Aid/Inheritance-Calculator" element={<InheritanceCalculator />} />
+                  <Route path="/Aid/Islamic-Will" element={<IslamicWill />} />
+                  <Route path="/Aid/Ummah" element={<Ummah />} />
+                  <Route path="/Aid/Games" element={<GamesIndex />} />
+                  <Route path="/Aid/Games/Guess-What" element={<GuessWhatIndex />} />
+                  <Route path="/Aid/Games/Guess-What/Surah" element={<GuessSurah />} />
+                  <Route path="/Aid/Games/Guess-What/Prophet" element={<GuessProphet />} />
 
                   {/* Arabic vocabulary */}
                   <Route path="/Aid/Arabic"                                              element={<ArabicIndex />} />
