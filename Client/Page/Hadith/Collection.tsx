@@ -5,22 +5,10 @@ import { useHadithCorpus, hadithCollections } from "Server/API/Hadith";
 
 const Collection = () => {
   // 🌟 Hooks directly into the automatic cache layer
-  const { data: corpus, isLoading } = useHadithCorpus();
+  const { data: corpus } = useHadithCorpus();
 
   // Fallback to placeholder array while loading
   const displayCollections = corpus?.collections || hadithCollections;
-
-  if (isLoading && !corpus) {
-    return (
-      <Layout>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[1].map((n) => (
-            <Card key={n} className="p-4 h-14 animate-pulse bg-muted/20" />
-          ))}
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
