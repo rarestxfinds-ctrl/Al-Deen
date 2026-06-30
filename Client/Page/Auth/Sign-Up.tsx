@@ -11,6 +11,9 @@ import { z } from "zod";
 import { lovable } from "Client/Integration/lovable";
 
 const signUpSchema = z.object({
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(30).regex(/^[a-zA-Z0-9_.-]+$/, "Letters, numbers, _ . - only"),
+  firstName: z.string().trim().min(1, "First name is required").max(50),
+  lastName: z.string().trim().min(1, "Surname is required").max(50),
   email: z.string().email("Please enter a valid email address").max(255),
   password: z
     .string()
@@ -20,12 +23,15 @@ const signUpSchema = z.object({
 });
 
 export default function SignUp() {
+  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string; firstName?: string; lastName?: string }>({});
 
   const navigate = useNavigate();
   const { signUp, user, isLoading: authLoading } = useAuth();
@@ -50,19 +56,24 @@ export default function SignUp() {
       return;
     }
 
-    const result = signUpSchema.safeParse({ email, password });
+    const result = signUpSchema.safeParse({ username, firstName, lastName, email, password });
     if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
+      const fieldErrors: { email?: string; password?: string; username?: string; firstName?: string; lastName?: string } = {};
       result.error.errors.forEach((err) => {
         if (err.path[0] === "email") fieldErrors.email = err.message;
         if (err.path[0] === "password") fieldErrors.password = err.message;
+        if (err.path[0] === "username") fieldErrors.username = err.message;
+        if (err.path[0] === "firstName") fieldErrors.firstName = err.message;
+        if (err.path[0] === "lastName") fieldErrors.lastName = err.message;
       });
       setErrors(fieldErrors);
       return;
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, "");
+    const { error } = await signUp(email, password, `${firstName} ${lastName}`.trim(), {
+      username: username.trim(), first_name: firstName.trim(), last_name: lastName.trim(),
+    });
     setIsLoading(false);
 
     if (error) {
@@ -104,6 +115,20 @@ export default function SignUp() {
       <Container className="w-full max-w-md mx-auto !rounded-[48px] p-8 sm:p-10 mt-0 space-y-6">
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Input placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={isLoading} />
+              {errors.firstName && <p className="text-xs text-destructive mt-1">{errors.firstName}</p>}
+            </div>
+            <div>
+              <Input placeholder="Surname" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={isLoading} />
+              {errors.lastName && <p className="text-xs text-destructive mt-1">{errors.lastName}</p>}
+            </div>
+          </div>
+          <div>
+            <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} disabled={isLoading} autoComplete="username" />
+            {errors.username && <p className="text-xs text-destructive mt-1">{errors.username}</p>}
+          </div>
           {/* Email Input */}
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
