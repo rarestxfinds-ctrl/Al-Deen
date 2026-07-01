@@ -21,6 +21,13 @@ const DUMMY_USER_KEY = "dummy-auth-user";
 const LOCAL_SIGNUP_USER_KEY = "local-signup-user";
 const LOCAL_PASSWORD_PREFIX = "local-auth-password:";
 
+async function digestLocalPassword(email: string, password: string): Promise<string> {
+  const input = `${email.toLowerCase()}::${password}`;
+  const bytes = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -117,7 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured) {
         const raw = localStorage.getItem(LOCAL_SIGNUP_USER_KEY);
         const savedPassword = localStorage.getItem(`${LOCAL_PASSWORD_PREFIX}${email.toLowerCase()}`);
-        if (!raw || savedPassword !== password) throw new Error("Invalid login credentials");
+        const attemptedPassword = await digestLocalPassword(email, password);
+        if (!raw || savedPassword !== attemptedPassword) throw new Error("Invalid login credentials");
         const localUser = JSON.parse(raw) as User;
         setSession(null);
         setUser(localUser);
@@ -159,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString(),
         } as unknown as User;
         localStorage.setItem(LOCAL_SIGNUP_USER_KEY, JSON.stringify(localUser));
-        localStorage.setItem(`${LOCAL_PASSWORD_PREFIX}${email.toLowerCase()}`, password);
+        localStorage.setItem(`${LOCAL_PASSWORD_PREFIX}${email.toLowerCase()}`, await digestLocalPassword(email, password));
         setSession(null);
         setUser(localUser);
         return { error: null, needsEmailConfirmation: false };
