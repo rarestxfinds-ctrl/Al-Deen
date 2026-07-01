@@ -41,9 +41,17 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
   const mime = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || "video/webm";
   const ext: "mp4" | "webm" = mime.startsWith("video/mp4") ? "mp4" : "webm";
 
-  const stream = out.captureStream(fps);
+  const stream = out.captureStream(0);
+  let videoTrack = stream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+  let manualFrameCapture = typeof videoTrack?.requestFrame === "function";
+  if (!manualFrameCapture) {
+    stream.getTracks().forEach((track) => track.stop());
+  }
+  const recordingStream = manualFrameCapture ? stream : out.captureStream(fps);
+  videoTrack = recordingStream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+  manualFrameCapture = typeof videoTrack?.requestFrame === "function";
   const chunks: BlobPart[] = [];
-  const rec = new MediaRecorder(stream, {
+  const rec = new MediaRecorder(recordingStream, {
     mimeType: mime,
     videoBitsPerSecond: opts.videoBitrate ?? 4_000_000,
   });
@@ -53,18 +61,11 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
     rec.onerror = (e: any) => reject(new Error("Recorder error: " + (e?.error?.message || "unknown")));
   });
 
-  // Initial Paint: Clear and write frame 0
-  outCtx.fillStyle = scene.bgColor || "#000000";
-  outCtx.fillRect(0, 0, scene.width, scene.height);
-  if (scratch && paintCtx instanceof OffscreenCanvasRenderingContext2D) {
-    paintCtx.fillStyle = scene.bgColor || "#000000";
-    paintCtx.fillRect(0, 0, scene.width, scene.height);
-  }
-
   paintFrame(paintCtx, scene, timeline, 0);
   if (scratch) outCtx.drawImage(scratch as any, 0, 0);
+  videoTrack?.requestFrame?.();
 
-  rec.start(250);
+  rec.start(100);
 
   const totalFrames = Math.max(1, Math.round((timeline.totalMs / 1000) * fps));
 
@@ -87,35 +88,23 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
         await seekVideoTo(scene.introVideo, tMs / 1000);
       } else if (tMs >= timeline.bodyEndMs && scene.outroVideo) {
         await seekVideoTo(scene.outroVideo, (tMs - timeline.bodyEndMs) / 1000);
+      } else if (scene.bgVideo) {
+        const dur = scene.bgVideo.duration || 0;
+        const bodySec = (tMs - timeline.introMs) / 1000;
+        await seekVideoTo(scene.bgVideo, dur > 0 ? bodySec % dur : bodySec);
       }
 
-      // FIX FOR BLACK SCREEN & OVERLAPPING: 
-      // Force canvas refresh context wipe on both channels before drawing new frames.
-      outCtx.fillStyle = scene.bgColor || "#000000";
-      outCtx.fillRect(0, 0, scene.width, scene.height);
-
-      if (scratch && paintCtx instanceof OffscreenCanvasRenderingContext2D) {
-        paintCtx.fillStyle = scene.bgColor || "#000000";
-        paintCtx.fillRect(0, 0, scene.width, scene.height);
-      }
-
-      // Render updated timestamp track layout configurations
       paintFrame(paintCtx, scene, timeline, tMs);
       if (scratch) outCtx.drawImage(scratch as any, 0, 0);
+      if (manualFrameCapture) videoTrack.requestFrame?.();
 
       if (f % 4 === 0) onProgress?.(f / totalFrames);
 
-      // FIX FOR BLACK SCREEN: Use requestAnimationFrame instead of raw setTimeout
-      // to ensure the browser paints the canvas data before the encoder records the stream layer.
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          // Give the thread a tiny 0ms timeout slice to flush internal graphic queues
-          setTimeout(resolve, 0);
-        });
-      });
+      if (f % fps === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   } finally {
     if (rec.state !== "inactive") rec.stop();
+    recordingStream.getTracks().forEach((track) => track.stop());
   }
 
   const raw = await done;

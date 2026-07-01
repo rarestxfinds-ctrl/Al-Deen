@@ -71,7 +71,7 @@ export default function SignUp() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, `${firstName} ${lastName}`.trim(), {
+    const { error, needsEmailConfirmation } = await signUp(email, password, `${firstName} ${lastName}`.trim(), {
       username: username.trim(), first_name: firstName.trim(), last_name: lastName.trim(),
     });
     setIsLoading(false);
@@ -95,20 +95,12 @@ export default function SignUp() {
 
     toast({
       title: "Account created!",
-      description: "Welcome to Al-Deen.org!",
+      description: needsEmailConfirmation
+        ? "You're signed in here. Check your email when you can to finish verification."
+        : "Welcome to Al-Deen.org!",
     });
     navigate("/");
   };
-
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[80vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -195,11 +187,11 @@ export default function SignUp() {
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={!agreeTerms || isLoading}
+            disabled={!agreeTerms || isLoading || authLoading}
             variant="outline"
             className="w-full font-bold"
           >
-            {isLoading && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+            {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
             Create Account
           </Button>
         </form>

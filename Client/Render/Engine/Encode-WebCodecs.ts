@@ -9,6 +9,7 @@ declare const VideoFrame: any;
 export function isWebCodecsSupported(): boolean {
   return (
     typeof (globalThis as any).VideoEncoder !== "undefined" &&
+    typeof (globalThis as any).VideoFrame !== "undefined" &&
     typeof (globalThis as any).OffscreenCanvas !== "undefined"
   );
 }
@@ -117,7 +118,10 @@ export async function encodeWithWebCodecs(opts: EncodeOptions): Promise<EncodeRe
         await seekVideoTo(scene.outroVideo, (tMs - timeline.bodyEndMs) / 1000);
       } else if ((scene as any).bgVideo) {
         // If a custom layout looping background video element is declared inside body
-        await seekVideoTo((scene as any).bgVideo, (tMs - timeline.introMs) / 1000);
+        const bg = (scene as any).bgVideo as HTMLVideoElement;
+        const dur = bg.duration || 0;
+        const bodySec = (tMs - timeline.introMs) / 1000;
+        await seekVideoTo(bg, dur > 0 ? bodySec % dur : bodySec);
       }
 
       paintFrame(ctx as any, scene, timeline, tMs);

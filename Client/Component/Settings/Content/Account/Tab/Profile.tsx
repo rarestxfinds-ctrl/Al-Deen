@@ -33,7 +33,7 @@ export function ProfileTab({
       {/* Learning Plans */}
       <Container className="!p-0 overflow-hidden group">
         <Button
-          onClick={() => { navigate("/Quran/Goals"); setSettingsSidebarOpen(false); }}
+          onClick={() => { navigate("/Quran/Goal"); setSettingsSidebarOpen(false); }}
           className="w-full flex items-center justify-between gap-3 h-auto py-3 px-4"
           variant="secondary"
           fullWidth

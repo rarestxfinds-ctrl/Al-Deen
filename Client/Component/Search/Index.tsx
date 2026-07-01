@@ -26,9 +26,9 @@ export function SpotlightSearch() {
     { name: t.nav.quran, path: "/Quran", icon: BookOpen },
     { name: t.nav.hadith, path: "/Hadith", icon: BookText },
     { name: t.nav.duas, path: "/Aid/Dua", icon: MessageSquare },
-    { name: "Prayers", path: "/Prayers", icon: Home },
-    { name: "Tajweed", path: "/Tajweed", icon: BookOpen },
-    { name: "Goals", path: "/Quran/Goals", icon: Home },
+    { name: "Prayer Times", path: "/Aid/Prayers", icon: Home },
+    { name: "Tajweed", path: "/Aid/Arabic/Tajweed", icon: BookOpen },
+    { name: "Goals", path: "/Quran/Goal", icon: Home },
   ], [t.nav]);
 
   const supportLinks = useMemo(() => [
@@ -66,7 +66,7 @@ export function SpotlightSearch() {
 
   const handleSearch = useCallback(() => {
     if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}&category=${category}`);
+      navigate(`/Search?q=${encodeURIComponent(query.trim())}&category=${category}`);
       handleClose();
     }
   }, [query, category, navigate]);

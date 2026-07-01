@@ -11,6 +11,7 @@ const Aid = () => {
     { to: "/Aid/Qibla", label: "Qibla Direction" },
     { to: "/Aid/Hijri-Calendar", label: "Hijri Calendar" },
     { to: "/Aid/Masjid-Finder", label: "Masjid Finder" },
+    { to: "/Aid/Hajj-Umrah-Guide", label: "Hajj & Umrah Guide" },
     { to: "/Aid/Zakat-Calculator", label: "Zakat Calculator" },
     { to: "/Aid/Inheritance-Calculator", label: "Inheritance Calculator" },
     { to: "/Aid/Islamic-Will", label: "Islamic Will" },

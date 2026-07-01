@@ -1,6 +1,6 @@
 // Client/Component/Search/Utility.ts
 
-import { Home, BookOpen, BookText, MessageSquare, Clock, Sparkles } from "lucide-react";
+import { Home, BookOpen, BookText, MessageSquare, Clock, Sparkles, Calculator, Compass, Gamepad2, Users, Landmark, CalendarDays } from "lucide-react";
 import { surahList, juzData } from "Server/API/Quran";
 import { hadithCollections } from "Server/API/Hadith";
 import { duaCategories, getTajweedCategories, getLetters } from "Server/API/Aid";
@@ -16,15 +16,30 @@ export const ALL_PAGES = [
   { name: "Hadith", path: "/Hadith", icon: BookText },
   { name: "Aid", path: "/Aid", icon: Sparkles },
   { name: "Duas", path: "/Aid/Dua", icon: MessageSquare },
-  { name: "Prayer Times", path: "/Aid/Prayer-Times", icon: Clock },
-  { name: "Tajweed", path: "/Aid/Tajweed", icon: BookOpen },
+  { name: "Prayer Times", path: "/Aid/Prayers", icon: Clock },
+  { name: "Tajweed", path: "/Aid/Arabic/Tajweed", icon: BookOpen },
   { name: "Arabic", path: "/Aid/Arabic", icon: BookOpen },
-  { name: "Alphabet", path: "/Aid/Alphabet", icon: BookOpen },
-  { name: "Qibla", path: "/Aid/Qibla", icon: Home },
-  { name: "Tasbih Counter", path: "/Aid/Tasbih-Counter", icon: Home },
-  { name: "Zakat Calculator", path: "/Aid/Zakat-Calculator", icon: Home },
-  { name: "Hijri Calendar", path: "/Aid/Hijri-Calendar", icon: Home },
-  { name: "Goals", path: "/Quran/Goals", icon: Home },
+  { name: "Arabic Alphabet", path: "/Aid/Arabic/Alphabet", icon: BookOpen },
+  { name: "Qibla", path: "/Aid/Qibla", icon: Compass },
+  { name: "Tasbih Counter", path: "/Aid/Tasbih", icon: Home },
+  { name: "Zakat Calculator", path: "/Aid/Zakat-Calculator", icon: Calculator },
+  { name: "Inheritance Calculator", path: "/Aid/Inheritance-Calculator", icon: Calculator },
+  { name: "Islamic Will", path: "/Aid/Islamic-Will", icon: BookText },
+  { name: "Hijri Calendar", path: "/Aid/Hijri-Calendar", icon: CalendarDays },
+  { name: "Masjid Finder", path: "/Aid/Masjid-Finder", icon: Landmark },
+  { name: "Hajj & Umrah Guide", path: "/Aid/Hajj-Umrah-Guide", icon: Compass },
+  { name: "Ummah", path: "/Aid/Ummah", icon: Users },
+  { name: "Games", path: "/Aid/Games", icon: Gamepad2 },
+  { name: "Guess Surah", path: "/Aid/Games/Guess-What/Surah", icon: Gamepad2 },
+  { name: "Guess Prophet", path: "/Aid/Games/Guess-What/Prophet", icon: Gamepad2 },
+  { name: "Goals", path: "/Quran/Goal", icon: Home },
+  { name: "99 Names of Allah", path: "/Aid/Names", icon: Sparkles },
+  { name: "How to Pray Namaz", path: "/Aid/Namaz", icon: BookOpen },
+  { name: "25 Prophets", path: "/Aid/Prophets", icon: BookOpen },
+  { name: "5 Pillars of Islam", path: "/Aid/Pillars", icon: BookOpen },
+  { name: "6 Articles of Faith", path: "/Aid/Articles", icon: BookOpen },
+  { name: "Schools & Branches", path: "/Aid/Schools", icon: BookText },
+  { name: "Q & A", path: "/Aid/Q-and-A", icon: MessageSquare },
   { name: "Feedback", path: "/Feedback", icon: MessageSquare },
   { name: "Privacy", path: "/Privacy", icon: Home },
   { name: "Terms", path: "/Terms", icon: Home },
@@ -70,20 +85,43 @@ export function getCategoryLabel(category: SearchCategory): string {
 function scoreMatch(query: string, candidates: Array<string | undefined | null>): number {
   const q = query.trim().toLowerCase();
   if (!q) return 0;
+  const qNorm = normalizeArabic(q);
+  const qTokens = qNorm.split(/[\s\-_/]+/).filter(Boolean);
   let best = 0;
   for (const raw of candidates) {
     if (!raw) continue;
     const c = raw.toLowerCase();
     const cNorm = normalizeArabic(c);
-    const qNorm = normalizeArabic(q);
+    const words = cNorm.split(/[\s\-_/]+/).filter(Boolean);
+    const acronym = words.map((w) => w[0]).join("");
     let s = 0;
     if (c === q || cNorm === qNorm) s = 100;
     else if (c.startsWith(q) || cNorm.startsWith(qNorm)) s = 80;
+    else if (acronym && acronym === qNorm) s = 72;
     else if (new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(c)) s = 60;
     else if (c.includes(q) || cNorm.includes(qNorm)) s = 40;
+    else if (qTokens.length > 1 && qTokens.every((token) => cNorm.includes(token))) s = 35;
+    else if (qTokens.length === 1 && words.some((word) => word.startsWith(qTokens[0]) || levenshtein(word, qTokens[0]) <= 1)) s = 25;
     if (s > best) best = s;
   }
   return best;
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cur = dp[j];
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+  }
+  return dp[b.length];
 }
 
 // ============= Aid index =============
@@ -162,7 +200,7 @@ function getAidIndex(): AidEntry[] {
         id: `tajweed-${cat.id}`,
         title: cat.name,
         subtitle: "Tajweed Rule",
-        path: `/Aid/Tajweed/${cat.id}`,
+        path: `/Aid/Arabic/Tajweed/${cat.id}`,
         type: "Tajweed",
         searchable: [cat.name, cat.description, "tajweed"],
       });
@@ -171,7 +209,7 @@ function getAidIndex(): AidEntry[] {
           id: `tajweed-${cat.id}-${sub.id}`,
           title: sub.name,
           subtitle: `${cat.name} · Tajweed`,
-          path: `/Aid/Tajweed/${cat.id}/${sub.id}`,
+          path: `/Aid/Arabic/Tajweed/${cat.id}/${sub.id}`,
           type: "Tajweed",
           searchable: [sub.name, sub.description],
         });
@@ -189,7 +227,7 @@ function getAidIndex(): AidEntry[] {
         title: l.name,
         subtitle: l.pronunciation ? `Letter · ${l.pronunciation}` : "Letter",
         arabicName: l.forms?.isolated,
-        path: `/Aid/Alphabet/${l.id}`,
+        path: `/Aid/Arabic/Alphabet/${l.id}`,
         type: "Letter",
         searchable: [l.name, l.pronunciation, l.forms?.isolated],
       });
@@ -200,11 +238,27 @@ function getAidIndex(): AidEntry[] {
 
   // Aid static pages
   const aidPages = [
-    { name: "Prayer Times", path: "/Aid/Prayer-Times" },
+    { name: "Prayer Times", path: "/Aid/Prayers", terms: "salah namaz prayer timetable adhan" },
     { name: "Qibla", path: "/Aid/Qibla" },
-    { name: "Tasbih Counter", path: "/Aid/Tasbih-Counter" },
+    { name: "Tasbih Counter", path: "/Aid/Tasbih", terms: "dhikr zikr counter" },
     { name: "Zakat Calculator", path: "/Aid/Zakat-Calculator" },
+    { name: "Inheritance Calculator", path: "/Aid/Inheritance-Calculator", terms: "faraid mirath shares estate" },
+    { name: "Islamic Will", path: "/Aid/Islamic-Will", terms: "wasiyyah testament bequest" },
     { name: "Hijri Calendar", path: "/Aid/Hijri-Calendar" },
+    { name: "Masjid Finder", path: "/Aid/Masjid-Finder", terms: "mosque nearby map" },
+    { name: "Hajj & Umrah Guide", path: "/Aid/Hajj-Umrah-Guide", terms: "pilgrimage ihram tawaf sai mina arafah muzdalifah" },
+    { name: "Ummah", path: "/Aid/Ummah", terms: "community posts social" },
+    { name: "Games", path: "/Aid/Games", terms: "quiz guess surah prophet" },
+    { name: "Guess Surah", path: "/Aid/Games/Guess-What/Surah", terms: "game quiz quran" },
+    { name: "Guess Prophet", path: "/Aid/Games/Guess-What/Prophet", terms: "game quiz prophets" },
+    { name: "99 Names of Allah", path: "/Aid/Names", terms: "asma ul husna" },
+    { name: "How to Pray Namaz", path: "/Aid/Namaz", terms: "salah salat prayer guide" },
+    { name: "I am Feeling", path: "/Aid/Feeling", terms: "emotions help verses" },
+    { name: "25 Prophets", path: "/Aid/Prophets", terms: "messengers stories" },
+    { name: "5 Pillars of Islam", path: "/Aid/Pillars", terms: "shahadah salah zakat sawm hajj" },
+    { name: "6 Articles of Faith", path: "/Aid/Articles", terms: "iman beliefs angels books qadar" },
+    { name: "Schools & Branches", path: "/Aid/Schools", terms: "madhhab sects branches" },
+    { name: "Q & A", path: "/Aid/Q-and-A", terms: "questions answers ask" },
   ];
   for (const p of aidPages) {
     entries.push({
@@ -213,7 +267,7 @@ function getAidIndex(): AidEntry[] {
       subtitle: "Aid Page",
       path: p.path,
       type: "Page",
-      searchable: [p.name],
+      searchable: [p.name, (p as any).terms],
     });
   }
 
@@ -236,13 +290,14 @@ export function searchByCategory(
       const allPages = [...ALL_PAGES, ...navLinks, ...supportLinks];
       for (const page of allPages) {
         const s = scoreMatch(query, [page.name, page.path]);
-        if (s > 0) {
+        const advanced = matchAnyField(query, () => [page.name, page.path]);
+        if (s > 0 || advanced(page)) {
           scored.push({
             id: page.path,
             title: page.name,
             path: page.path,
             type: "Page",
-            _score: s,
+            _score: s || 30,
           });
         }
       }
@@ -356,7 +411,8 @@ export function searchByCategory(
       const idx = getAidIndex();
       for (const e of idx) {
         const s = scoreMatch(query, e.searchable);
-        if (s > 0) {
+        const advanced = matchAnyField(query, () => e.searchable);
+        if (s > 0 || advanced(e)) {
           scored.push({
             id: e.id,
             title: e.title,
@@ -364,7 +420,7 @@ export function searchByCategory(
             arabicName: e.arabicName,
             path: e.path,
             type: e.type,
-            _score: s,
+            _score: s || 30,
           });
         }
       }
