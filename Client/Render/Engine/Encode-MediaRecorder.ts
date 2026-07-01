@@ -42,9 +42,16 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
   const ext: "mp4" | "webm" = mime.startsWith("video/mp4") ? "mp4" : "webm";
 
   const stream = out.captureStream(0);
-  const videoTrack = stream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+  let videoTrack = stream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+  let manualFrameCapture = typeof videoTrack?.requestFrame === "function";
+  if (!manualFrameCapture) {
+    stream.getTracks().forEach((track) => track.stop());
+  }
+  const recordingStream = manualFrameCapture ? stream : out.captureStream(fps);
+  videoTrack = recordingStream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+  manualFrameCapture = typeof videoTrack?.requestFrame === "function";
   const chunks: BlobPart[] = [];
-  const rec = new MediaRecorder(stream, {
+  const rec = new MediaRecorder(recordingStream, {
     mimeType: mime,
     videoBitsPerSecond: opts.videoBitrate ?? 4_000_000,
   });
@@ -81,11 +88,15 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
         await seekVideoTo(scene.introVideo, tMs / 1000);
       } else if (tMs >= timeline.bodyEndMs && scene.outroVideo) {
         await seekVideoTo(scene.outroVideo, (tMs - timeline.bodyEndMs) / 1000);
+      } else if (scene.bgVideo) {
+        const dur = scene.bgVideo.duration || 0;
+        const bodySec = (tMs - timeline.introMs) / 1000;
+        await seekVideoTo(scene.bgVideo, dur > 0 ? bodySec % dur : bodySec);
       }
 
       paintFrame(paintCtx, scene, timeline, tMs);
       if (scratch) outCtx.drawImage(scratch as any, 0, 0);
-      videoTrack?.requestFrame?.();
+      if (manualFrameCapture) videoTrack.requestFrame?.();
 
       if (f % 4 === 0) onProgress?.(f / totalFrames);
 
@@ -93,6 +104,7 @@ async function run(opts: RunArgs): Promise<EncodeResult> {
     }
   } finally {
     if (rec.state !== "inactive") rec.stop();
+    recordingStream.getTracks().forEach((track) => track.stop());
   }
 
   const raw = await done;
