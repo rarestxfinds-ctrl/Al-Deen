@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "Server/Integration/Supabase/client";
+import { isSupabaseConfigured, supabase } from "Server/Integration/Supabase/client";
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +19,7 @@ interface AuthContextType {
 
 const DUMMY_USER_KEY = "dummy-auth-user";
 const LOCAL_SIGNUP_USER_KEY = "local-signup-user";
+const LOCAL_PASSWORD_PREFIX = "local-auth-password:";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -38,8 +39,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setUser(restoreLocalUser());
+      setSession(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const releaseLoading = window.setTimeout(() => {
+      if (mounted) {
+        setUser((current) => current ?? restoreLocalUser());
+        setIsLoading(false);
+      }
+    }, 2500);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (!mounted) return;
         setSession(session);
         if (session?.user) {
           try {
@@ -55,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       if (session) {
         setSession(session);
         setUser(session.user);
@@ -62,9 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(restoreLocalUser());
       }
       setIsLoading(false);
-    });
+    }).catch(() => {
+      if (!mounted) return;
+      setUser(restoreLocalUser());
+      setSession(null);
+      setIsLoading(false);
+    }).finally(() => clearTimeout(releaseLoading));
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(releaseLoading);
+      subscription.unsubscribe();
+    };
   }, [restoreLocalUser]);
 
   const signInAsDummy = useCallback(async () => {
@@ -87,6 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
+      if (!isSupabaseConfigured) {
+        const raw = localStorage.getItem(LOCAL_SIGNUP_USER_KEY);
+        const savedPassword = localStorage.getItem(`${LOCAL_PASSWORD_PREFIX}${email.toLowerCase()}`);
+        if (!raw || savedPassword !== password) throw new Error("Invalid login credentials");
+        const localUser = JSON.parse(raw) as User;
+        setSession(null);
+        setUser(localUser);
+        return { error: null };
+      }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       try {
@@ -108,6 +144,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     extra?: { username?: string; first_name?: string; last_name?: string }
   ) => {
     try {
+      if (!isSupabaseConfigured) {
+        const localUser = {
+          id: `local-${crypto.randomUUID?.() ?? Date.now()}`,
+          email,
+          user_metadata: {
+            display_name: displayName || [extra?.first_name, extra?.last_name].filter(Boolean).join(" "),
+            username: extra?.username,
+            first_name: extra?.first_name,
+            last_name: extra?.last_name,
+          },
+          app_metadata: { provider: "local" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as unknown as User;
+        localStorage.setItem(LOCAL_SIGNUP_USER_KEY, JSON.stringify(localUser));
+        localStorage.setItem(`${LOCAL_PASSWORD_PREFIX}${email.toLowerCase()}`, password);
+        setSession(null);
+        setUser(localUser);
+        return { error: null, needsEmailConfirmation: false };
+      }
       const { data, error } = await supabase.auth.signUp({
         email, password,
         options: {
@@ -158,6 +214,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem(DUMMY_USER_KEY);
       localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(LOCAL_PASSWORD_PREFIX)) localStorage.removeItem(key);
+      });
     } catch { /* ignore */ }
     await supabase.auth.signOut();
     setUser(null);
