@@ -102,16 +102,6 @@ export default function SignUp() {
     navigate("/");
   };
 
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[80vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <Container className="w-full max-w-md mx-auto !rounded-[48px] p-8 sm:p-10 mt-0 space-y-6">
@@ -197,11 +187,11 @@ export default function SignUp() {
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={!agreeTerms || isLoading}
+            disabled={!agreeTerms || isLoading || authLoading}
             variant="outline"
             className="w-full font-bold"
           >
-            {isLoading && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+            {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
             Create Account
           </Button>
         </form>
