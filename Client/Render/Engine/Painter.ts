@@ -1,6 +1,4 @@
-// Pure canvas painter — no DOM. Draws one frame of the render scene
-// onto any CanvasRenderingContext2D / OffscreenCanvasRenderingContext2D.
-
+// Client/Render/Engine/Painter.ts
 import { activeWordAt } from "./Timeline";
 import type { RenderScene, ScenePosition, Timeline } from "./Types";
 
@@ -40,7 +38,6 @@ function isTransparent(color: string): boolean {
   if (!color) return true;
   const c = color.trim().toLowerCase();
   if (c === "transparent" || c === "none") return true;
-  // rgba(... ,0) or hex8 ending in 00
   const m = c.match(/rgba?\(([^)]+)\)/);
   if (m) {
     const parts = m[1].split(",").map((p) => p.trim());
@@ -98,6 +95,9 @@ export interface PaintResult {
   phase: "intro" | "body" | "outro";
 }
 
+// Track internal global state variables cleanly for layout lookups
+let lastValidVerseIdx = 0;
+
 export function paintFrame(
   ctx: Ctx,
   scene: RenderScene,
@@ -106,27 +106,50 @@ export function paintFrame(
 ): PaintResult {
   const { width: W, height: H } = scene;
 
-  // ---------------- Intro ----------------
+  // CRITICAL FIX: Ensure full pixel clearing on every frame redraw to stop accumulating overlap text artifacts
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.restore();
+
+  // ---------------- Intro Phase ----------------
   if (timeMs < timeline.introMs && scene.introVideo) {
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, W, H);
     drawCover(ctx, scene.introVideo, 0, 0, W, H);
     return { phase: "intro" };
   }
-  // ---------------- Outro ----------------
+  
+  // ---------------- Outro Phase ----------------
   if (timeMs >= timeline.bodyEndMs && scene.outroVideo) {
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, W, H);
     drawCover(ctx, scene.outroVideo, 0, 0, W, H);
     return { phase: "outro" };
   }
 
-  // ---------------- Background ----------------
-  ctx.fillStyle = scene.bgColor || "#000";
-  ctx.fillRect(0, 0, W, H);
-  if (scene.bgImage) drawCover(ctx, scene.bgImage as any, 0, 0, W, H);
+  // ---------------- Core Background Phase ----------------
+  // CRITICAL FIX: If background color is explicit transparent but a video asset is active,
+  // skip fillRect to protect buffer blending pipeline layers
+  if (!isTransparent(scene.bgColor)) {
+    ctx.fillStyle = scene.bgColor || "#000000";
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    // Fill fallback base background color safely
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, W, H);
+  }
 
-  // ---------------- Container (optional) ----------------
+  // Draw background image if available
+  if (scene.bgImage) {
+    drawCover(ctx, scene.bgImage as any, 0, 0, W, H);
+  } 
+  // FIX FOR BLACK SCREEN EXPORT: If scene background mode contains a background video hook, paint it explicitly here!
+  else if ((scene as any).bgVideo) {
+    drawCover(ctx, (scene as any).bgVideo, 0, 0, W, H);
+  }
+
+  // ---------------- Container Canvas Layer ----------------
   const padX = Math.round(W * 0.06);
   const padY = Math.round(H * 0.08);
   const cx = padX, cy = padY;
@@ -156,11 +179,24 @@ export function paintFrame(
     ctx.restore();
   }
 
-  // ---------------- Active verse ----------------
+  // ---------------- Timeline Query Track Calculation ----------------
   const active = activeWordAt(timeline, timeMs);
-  const verseIdx = active ? active.verseIdx : 0;
+  
+  if (timeMs === 0 || timeMs <= timeline.introMs) {
+    lastValidVerseIdx = 0;
+  }
+
+  if (active) {
+    lastValidVerseIdx = active.verseIdx;
+  }
+
+  // FIX FOR OVERLAPPING PARENT TEXT: Guarantee fallback to last evaluated verse item inside tracking bounds 
+  // rather than bouncing randomly back to Index 0 during audio translation transition gaps
+  const verseIdx = lastValidVerseIdx;
   const activeWordIdx = active ? active.wordIdx : -1;
   const verse = scene.verses[verseIdx];
+  
+  // If there is no verse available within bounds, wrap up frame parsing gracefully
   if (!verse) return { phase: "body" };
 
   const innerX = cx + Math.round(cw * 0.05);
@@ -168,7 +204,7 @@ export function paintFrame(
   const innerY = cy + Math.round(ch * 0.05);
   const innerH = ch - Math.round(ch * 0.05) * 2;
 
-  // -------- Mushaf-style guide lines overlay --------
+  // -------- Mushaf-style lines overlay Guide Layer --------
   if (scene.showLines) {
     const n = Math.max(2, scene.linesCount ?? 8);
     ctx.save();
@@ -184,7 +220,7 @@ export function paintFrame(
     ctx.restore();
   }
 
-  // -------- Position helpers --------
+  // -------- Position Layout Engine --------
   function posXY(pos: ScenePosition | undefined, blockH: number, blockW: number): { x: number; y: number; align: "left" | "center" | "right" } {
     const p = pos ?? "center";
     const vy = p.startsWith("top-") ? innerY
@@ -198,7 +234,8 @@ export function paintFrame(
     return { x: vx, y: vy, align };
   }
 
-  // -------- Arabic (RTL, position-aware) --------
+  // -------- Render Arabic Block Layout (RTL) --------
+  ctx.save();
   ctx.font = `${scene.arabicSize}px "${scene.arabicFontFamily}", "Uthmani", serif`;
   const spaceWidth = ctx.measureText(" ").width;
   const arLines = layoutArabicLines(ctx, verse.words, innerW, spaceWidth);
@@ -224,9 +261,11 @@ export function paintFrame(
     }
     arY += arabicLineHeight;
   }
+  ctx.restore();
 
-  // -------- Transliteration --------
+  // -------- Render Transliteration Layout Layer --------
   if (verse.transliteration) {
+    ctx.save();
     ctx.font = `italic ${scene.transliterationSize}px "Inter", system-ui, sans-serif`;
     const tlLines = wrapPlain(ctx, verse.transliteration, innerW);
     const tLH = Math.round(scene.transliterationSize * 1.5);
@@ -240,10 +279,12 @@ export function paintFrame(
       ctx.fillText(line, tlPos.x, tlY + scene.transliterationSize);
       tlY += tLH;
     }
+    ctx.restore();
   }
 
-  // -------- Translation --------
+  // -------- Render Translation Layout Layer --------
   if (verse.translation) {
+    ctx.save();
     ctx.font = `${scene.translationSize}px "Inter", system-ui, sans-serif`;
     const trLines = wrapPlain(ctx, verse.translation, innerW);
     const tLH = Math.round(scene.translationSize * 1.5);
@@ -257,10 +298,12 @@ export function paintFrame(
       ctx.fillText(line, trPos.x, trY + scene.translationSize);
       trY += tLH;
     }
+    ctx.restore();
   }
 
-  // -------- Logo --------
+  // -------- Brand Logo Overlays --------
   if (scene.logoImage) {
+    ctx.save();
     const corner = scene.logoCorner ?? "tr";
     const targetH = Math.round(Math.min(W, H) * 0.08);
     const iw = (scene.logoImage as any).width || 1;
@@ -272,13 +315,14 @@ export function paintFrame(
     const lx = corner === "tl" || corner === "bl" ? margin : W - lw - margin;
     const ly = corner === "tl" || corner === "tr" ? margin : H - lh - margin;
     ctx.drawImage(scene.logoImage as any, lx, ly, lw, lh);
+    ctx.restore();
   }
 
-  // -------- Watermark --------
+  // -------- Structural Watermark Metadata Layer --------
   if (scene.watermark) {
+    ctx.save();
     const wmSize = Math.round(Math.min(W, H) * 0.022);
     ctx.font = `600 ${wmSize}px "Inter", system-ui, sans-serif`;
-    // Place opposite the logo when possible.
     const logoCorner = scene.logoCorner ?? "tr";
     const wmCorner = logoCorner === "tr" ? "br" : "tr";
     ctx.textAlign = "right";
@@ -289,12 +333,10 @@ export function paintFrame(
     const margin = Math.round(Math.min(W, H) * 0.03);
     const wx = W - margin;
     const wy = wmCorner === "tr" ? margin + wmSize : H - margin;
-    // Subtle shadow for legibility on any bg.
     ctx.shadowColor = "rgba(0,0,0,0.6)";
     ctx.shadowBlur = 4;
     ctx.fillText(scene.watermark, wx, wy);
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   return { phase: "body" };

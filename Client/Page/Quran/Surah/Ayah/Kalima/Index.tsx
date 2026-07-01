@@ -7,7 +7,7 @@ import { NotesDialog } from "Client/Component/Dialog/Notes";
 import { ShareDialog } from "Client/Component/Dialog/Share";
 import { SurahInfoDialog } from "Client/Component/Dialog/Surah-Info";
 import { TafsirDialog } from "Client/Component/Dialog/Tafsir";
-import { RenderSurahDialog } from "Client/Component/Dialog/Render-Surah";
+import { RenderSurahDialog } from "Client/Component/Dialog/Render-Quran/Index";
 
 import {
   surahList,

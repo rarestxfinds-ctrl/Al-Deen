@@ -16,6 +16,7 @@ export interface RenderScene {
   // Background
   bgColor: string;
   bgImage?: HTMLImageElement | ImageBitmap | null;
+  bgVideo?: HTMLVideoElement | null;
 
   // Container card
   containerBg: string;

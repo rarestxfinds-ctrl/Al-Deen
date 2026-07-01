@@ -16,7 +16,7 @@ import { useReadingSession } from "Client/Hook/Use-Reading-Session";
 import { useQuranGoals } from "Client/Hook/Use-Quran-Goals";
 import { Button } from "Client/Component/UI/button";
 import { TafsirDialog } from "Client/Component/Dialog/Tafsir";
-import { RenderSurahDialog } from "Client/Component/Dialog/Render-Surah";
+import { RenderSurahDialog } from "Client/Component/Dialog/Render-Quran/Index";
 import { Container } from "Client/Component/UI/Container";
 import { AlertCircle, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";

@@ -1,6 +1,4 @@
-// Primary encoder: OffscreenCanvas + WebCodecs VideoEncoder (H.264) + mp4-muxer.
-// Hardware accelerated where the platform allows. No DOM, no MediaRecorder.
-
+// Client/Render/Engine/WebCodecs.ts
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 import { paintFrame } from "./Painter";
 import type { EncodeOptions, EncodeResult } from "./Types";
@@ -16,11 +14,10 @@ export function isWebCodecsSupported(): boolean {
 }
 
 async function pickCodec(width: number, height: number, fps: number) {
-  // Try High → Main → Baseline at the requested resolution.
   const tryConfigs = [
-    { codec: "avc1.640028", profile: "high" },     // High@4.0
-    { codec: "avc1.4D4028", profile: "main" },     // Main@4.0
-    { codec: "avc1.42E01F", profile: "baseline" }, // Baseline@3.1
+    { codec: "avc1.640028", profile: "high" },
+    { codec: "avc1.4D4028", profile: "main" },
+    { codec: "avc1.42E01F", profile: "baseline" },
   ];
   for (const c of tryConfigs) {
     try {
@@ -32,7 +29,7 @@ async function pickCodec(width: number, height: number, fps: number) {
         avc: { format: "avc" },
       });
       if (support?.supported) return c.codec;
-    } catch { /* try next */ }
+    } catch { /* parse fallback next */ }
   }
   return null;
 }
@@ -75,9 +72,8 @@ export async function encodeWithWebCodecs(opts: EncodeOptions): Promise<EncodeRe
 
   const totalFrames = Math.max(1, Math.round((timeline.totalMs / 1000) * fps));
   const frameDurUs = Math.round(1_000_000 / fps);
-  let lastPhase: "intro" | "body" | "outro" | null = null;
 
-  // Pre-attach video elements to DOM (offscreen) so they can decode frames.
+  // Pre-attach background compilation tracks to offscreen document fragments
   const attachVideo = (v: HTMLVideoElement | null | undefined) => {
     if (!v) return;
     if (!v.isConnected) {
@@ -94,8 +90,10 @@ export async function encodeWithWebCodecs(opts: EncodeOptions): Promise<EncodeRe
   const detachVideo = (v: HTMLVideoElement | null | undefined) => {
     if (v && v.isConnected) v.remove();
   };
+  
   attachVideo(scene.introVideo);
   attachVideo(scene.outroVideo);
+  if ((scene as any).bgVideo) attachVideo((scene as any).bgVideo);
 
   const seekVideoTo = (v: HTMLVideoElement, sec: number) =>
     new Promise<void>((resolve) => {
@@ -112,14 +110,17 @@ export async function encodeWithWebCodecs(opts: EncodeOptions): Promise<EncodeRe
       if (shouldCancel?.()) break;
       const tMs = (f / fps) * 1000;
 
+      // Synchronize video timeline layers frame-by-frame
       if (tMs < timeline.introMs && scene.introVideo) {
         await seekVideoTo(scene.introVideo, tMs / 1000);
       } else if (tMs >= timeline.bodyEndMs && scene.outroVideo) {
         await seekVideoTo(scene.outroVideo, (tMs - timeline.bodyEndMs) / 1000);
+      } else if ((scene as any).bgVideo) {
+        // If a custom layout looping background video element is declared inside body
+        await seekVideoTo((scene as any).bgVideo, (tMs - timeline.introMs) / 1000);
       }
 
-      const res = paintFrame(ctx as any, scene, timeline, tMs);
-      lastPhase = res.phase;
+      paintFrame(ctx as any, scene, timeline, tMs);
 
       const vf = new VideoFrame(canvas as any, {
         timestamp: f * frameDurUs,
@@ -140,6 +141,7 @@ export async function encodeWithWebCodecs(opts: EncodeOptions): Promise<EncodeRe
   } finally {
     detachVideo(scene.introVideo);
     detachVideo(scene.outroVideo);
+    if ((scene as any).bgVideo) detachVideo((scene as any).bgVideo);
   }
 
   onProgress?.(1);

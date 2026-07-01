@@ -20,7 +20,7 @@ interface Props {
 const CUSTOM_DETAILS: { label: string; value: string }[] = [
   { label: "Bank (IBAN)",      value: "GB00 EXAM PLE0 1234 5678 90" },
   { label: "SWIFT / BIC",      value: "EXAMPLEXXX" },
-  { label: "Beneficiary",      value: "Al-Din.org" },
+  { label: "Beneficiary",      value: "Al-Deen.org" },
   { label: "Bitcoin (BTC)",    value: "bc1qexampleexampleexampleexample" },
   { label: "Ethereum (ETH)",   value: "0xExampleExampleExampleExampleExample" },
 ];
