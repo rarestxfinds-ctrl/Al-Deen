@@ -71,7 +71,7 @@ export default function SignUp() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, `${firstName} ${lastName}`.trim(), {
+    const { error, needsEmailConfirmation } = await signUp(email, password, `${firstName} ${lastName}`.trim(), {
       username: username.trim(), first_name: firstName.trim(), last_name: lastName.trim(),
     });
     setIsLoading(false);
@@ -95,7 +95,9 @@ export default function SignUp() {
 
     toast({
       title: "Account created!",
-      description: "Welcome to Al-Deen.org!",
+      description: needsEmailConfirmation
+        ? "You're signed in here. Check your email when you can to finish verification."
+        : "Welcome to Al-Deen.org!",
     });
     navigate("/");
   };

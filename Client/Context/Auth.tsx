@@ -12,12 +12,13 @@ interface AuthContextType {
     password: string,
     displayName: string,
     extra?: { username?: string; first_name?: string; last_name?: string }
-  ) => Promise<{ error: Error | null }>;
+  ) => Promise<{ error: Error | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   signInAsDummy: () => Promise<{ error: Error | null }>;
 }
 
 const DUMMY_USER_KEY = "dummy-auth-user";
+const LOCAL_SIGNUP_USER_KEY = "local-signup-user";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,11 +27,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const restoreLocalUser = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(LOCAL_SIGNUP_USER_KEY) || localStorage.getItem(DUMMY_USER_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as User;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        if (session?.user) {
+          try {
+            localStorage.removeItem(DUMMY_USER_KEY);
+            localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
+          } catch { /* ignore */ }
+          setUser(session.user);
+        } else {
+          setUser(restoreLocalUser());
+        }
         setIsLoading(false);
       }
     );
@@ -40,17 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session.user);
       } else {
-        // Restore dummy user if present
-        try {
-          const raw = localStorage.getItem(DUMMY_USER_KEY);
-          if (raw) setUser(JSON.parse(raw) as User);
-        } catch { /* ignore */ }
+        setUser(restoreLocalUser());
       }
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [restoreLocalUser]);
 
   const signInAsDummy = useCallback(async () => {
     const dummy = {
@@ -62,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       created_at: new Date().toISOString(),
     } as unknown as User;
     try {
+      localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
       localStorage.setItem(DUMMY_USER_KEY, JSON.stringify(dummy));
     } catch { /* ignore */ }
     setUser(dummy);
@@ -71,8 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      try {
+        localStorage.removeItem(DUMMY_USER_KEY);
+        localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
+      } catch { /* ignore */ }
+      setSession(data.session);
+      setUser(data.user);
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -86,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     extra?: { username?: string; first_name?: string; last_name?: string }
   ) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email, password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
@@ -99,14 +121,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
       if (error) throw error;
-      return { error: null };
+
+      if (data.session) {
+        try {
+          localStorage.removeItem(DUMMY_USER_KEY);
+          localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
+        } catch { /* ignore */ }
+        await supabase.auth.setSession(data.session);
+        setSession(data.session);
+        setUser(data.session.user);
+        return { error: null, needsEmailConfirmation: false };
+      }
+
+      if (data.user) {
+        const localUser = data.user as User;
+        try {
+          localStorage.removeItem(DUMMY_USER_KEY);
+          localStorage.setItem(LOCAL_SIGNUP_USER_KEY, JSON.stringify(localUser));
+        } catch { /* ignore */ }
+        setSession(null);
+        setUser(localUser);
+        return { error: null, needsEmailConfirmation: true };
+      }
+
+      const retry = await supabase.auth.signInWithPassword({ email, password });
+      if (retry.error) throw retry.error;
+      setSession(retry.data.session);
+      setUser(retry.data.user);
+      return { error: null, needsEmailConfirmation: false };
     } catch (error) {
       return { error: error as Error };
     }
   }, []);
 
   const signOut = useCallback(async () => {
-    try { localStorage.removeItem(DUMMY_USER_KEY); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(DUMMY_USER_KEY);
+      localStorage.removeItem(LOCAL_SIGNUP_USER_KEY);
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

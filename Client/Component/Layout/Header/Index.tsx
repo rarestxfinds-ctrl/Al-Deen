@@ -162,7 +162,7 @@ export const Header = memo(function Header() {
   };
 
   const handleSeeAll = () => {
-    navigate(`/search?q=${encodeURIComponent(query)}&category=${category}`);
+    navigate(`/Search?q=${encodeURIComponent(query)}&category=${category}`);
     closeSearchMode();
   };
 

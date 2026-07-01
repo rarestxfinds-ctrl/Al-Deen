@@ -42,6 +42,7 @@ import PrayerTimes      from "Client/Page/Aid/Prayer-Times";
 import QiblaPage        from "Client/Page/Aid/Qibla";
 import HijriCalendar    from "Client/Page/Aid/Hijri-Calendar";
 import MasjidFinder     from "Client/Page/Aid/Masjid-Finder";
+import HajjUmrahGuide   from "Client/Page/Aid/Hajj-Umrah-Guide";
 import ZakatCalculator  from "Client/Page/Aid/Zakat-Calculator";
 import InheritanceCalculator from "Client/Page/Aid/Inheritance-Calculator";
 import IslamicWill from "Client/Page/Aid/Islamic-Will";
@@ -145,6 +146,7 @@ const App = () => (
                   <Route path="/Aid/Qibla" element={<QiblaPage />} />
                   <Route path="/Aid/Hijri-Calendar" element={<HijriCalendar />} />
                   <Route path="/Aid/Masjid-Finder" element={<MasjidFinder />} />
+                  <Route path="/Aid/Hajj-Umrah-Guide" element={<HajjUmrahGuide />} />
                   <Route path="/Aid/Zakat-Calculator" element={<ZakatCalculator />} />
                   <Route path="/Aid/Inheritance-Calculator" element={<InheritanceCalculator />} />
                   <Route path="/Aid/Islamic-Will" element={<IslamicWill />} />

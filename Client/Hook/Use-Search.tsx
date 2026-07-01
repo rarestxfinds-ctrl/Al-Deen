@@ -1,6 +1,6 @@
 // Client/Hook/Use-Search.ts
 import { useState, useEffect } from "react";
-import { searchByCategory } from "Client/Component/Search/Utility";
+import { ALL_PAGES, searchByCategory } from "Client/Component/Search/Utility";
 import type { SearchCategory, SearchResult } from "Client/Component/Search/Types";
 
 export function useSearch(initialCategory: SearchCategory = "pages") {
@@ -9,14 +9,8 @@ export function useSearch(initialCategory: SearchCategory = "pages") {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Fake navLinks/supportLinks for demo – replace with actual data
-  const navLinks = [
-    { name: "Home", path: "/", icon: null },
-    { name: "Quran", path: "/Quran", icon: null },
-  ];
-  const supportLinks = [
-    { name: "Feedback", path: "/Feedback", icon: null },
-  ];
+  const navLinks = ALL_PAGES;
+  const supportLinks: typeof ALL_PAGES = [];
 
   useEffect(() => {
     if (query.length === 0) {

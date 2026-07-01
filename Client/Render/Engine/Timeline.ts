@@ -14,6 +14,9 @@ export interface BuildTimelineArgs {
   outroMs: number;
 }
 
+let lastTimeline: Timeline | null = null;
+let lastIndex = 0;
+
 /**
  * Parse "start-end" (ms) range strings. Falls back to linear interpolation
  * across the verse's full duration when word counts mismatch.
@@ -111,8 +114,25 @@ export async function buildTimeline(args: BuildTimelineArgs): Promise<Timeline> 
 /** Locate the active word at time t (binary-ish; word counts are small). */
 export function activeWordAt(timeline: Timeline, timeMs: number): TimelineWord | null {
   if (timeMs < timeline.bodyStartMs || timeMs >= timeline.bodyEndMs) return null;
-  for (const w of timeline.words) {
-    if (timeMs >= w.startMs && timeMs < w.endMs) return w;
+  if (lastTimeline !== timeline) {
+    lastTimeline = timeline;
+    lastIndex = 0;
+  }
+
+  const cached = timeline.words[lastIndex];
+  if (cached && timeMs >= cached.startMs && timeMs < cached.endMs) return cached;
+
+  let lo = 0;
+  let hi = timeline.words.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const w = timeline.words[mid];
+    if (timeMs < w.startMs) hi = mid - 1;
+    else if (timeMs >= w.endMs) lo = mid + 1;
+    else {
+      lastIndex = mid;
+      return w;
+    }
   }
   return timeline.words[timeline.words.length - 1] ?? null;
 }

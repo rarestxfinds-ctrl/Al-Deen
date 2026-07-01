@@ -9,6 +9,7 @@ declare const VideoFrame: any;
 export function isWebCodecsSupported(): boolean {
   return (
     typeof (globalThis as any).VideoEncoder !== "undefined" &&
+    typeof (globalThis as any).VideoFrame !== "undefined" &&
     typeof (globalThis as any).OffscreenCanvas !== "undefined"
   );
 }
