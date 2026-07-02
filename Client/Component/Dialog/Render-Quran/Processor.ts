@@ -1,7 +1,7 @@
 // Client/Component/Dialog/Render-Processor.ts
 import { type Config } from "./Types";
-import { type AssembledVerse } from "Server/API/Quran";
-import { buildTimeline, renderToVideo, type RenderVerse, type RenderScene } from "Client/Render/Engine/Index";
+import { type AssembledVerse, getPageForVerse } from "Server/API/Quran";
+import { buildTimeline, type RenderVerse, type RenderScene } from "Client/Render/Engine/Index"; // client-safe barrel only
 import { pageFontFamily } from "./Types";
 
 interface RenderArgs {
@@ -16,128 +16,51 @@ interface RenderArgs {
   shouldCancel: () => boolean;
 }
 
+const RENDER_SERVICE_URL = (import.meta.env.VITE_RENDER_SERVICE_URL as string | undefined)?.replace(/\/+$/, "");
+
 export async function processVideoRender({
   cfg, ecfg, verses, extraTranslations, extraTransliterations, previewSize, colors, setProgress, shouldCancel
-}: RenderArgs) {
-  
-  // Asynchronous asset loader with robust tracking states
-  const loadVideo = (url: string): Promise<HTMLVideoElement | null> => {
-    if (!url) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      const v = document.createElement("video");
-      v.muted = true;
-      v.playsInline = true;
-      v.preload = "auto";
-      v.crossOrigin = "anonymous";
-      
-      let resolved = false;
-      const handleSuccess = () => {
-        if (resolved) return;
-        resolved = true;
-        resolve(v);
-      };
-      const handleFail = () => {
-        if (resolved) return;
-        resolved = true;
-        resolve(null);
-      };
+}: RenderArgs): Promise<{ url: string; ext: string; size: number }> {
 
-      v.addEventListener("loadedmetadata", handleSuccess, { once: true });
-      v.addEventListener("loadeddata", handleSuccess, { once: true });
-      v.addEventListener("error", handleFail, { once: true });
-      
-      v.src = url;
-      v.load(); 
-
-      setTimeout(() => {
-        if (!resolved) {
-          if (v.readyState >= 1 && v.duration) {
-            handleSuccess();
-          } else {
-            handleFail();
-          }
-        }
-      }, 6000); // 6-second safety buffer ceiling for heavy video backgrounds
-    });
-  };
-
-  const loadImage = (url: string): Promise<HTMLImageElement | null> => {
-    if (!url) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-  };
-
-  // FETCH CONCURRENTLY: Now loading the continuous loop background video asset alongside the others!
-  const [introVideo, outroVideo, bgVideo, bgImg, containerImg, logoImg] = await Promise.all([
-    cfg.addIntro && cfg.introUrl ? loadVideo(cfg.introUrl) : Promise.resolve(null),
-    cfg.addOutro && cfg.outroUrl ? loadVideo(cfg.outroUrl) : Promise.resolve(null),
-    cfg.bgKind === "video" && cfg.bgUrl ? loadVideo(cfg.bgUrl) : Promise.resolve(null), // <-- ADDED
-    cfg.bgKind === "image" && cfg.bgUrl ? loadImage(cfg.bgUrl) : Promise.resolve(null),
-    cfg.containerBgKind === "image" && cfg.containerBgUrl ? loadImage(cfg.containerBgUrl) : Promise.resolve(null),
-    cfg.logoUrl ? loadImage(cfg.logoUrl) : Promise.resolve(null),
-  ]);
+  if (!RENDER_SERVICE_URL) {
+    throw new Error("VITE_RENDER_SERVICE_URL is not set — check your .env and restart the dev server.");
+  }
 
   // Dynamic data index mappings
-  const primaryTr = ecfg.translations.find((t) => t !== "None");
-  const primaryTl = ecfg.transliterations.find((t) => t !== "None");
+  const primaryTr = ecfg.translations.find((t: string) => t !== "None");
+  const primaryTl = ecfg.transliterations.find((t: string) => t !== "None");
   const trArr = primaryTr ? (extraTranslations[primaryTr] ?? []) : [];
   const tlArr = primaryTl ? (extraTransliterations[primaryTl] ?? []) : [];
 
-  const renderVerses: RenderVerse[] = verses.map((v) => {
-    const index = v.verseNumber - 1;
+  const renderVerses: RenderVerse[] = verses.map((v, i) => {
+    // For per-page KFGQPC variants, resolve which mushaf page this verse
+    // falls on and use the page-specific font family. For plain
+    // uthmani/indopak there's no per-page variant, so this is a no-op.
+    const page = getPageForVerse(cfg.surahId, v.verseNumber);
+    const arabicFontFamily = pageFontFamily(ecfg.font, cfg.surahId, v.verseNumber) ?? ecfg.font;
+
     return {
       verseNumber: v.verseNumber,
       arabic: v.arabic,
       words: v.words,
-      translation: primaryTr ? (trArr[index] ?? v.translation) : v.translation,
-      transliteration: primaryTl ? (tlArr[index] ?? v.transliteration) : v.transliteration,
+      translation: primaryTr ? (trArr[i] ?? v.translation) : v.translation,
+      transliteration: primaryTl ? (tlArr[i] ?? v.transliteration) : v.transliteration,
+      arabicFontFamily,
+      mushafPage: page,
     };
   });
-
-  const arabicFontFamily = pageFontFamily(ecfg.font, cfg.surahId, verses[0]?.verseNumber) ?? "Uthmani";
-  try {
-    if (document.fonts) await document.fonts.ready;
-  } catch (e) {
-    console.warn("Font pre-activation skipped:", e);
-  }
-
-  const reciterFolder = cfg.reciter.replace(/\s+/g, "_").replace(/'/g, "");
 
   const timeline = await buildTimeline({
     surahId: cfg.surahId,
     verses: renderVerses,
-    reciter: reciterFolder,
+    reciter: cfg.reciter.replace(/\s+/g, "_").replace(/'/g, ""),
     fallbackPerWordMs: 450,
-    introMs: introVideo?.duration ? Math.round(introVideo.duration * 1000) : 0,
-    outroMs: outroVideo?.duration ? Math.round(outroVideo.duration * 1000) : 0,
   });
 
-  // Strict structural background state evaluation switches
-  const isVideoBgActive = cfg.bgKind === "video" && !!bgVideo;
-  const isImageBgActive = cfg.bgKind === "image" && !!bgImg;
-
-  // Build final descriptor packet payload 
   const scene: RenderScene = {
     width: previewSize.w,
     height: previewSize.h,
-    
-    // Clear flat color and image if continuous tracking video background handles the render frame loop
-    bgColor: isVideoBgActive ? "transparent" : cfg.bgColor,
-    bgImage: isVideoBgActive ? null : (isImageBgActive ? bgImg : null),
-    
-    // Nested content blocks
-    containerBg: cfg.containerBgKind === "image" && containerImg ? "transparent" : cfg.containerBg,
-    containerBgImage: cfg.containerBgKind === "image" ? containerImg : null,
-    
-    borderColor: cfg.borderColor,
-    borderWidth: cfg.borderWidth,
-    borderRadius: cfg.borderRadius,
-    arabicFontFamily,
+    arabicFontFamily: pageFontFamily(ecfg.font, cfg.surahId, renderVerses[0]?.verseNumber ?? 1) ?? ecfg.font ?? "Uthmani",
     arabicSize: Math.round((previewSize.h / 1080) * ecfg.arabicSize * 3),
     translationSize: Math.round((previewSize.h / 1080) * ecfg.translationSize * 2),
     transliterationSize: Math.round((previewSize.h / 1080) * ecfg.transliterationSize * 2),
@@ -146,28 +69,48 @@ export async function processVideoRender({
     transliterationColor: colors.transliterationCol,
     highlightColor: colors.highlightCol,
     verses: renderVerses,
-    watermark: cfg.showWatermark ? cfg.watermarkText : "",
-    logoImage: logoImg,
-    logoCorner: cfg.logoCorner,
     arabicPosition: cfg.arabicPosition,
     translationPosition: cfg.translationPosition,
     transliterationPosition: cfg.transliterationPosition,
-    showLines: cfg.showLines,
-    linesCount: cfg.linesCount,
-    
-    // Media timeline video objects mapped downstream to canvas painter tracks
-    introVideo,
-    outroVideo,
-    bgVideo: isVideoBgActive ? bgVideo : null // <-- ATTACHED SAFELY TO PASSTHROUGH NODE
   };
 
-  return renderToVideo({
-    scene,
-    timeline,
-    fps: cfg.exportFormat === "mp4" ? 30 : 24,
-    format: cfg.exportFormat,
-    videoBitrate: 4_000_000,
-    onProgress: setProgress,
-    shouldCancel,
+  const hasLocalBgFile = !!cfg.bgFile;
+  const bgIsRemoteUrl = !hasLocalBgFile && !!cfg.bgUrl && !cfg.bgUrl.startsWith("blob:");
+  if (!hasLocalBgFile && !bgIsRemoteUrl) {
+    throw new Error("No background video/image set.");
+  }
+
+  if (shouldCancel()) throw new Error("Render cancelled");
+
+  const form = new FormData();
+  form.append("scene", JSON.stringify(scene));
+  form.append("timeline", JSON.stringify(timeline));
+  form.append("fps", String(cfg.exportFormat === "mp4" ? 30 : 24));
+  if (hasLocalBgFile) {
+    form.append("background", cfg.bgFile as File);
+  } else {
+    form.append("backgroundVideoUrl", cfg.bgUrl);
+  }
+
+  const res = await fetch(`${RENDER_SERVICE_URL}/api/render-surah`, {
+    method: "POST",
+    body: form,
   });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const body = await res.json();
+      detail = body?.error ?? "";
+    } catch {
+      // response wasn't JSON — ignore
+    }
+    throw new Error(`Render failed (${res.status})${detail ? `: ${detail}` : ""}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  setProgress(1);
+
+  return { url, ext: "mp4", size: blob.size };
 }

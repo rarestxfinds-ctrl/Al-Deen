@@ -67,25 +67,24 @@ export function RenderSurahDialog({ open, onOpenChange, surahId, ayahNumber, mod
   };
 
   const handleRender = useCallback(async () => {
-    if (rendering) return;
-    if (!surahData || verses.length === 0) return toast({ title: "Content loading" });
-    if (resultUrl) { URL.revokeObjectURL(resultUrl); setResultUrl(null); }
-    
-    cancelRef.current = false; setRendering(true); setProgress(0);
+  if (rendering) return;
+  if (!surahData || verses.length === 0) return toast({ title: "Content loading" });
 
-    try {
-      const result = await processVideoRender({ cfg, ecfg, verses, extraTranslations, extraTransliterations, previewSize, colors, setProgress, shouldCancel: () => cancelRef.current });
-      const url = URL.createObjectURL(result.blob);
-      setResultUrl(url); setResultExt(result.ext); setResultSize(result.blob.size);
-      
-      const a = document.createElement("a"); a.href = url; a.download = `Surah-${cfg.surahId}.${result.ext}`;
-      document.body.appendChild(a); a.click(); a.remove();
-    } catch (err) {
-      toast({ title: "Render failed", variant: "destructive" });
-    } finally { setRendering(false); }
-  }, [rendering, surahData, verses, cfg, ecfg, extraTranslations, extraTransliterations, previewSize, colors, resultUrl]);
+  cancelRef.current = false; setRendering(true); setProgress(0);
 
-  if (!open) return null;
+  try {
+    const result = await processVideoRender({ cfg, ecfg, verses, extraTranslations, extraTransliterations, previewSize, colors, setProgress, shouldCancel: () => cancelRef.current });
+    setResultUrl(result.url);      // remote URL now, not an object URL
+    setResultExt(result.ext);
+    setResultSize(result.size);
+
+    const a = document.createElement("a");
+    a.href = result.url; a.download = `Surah-${cfg.surahId}.${result.ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (err) {
+    toast({ title: "Render failed", variant: "destructive" });
+  } finally { setRendering(false); }
+}, [rendering, surahData, verses, cfg, ecfg, extraTranslations, extraTransliterations, previewSize, colors]);
 
   // Single declared rendering source instance prevents multi-mount DOM bugs
   const previewComponent = (

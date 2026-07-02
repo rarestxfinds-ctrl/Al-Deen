@@ -1,5 +1,10 @@
 // Build a word-level Timeline from existing ayah Timestamp.json files.
 // Falls back to a flat perWordMs when no timestamps are available.
+//
+// Intro/outro are gone from this Timeline — the new pipeline uses a single
+// background.mp4 for the whole duration. If you still want bumper clips,
+// concat them into background.mp4 upstream (or pad the audio) before this
+// stage; the timeline here only covers the recited body.
 
 import { getAyahTimestamps } from "Server/API/Quran";
 import type { RenderVerse, Timeline, TimelineWord } from "./Types";
@@ -10,8 +15,6 @@ export interface BuildTimelineArgs {
   reciter: string;
   /** Used when a verse has no timestamp data. */
   fallbackPerWordMs: number;
-  introMs: number;
-  outroMs: number;
 }
 
 let lastTimeline: Timeline | null = null;
@@ -72,10 +75,10 @@ function rangesToWordTimings(
 }
 
 export async function buildTimeline(args: BuildTimelineArgs): Promise<Timeline> {
-  const { surahId, verses, reciter, fallbackPerWordMs, introMs, outroMs } = args;
+  const { surahId, verses, reciter, fallbackPerWordMs } = args;
 
   const words: TimelineWord[] = [];
-  let cursor = introMs;
+  let cursor = 0;
 
   for (let vi = 0; vi < verses.length; vi++) {
     const v = verses[vi];
@@ -102,16 +105,16 @@ export async function buildTimeline(args: BuildTimelineArgs): Promise<Timeline> 
 
   const bodyEndMs = cursor;
   return {
-    introMs,
-    outroMs,
-    bodyStartMs: introMs,
+    bodyStartMs: 0,
     bodyEndMs,
-    totalMs: bodyEndMs + outroMs,
+    totalMs: bodyEndMs,
     words,
   };
 }
 
-/** Locate the active word at time t (binary-ish; word counts are small). */
+/** Locate the active word at time t (binary-ish; word counts are small). Still
+ *  useful for a live preview UI that wants to highlight along with playback,
+ *  even though the export path no longer uses it directly. */
 export function activeWordAt(timeline: Timeline, timeMs: number): TimelineWord | null {
   if (timeMs < timeline.bodyStartMs || timeMs >= timeline.bodyEndMs) return null;
   if (lastTimeline !== timeline) {

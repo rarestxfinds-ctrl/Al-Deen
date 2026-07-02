@@ -40,6 +40,10 @@ export interface Config {
   bgKind: "color" | "image" | "video";
   bgColor: string;
   bgUrl: string;
+  /** Actual File for bgUrl when it's a local blob: preview URL. Required to
+   *  upload real bytes to the render server, since blob: URLs are only
+   *  resolvable inside the tab that created them. */
+  bgFile?: File | null;
 
   // Container (the inner card around the content)
   containerBgKind: "color" | "image";

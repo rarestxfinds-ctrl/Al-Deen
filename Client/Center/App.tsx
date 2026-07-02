@@ -60,7 +60,8 @@ import ArabicWordPage   from "Client/Page/Aid/Arabic/Word";
 import AIAssistant       from "Client/Page/Aid/AI";
 import Names              from "Client/Page/Aid/Names";
 import Namaz              from "Client/Page/Aid/Namaz";
-import Feeling            from "Client/Page/Aid/Feeling";
+import FeelingIndex            from "Client/Page/Aid/Feeling/Index";
+import FeelingDetail            from "Client/Page/Aid/Feeling/Detail";
 import ProphetsIndex      from "Client/Page/Aid/Prophets/Index";
 import ProphetDetail      from "Client/Page/Aid/Prophets/Detail";
 import PillarsIndex       from "Client/Page/Aid/Pillars/Index";
@@ -165,7 +166,8 @@ const App = () => (
                   <Route path="/Aid/AI" element={<AIAssistant />} />
                   <Route path="/Aid/Names" element={<Names />} />
                   <Route path="/Aid/Namaz" element={<Namaz />} />
-                  <Route path="/Aid/Feeling" element={<Feeling />} />
+                  <Route path="/Aid/Feeling" element={<FeelingIndex />} />
+                  <Route path="/Aid/Feeling/:feeling" element={<FeelingDetail />} />
                   <Route path="/Aid/Prophets" element={<ProphetsIndex />} />
                   <Route path="/Aid/Prophets/:name" element={<ProphetDetail />} />
                   <Route path="/Aid/Pillars" element={<PillarsIndex />} />

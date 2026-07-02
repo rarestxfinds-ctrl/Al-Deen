@@ -442,6 +442,22 @@ async function loadLayout(surahId: number): Promise<SurahLayout | null> {
   }
 }
 
+export function getPageForVerse(surahId: number, verseNumber: number): number | undefined {
+  const range = surahPageMap.get(surahId);
+  const start = range?.minPage ?? 1;
+  const end = range?.maxPage ?? getPageCount();
+
+  for (let pageNum = start; pageNum <= end; pageNum++) {
+    const segments = getPageSegments(pageNum);
+    if (!segments) continue;
+    const seg = segments.find((s) => s.surah === surahId);
+    if (seg && verseNumber >= seg.startVerse && verseNumber <= seg.endVerse) {
+      return pageNum;
+    }
+  }
+  return undefined;
+}
+
 // ============= Audio =============
 export async function getSurahAudioUrl(surahId: number, reciter: string): Promise<string | null> {
   const key = `${surahAudioBase}/Bottom/Data/Quran/Qiraat/${reciter}/Surah/${surahId}/Audio.mp3`;
