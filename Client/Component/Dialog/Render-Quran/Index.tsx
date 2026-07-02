@@ -61,8 +61,6 @@ export function RenderSurahDialog({ open, onOpenChange, surahId, ayahNumber, mod
   const previewAR = previewSize.w / previewSize.h;
   const embedSnippet = useMemo(() => { return `<iframe>...</iframe>` }, [cfg, ecfg]);
 
-  if (!open) return null;
-
   const onFile = (field: "bgUrl" | "logoUrl" | "containerBgUrl", kindField?: "image" | "video") => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
     setCfg((c) => ({ ...c, [field]: URL.createObjectURL(f), ...(kindField && field === "bgUrl" ? { bgKind: kindField } : {}) }));
@@ -113,6 +111,7 @@ export function RenderSurahDialog({ open, onOpenChange, surahId, ayahNumber, mod
   );
 
   return (
+    open ? (
     <div className="fixed inset-0 z-40 bg-background overflow-y-auto lg:overflow-hidden w-screen h-screen m-0 p-0 overscroll-behavior-contain">
       {/* Strict adherence to exact horizontal margins: px-2 sm:px-4, completely 0 bottom padding */}
       <div className="w-full h-full box-border m-0 p-0 px-2 sm:px-4 pb-0">
@@ -152,5 +151,6 @@ export function RenderSurahDialog({ open, onOpenChange, surahId, ayahNumber, mod
         </div>
       </div>
     </div>
+    ) : null
   );
 }
