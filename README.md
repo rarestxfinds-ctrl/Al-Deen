@@ -1,4 +1,4 @@
 - [] Check all missing/empty files in Tafsir!
 - [] Add more Translations (Rowwad Translation Center)
 - [] Add Recitors
-- [] Check
+- [] Check jj
