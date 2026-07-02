@@ -1,0 +1,20 @@
+const e=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This Madinan surah is a definitive military and social charter, named for the Prophet (ﷺ) whom it defends. Its primary purpose is to legitimize and command the fight for Truth, establish laws of war, and contrast the spiritual status of the victorious believers with the destructive fate of the disbelievers and hypocrites.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Madinan by unanimous agreement.</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed during the period of escalating conflict with the polytheists, with some scholars placing its context around the Battle of Badr or Uḥud. It directly addresses the hypocrites’ wavering, and some believers’ hesitation, when a surah commanding fighting was revealed.</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> It is counted as the 96th surah in the order of revelation, revealed after Sūrat al-Ḥadīd and before al-Raʿd.<br><br></span></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah is known by three names, most famously "Sūrat Muḥammad" (The Chapter of Muḥammad), because his (ﷺ) blessed name is mentioned in ayah 2. It is also called "Sūrat al-Qitāl" (The Chapter of Fighting), because it details the command and legitimacy of fighting, and "Sūrat alladhīna kafarū" (The Chapter of Those Who Disbelieved), a phrase which appears seven times in this surah.</span></p>
+<p><strong>Ayah Count:</strong><span style="font-weight: 400;"> 39 ayahs (Majority) or 40 (Baṣrah).<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Contrast of Deeds: Contrasting the disbelievers, whose deeds Allah annuls, with the believers, whose sins are expiated and state is reformed. </span><strong>[1-2]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Command to Fight: The primary theme is the divine command to fight the polytheists and the promise of victory and support to the believers. </span><strong>[4-7, 20]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Hypocrites’ Exposure: Exposing the hypocrites who pretend faith and whose hearts waver when war is mentioned. </span><strong>[20-21, 29]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Spiritual Status: Describing the Garden and its eternal blessings, and contrasting them with the Fire prepared for the deniers. </span><strong>[12-16]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Warning of Destruction: Warning the disbelievers that the destruction of their opposing towns is imminent. </span><strong>[13]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Warning against Complacency: Commanding the believers not to become weak after victory and not to call for peace out of fear, as they have the upper hand. </span><strong>[35]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Refutation of Disbelief: Condemning the polytheists for rejecting the Prophet (ﷺ) and establishing that their worship is futile. </span><strong>[25-28]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Final Warning: Warning the believers against stinginess in the path of Allah, as all possessions are temporary. </span><strong>[38]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Conclusion: a warning against corruption and cutting ties of kinship if granted authority. </span><strong>[38]</strong></li>
+</ul>`];export{e as default};

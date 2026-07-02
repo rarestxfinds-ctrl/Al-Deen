@@ -1,0 +1,20 @@
+const e=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This Makkan surah is dedicated to proving the truth of the Quran and the reality of Monotheism. It refutes the polytheists’ false claims that angels are daughters of Allah and that wealth determines status. The surah achieves this by examining the history of Moses and Jesus and confirming that the message established by Abraham is an eternal legacy.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Makkan by unanimous agreement.&nbsp;</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed to tackle the materialistic challenges of the Quraysh, who often argued that if the Prophet (ﷺ) were truly important, he would have been given wealth or angels instead of being a common man.</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> It is counted as the 62nd surah in the order of revelation, revealed after Sūrat Fuṣṣilat and before al-Dukhān.<br><br></span></p>
+<p><strong>Name and Ayah Count:</strong></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah's established name is "Sūrat al-Zukhruf" (The Gold Adornments/Ornament). It is named for the mention of </span><em><span style="font-weight: 400;">zukhruf</span></em><span style="font-weight: 400;"> [35], which refers to the fleeting, golden adornments of worldly life that Allah grants to both believers and disbelievers. It is also called "Sūrat Ḥā-Mīm al-Zukhruf," reflecting its opening letters.</span></p>
+<p><strong>Ayah Count:</strong><span style="font-weight: 400;"> 89 ayahs (Majority) or 88 (Shām).<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Quran Challenge: Affirming the Quran is divine, challenging the disbelievers’ mockery, and proving its truth despite their rejection.</span><strong> [1-8]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Monotheism and Creation: Proving Allah's singular divinity by demonstrating that the polytheists themselves admit He is their Creator and Sustainer.</span><strong> [9-14, 87]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Refuting Polytheism: Condemning the polytheists’ most severe errors, specifically how they attributed daughters to Allah (angels), despite viewing daughters as inferior. </span><strong>[15-20, 81]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Abraham’s Legacy: Affirming that the word of Monotheism established by Abraham remains a continuous legacy among his descendants.</span><strong> [26-28]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Refuting Materialism: Addressing the claim that prophethood should be accompanied by immense wealth or angels, and warning that worldly adornment (</span><em><span style="font-weight: 400;">zukhruf</span></em><span style="font-weight: 400;">) is meaningless.</span><strong> [29-35]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Warning: Threatening the deniers with the fate of past nations and the certainty of punishment on the Day of Judgment.</span><strong> [21-25, 36-45]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Prophetic History: Strengthening the Prophet (ﷺ) by recounting the struggles of past messengers, especially Moses and Jesus, confirming the consistency of the message. </span><strong>[46-65]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Conclusion: Reaffirming the universal mission of the Prophet (ﷺ) as a warner and declaring Allah’s grace and mercy, and the final scene of the Judgment. </span><strong>[66-89]</strong></li>
+</ul>`];export{e as default};

@@ -1,0 +1,1 @@
+const a=["Alam nashrah laka sadrak","WawadaAAna AAanka wizrak","Allathee anqada thahrak","WarafaAAna laka thikrak","Fa-inna maAAa alAAusri yusra","Inna maAAa alAAusri yusra","Fa-itha faraghta fansab","Wa-ila rabbika farghab"];export{a as default};

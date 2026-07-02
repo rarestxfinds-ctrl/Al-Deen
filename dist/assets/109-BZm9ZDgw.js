@@ -1,0 +1,1 @@
+const a=["Qul ya ayyuha alkafiroon","La aAAbudu ma taAAbudoon","Wala antum AAabidoona maaAAbud","Wala ana AAabidun maAAabadtum","Wala antum AAabidoona maaAAbud","Lakum deenukum waliya deen"];export{a as default};

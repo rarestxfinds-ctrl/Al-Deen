@@ -1,0 +1,1 @@
+const a=[["Bismi","Allahi","arrahmani","arraheemi"],["Alhamdu","lillahi","rabbi","alAAalameena"],["Arrahmani","arraheemi"],["Maliki","yawmi","addeeni"],["Iyyaka","naAAbudu","wa-iyyaka","nastaAAeenu"],["Ihdina","assirata","almustaqeema"],["Sirata","allatheena","anAAamta","AAalayhim","ghayri","almaghdoobi","AAalayhim","wala","addalleena"]];export{a as default};

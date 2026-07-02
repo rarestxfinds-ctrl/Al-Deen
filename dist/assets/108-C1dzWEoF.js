@@ -1,0 +1,16 @@
+const t=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This surah is a declaration of divine grace and triumph for the Prophet (ﷺ). Its purpose is to announce the immense gift of Abundance, or a River in Paradise, commanding the Prophet (ﷺ) to dedicate all prayer and sacrifice to Allah alone. It serves to console the Prophet (ﷺ) by assuring him that his enemies, who mocked his lack of sons, are the ones who will be truly “cut off”.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Makkan according to the majority, though some evidence supports the view that it was revealed in Madinah.</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed to console the Prophet (ﷺ) after his sons passed away, which led a polytheist like Al-ʿĀṣ ibn Wā’il to mock him by calling him </span><em><span style="font-weight: 400;">abtar</span></em><span style="font-weight: 400;"> (one whose progeny is cut off).</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> According to the view that it is Makkan, it is counted as the 15th surah, revealed after Sūrat al-ʿĀdiyāt and before al-Takāthur.<br><br></span></p>
+<p><strong>Name and Ayah Count:</strong></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah is known as "Sūrat al-Kawthar" (The Abundance) or "Sūrat Innā aʿṭaynāka al-kawthar" with the opening ayah, and also as "Sūrat al-Naḥr" (The Sacrifice).</span></p>
+<p><strong>Classification:</strong><span style="font-weight: 400;"> It is the shortest surah in the Quran in terms of words and letters.</span></p>
+<p><strong>Verse Count:</strong><span style="font-weight: 400;"> 3 ayahs by unanimous agreement.<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Promise: Giving the Prophet (ﷺ) the glad tidings of al-Kawthar (Abundance) in this world and the Hereafter. </span><strong>[1]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Command: Ordering the Prophet (ﷺ) to show gratitude for this gift by dedicating all prayer and sacrifice solely to Allah. </span><strong>[2]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Divine Defense: Assuring the Prophet (ﷺ) that his worst enemy, who reviled him, is the one who will be utterly cut off and whose efforts will be without fruit. </span><strong>[3]</strong></li>
+</ul>`];export{t as default};

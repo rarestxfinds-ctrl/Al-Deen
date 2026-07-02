@@ -1,0 +1,1 @@
+const a=["Qul aAAoothu birabbi alfalaq","Min sharri ma khalaq","Wamin sharri ghasiqin ithawaqab","Wamin sharri annaffathatifee alAAuqad","Wamin sharri hasidin itha hasad"];export{a as default};

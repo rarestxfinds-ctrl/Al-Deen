@@ -1,0 +1,19 @@
+const e=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This Makkan surah is primarily dedicated to affirming monotheism and prophethood by recounting the comprehensive mission of Prophet Noah. Its purpose is to warn the polytheists that their continued association with God will result in the same catastrophic, inescapable punishment that destroyed the first major nation to deny its messenger.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Makkan by consensus.</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed during a period when the Prophet (ﷺ) was facing intense denial and resistance. It uses the story of the first nation to suffer divine collective punishment as a powerful, historical analogue for the conflict in Makkah.</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> It is counted as the 73rd surah in the order of revelation, revealed after Sūrat al-Naḥl and before al-Ṭūr.<br><br></span></p>
+<p><strong>Name and Ayah Count:</strong></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah is known as "Sūrat Nūḥ" (The Chapter of Noah) for its theme, and "Sūrat Innā arsalnā Nūḥan" with reference to its opening.</span></p>
+<p><strong>Ayah Count:</strong><span style="font-weight: 400;"> 30 ayahs (Madīnah/Makkah) or 28/29 (Kūfah/Baṣrah/Shām).<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Historical Precedent: The primary objective is using the destruction of the people of Nūḥ as a definitive example and warning to the current polytheists. </span><strong>[1-4]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Monotheism and Proofs: Detailing Nūḥ's lengthy call to monotheism, proving Allah’s sole divinity through the marvels of creation (sun, moon, earth, rain). </span><strong>[5-18]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Warning of Punishment: Warning Nūḥ’s people (and implicitly the polytheists) of the impending great flood and terrible torment. </span><strong>[4, 13, 25]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Idols and Design: Naming the specific idols (</span><em><span style="font-weight: 400;">Wadd, Suwāʿ, Yaghūth, Yaʿūq, Nasr</span></em><span style="font-weight: 400;">) worshipped by Nūḥ’s people and confirming their people's design to mislead others. </span><strong>[23-24]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">The Final Plea: Detailing Nūḥ’s ultimate prayer for the destruction of the disbelievers and for the forgiveness of the believers. </span><strong>[26-28]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Reward: Integrating the promise of abundant provision, increased progeny, and gardens for those who obey Allah. </span><strong>[10-12]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Conclusion: Concluding with Nūḥ’s prayer for forgiveness and blessings for the believers and destruction for the wicked. </span><strong>[28]</strong></li>
+</ul>`];export{e as default};

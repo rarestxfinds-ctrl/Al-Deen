@@ -1,0 +1,18 @@
+const t=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This Makkan surah is primarily dedicated to proving the certainty of the Resurrection and Judgment. It achieves this by contrasting the historical arrogance and destruction of Pharaoh with the certainty of the cosmic upheaval. The surah affirms Allah’s power to recreate life and warns the Prophet (ﷺ) to focus on his role as a warner of the Hour.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Makkan by consensus.</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed to counter the polytheists' disbelief and mockery of the Resurrection, which they deemed impossible due to the body’s disintegration. The revelation uses the destruction of Pharaoh – a king who claimed divinity –&nbsp;as the ultimate proof of Allah’s power to punish.</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> It is counted as the 81st surah in the order of revelation, revealed after Sūrat al-Naba’ and before al-Infiṭār.<br><br></span></p>
+<p><strong>Name and Ayah Count:</strong></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah is known mainly as "Sūrat al-Nāziʿāt" or “wa-al-Nāziʿāt" (The Pluckers/Extractors), for its opening oath. It has also been called "Sūrat al-Mudabbirāt" (The Disposers) [5], "Sūrat al-Sāhirah" (The Surface/Wakefulness) [14], and "Sūrat al-Ṭāmmah" (The Overwhelming Calamity) [34].</span></p>
+<p><strong>Ayah Count:</strong><span style="font-weight: 400;"> 45 ayahs (Majority) or 46 (Kūfan).<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Affirming the certainty of the Resurrection and warning of its terrifying arrival. </span><strong>[1-14]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Historical Warning: Using the life and destruction of Pharaoh as a direct parable of how arrogance and rejection of the Messenger lead to eternal punishment. </span><strong>[15-26]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Proving the possibility of the second creation by demonstrating that the creation of the cosmos is infinitely greater than the recreation of humankind. </span><strong>[27-33]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Describing the overwhelming Judgment and the differing fates of the pious and the transgressors. </span><strong>[34-41]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Addressing the polytheists’ mockery of the Hour and clarifying that the Prophet’s (ﷺ) duty is only to warn, not to specify the time of its coming. </span><strong>[42-45]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Establishing that Allah's governance over the universe is complete and that the only true path is obedience. </span><strong>[46]</strong></li>
+</ul>`];export{t as default};

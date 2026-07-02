@@ -1,0 +1,1 @@
+const a=["Alam tara kayfa faAAala rabbuka bi-as-habialfeel","Alam yajAAal kaydahum fee tadleel","Waarsala AAalayhim tayran ababeel","Tarmeehim bihijaratin minsijjeel","FajaAAalahum kaAAasfin ma/kool"];export{a as default};

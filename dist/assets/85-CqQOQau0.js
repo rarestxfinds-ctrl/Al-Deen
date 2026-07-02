@@ -1,0 +1,19 @@
+const e=[`<p><strong>Themes and purpose:</strong></p>
+<p><em><span style="font-weight: 400;">This Makkan surah is dedicated to strengthening the early believers against persecution. It achieves this by presenting the historical precedent of the People of the Ditch to warn the polytheists of their fate. The surah affirms Allah’s power, promises victory and eternal reward to the patient, and confirms that the Quran is the preserved, truthful revelation.<br><br></span></em></p>
+<p><strong>Context of Revelation:</strong></p>
+<p><strong>Era:</strong><span style="font-weight: 400;"> Makkan by consensus.</span></p>
+<p><strong>Context:</strong><span style="font-weight: 400;"> The surah was revealed during a period when the polytheists of Makkah were severely persecuting the new Muslims. The text uses the story of the People of the Ditch who burned believers alive, as an analogous warning that the Quraysh would face similar divine judgment if they did not cease their persecution.</span></p>
+<p><strong>Chronology:</strong><span style="font-weight: 400;"> It is counted the 27th surah in the order of revelation, revealed after Sūrat al-Shams and before al-Tīn.<br><br></span></p>
+<p><strong>Name and Ayah Count:</strong></p>
+<p><strong>Name:</strong><span style="font-weight: 400;"> The surah is known as "Sūrat al-Burūj" (The Zodiacal Signs) and "Sūrat al-Samā’ dhāt al-burūj" (The Heaven Possessing the Zodiacal Signs).</span></p>
+<p><strong>Virtue:</strong><span style="font-weight: 400;"> The Prophet (ﷺ) customarily recited this surah in the Isha prayer together with Sūrat al-Ṭāriq.</span></p>
+<p><strong>Ayah Count:</strong><span style="font-weight: 400;"> 22 ayahs by consensus.<br><br></span></p>
+<p><strong>Surah Overview:</strong></p>
+<ul>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Affirming the certainty of the Day of Judgment. </span><strong>[2]</strong></li>
+<li style="font-weight: 400;" aria-level="1"><span style="font-weight: 400;">Using the story of the People of the Ditch to establish a precedent for the persecution suffered by believers and the severe punishment awaiting their tormentors. </span><strong>[4-10]</strong></li>
+<li style="font-weight: 400;" aria-level="1">The Promise:<strong> </strong>Assuring the believers of eternal bliss in Paradise and the eventual triumph of the faith. <strong>[11]</strong></li>
+<li style="font-weight: 400;" aria-level="1">Establishing Allah's immense power, vast dominion, and capacity to seize and punish the wicked. <strong>[12-16]</strong></li>
+<li style="font-weight: 400;" aria-level="1">Consoling the Prophet (ﷺ) and the believers by reminding them of the destruction that befell Pharaoh and Thamūd when they denied the messengers. <strong>[17-20]</strong></li>
+<li style="font-weight: 400;" aria-level="1">Affirming the truth and preservation of the Quran as a glorious and protected tablet. <strong>[21-22]</strong></li>
+</ul>`];export{e as default};

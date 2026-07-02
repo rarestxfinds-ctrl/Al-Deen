@@ -1,0 +1,1 @@
+const a=["Alhakumu attakathur","Hatta zurtumu almaqabir","Kalla sawfa taAAlamoon","Thumma kalla sawfa taAAlamoon","Kalla law taAAlamoona AAilma alyaqeen","Latarawunna aljaheem","Thumma latarawunnaha AAayna alyaqeen","Thumma latus-alunna yawma-ithin AAaniannaAAeem"];export{a as default};
