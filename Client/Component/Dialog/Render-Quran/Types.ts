@@ -1,4 +1,6 @@
 // ====================== Types ======================
+import { getPageSegments, type QuranFontType } from "Server/API/Quran";
+
 export type Corner = "tl" | "tr" | "bl" | "br";
 export type RenderFont = "uthmani" | "indopak" | "uthmani_v1" | "uthmani_v2" | "uthmani_v4";
 export type Position =
