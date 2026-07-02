@@ -2,4 +2,3 @@
 - [] Add more Translations (Rowwad Translation Center)
 - [] Add Recitors
 - [] Check
-- []
