@@ -11,11 +11,16 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
+    "canvas": "^3.2.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "multer": "^2.2.0"
+    "fontkit": "^2.0.4",
+    "harfbuzzjs": "^1.4.0",
+    "multer": "^2.2.0",
+    "opentype.js": "^2.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

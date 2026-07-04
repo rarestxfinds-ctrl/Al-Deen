@@ -282,27 +282,11 @@ const transliterationModules = import.meta.glob(
 );
 // ============= Glob Modules =============
 const surahAudioModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/*/Surah/*/Audio.mp3',
-  { query: '?url', import: 'default', eager: false }
-);
-const pageAudioModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/*/Page/*/Audio.mp3',
-  { query: '?url', import: 'default', eager: false }
-);
-const ayahAudioModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/*/Surah/*/Ayah/*/Audio.mp3',
-  { query: '?url', import: 'default', eager: false }
-);
-const wordAudioModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/Tafsir_Center/Surah/*/Ayah/*/Kalima/*/Audio.mp3',
+  'Server/Data/Quran/Surah/Qiraat/*/Audio/*.mp3',
   { query: '?url', import: 'default', eager: false }
 );
 const surahTimestampModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/*/Surah/*/Timestamp.json',
-  { import: 'default', eager: false }
-);
-const ayahTimestampModules = import.meta.glob(
-  'Server/Data/Quran/Qiraat/*/Surah/*/Ayah/*/Timestamp.json',
+  'Server/Data/Quran/Surah/Qiraat/*/Timestamp/*.json',
   { import: 'default', eager: false }
 );
 
@@ -317,12 +301,9 @@ function resolveGlobBase(
   return idx !== -1 ? anyKey.slice(0, idx) : "";
 }
 
-const surahAudioBase = resolveGlobBase(surahAudioModules, "/Bottom/Data/Quran/Qiraat/");
-const pageAudioBase = resolveGlobBase(pageAudioModules, "/Bottom/Data/Quran/Qiraat/");
-const ayahAudioBase = resolveGlobBase(ayahAudioModules, "/Bottom/Data/Quran/Qiraat/");
-const wordAudioBase = resolveGlobBase(wordAudioModules, "/Bottom/Data/Quran/Qiraat/");
-const surahTimestampBase = resolveGlobBase(surahTimestampModules, "/Bottom/Data/Quran/Qiraat/");
-const ayahTimestampBase = resolveGlobBase(ayahTimestampModules, "/Bottom/Data/Quran/Qiraat/");
+const QIRAAT_MARKER = "Server/Data/Quran/Surah/Qiraat/";
+const surahAudioBase = resolveGlobBase(surahAudioModules, QIRAAT_MARKER);
+const surahTimestampBase = resolveGlobBase(surahTimestampModules, QIRAAT_MARKER);
 
 // ============= Loaders =============
 async function loadSurah(surahId: number, fontType: QuranFontType = "Standard"): Promise<SurahData> {
@@ -460,39 +441,23 @@ export function getPageForVerse(surahId: number, verseNumber: number): number | 
 
 // ============= Audio =============
 export async function getSurahAudioUrl(surahId: number, reciter: string): Promise<string | null> {
-  const key = `${surahAudioBase}/Bottom/Data/Quran/Qiraat/${reciter}/Surah/${surahId}/Audio.mp3`;
+  const key = `${surahAudioBase}${QIRAAT_MARKER}${reciter}/Audio/${surahId}.mp3`;
   const mod = surahAudioModules[key];
   if (!mod) return null;
   return (await (mod as () => Promise<string>)());
 }
 
-export async function getPageAudioUrl(pageNumber: number, reciter: string): Promise<string | null> {
-  const key = `${pageAudioBase}/Bottom/Data/Quran/Qiraat/${reciter}/Page/${pageNumber}/Audio.mp3`;
-  const mod = pageAudioModules[key];
-  if (!mod) return null;
-  return (await (mod as () => Promise<string>)());
-}
-
-export async function getAyahAudioUrl(surahId: number, ayahNumber: number, reciter: string): Promise<string | null> {
-  const key = `${ayahAudioBase}/Bottom/Data/Quran/Qiraat/${reciter}/Surah/${surahId}/Ayah/${ayahNumber}/Audio.mp3`;
-  const mod = ayahAudioModules[key];
-  if (!mod) return null;
-  return (await (mod as () => Promise<string>)());
-}
-
-export async function getWordAudioUrl(surahId: number, ayahNumber: number, kalimaNumber: number): Promise<string | null> {
-  const key = `${wordAudioBase}/Bottom/Data/Quran/Qiraat/Tafsir_Center/Surah/${surahId}/Ayah/${ayahNumber}/Kalima/${kalimaNumber}/Audio.mp3`;
-  const mod = wordAudioModules[key];
-  if (!mod) return null;
-  return (await (mod as () => Promise<string>)());
-}
-
 // ============= Timestamp Loaders =============
+/**
+ * Full-surah timestamps: one array per verse, each entry a "start-end" ms
+ * range string absolute to the surah's single Audio/{surahId}.mp3 file.
+ * Replaces the old per-ayah Timestamp.json files entirely.
+ */
 export async function getSurahTimestamps(surahId: number, reciter: string): Promise<string[][] | null> {
   const cacheKey = `${reciter}-surah-${surahId}`;
   if (cache.timestamps.has(cacheKey)) return cache.timestamps.get(cacheKey) as string[][] | null;
   try {
-    const key = `${surahTimestampBase}/Bottom/Data/Quran/Qiraat/${reciter}/Surah/${surahId}/Timestamp.json`;
+    const key = `${surahTimestampBase}${QIRAAT_MARKER}${reciter}/Timestamp/${surahId}.json`;
     const mod = surahTimestampModules[key];
     if (!mod) {
       cache.timestamps.set(cacheKey, null);
@@ -507,23 +472,10 @@ export async function getSurahTimestamps(surahId: number, reciter: string): Prom
   }
 }
 
-export async function getAyahTimestamps(surahId: number, ayahNumber: number, reciter: string): Promise<string[] | null> {
-  const cacheKey = `${reciter}-surah-${surahId}-ayah-${ayahNumber}`;
-  if (cache.timestamps.has(cacheKey)) return cache.timestamps.get(cacheKey) as string[] | null;
-  try {
-    const key = `${ayahTimestampBase}/Bottom/Data/Quran/Qiraat/${reciter}/Surah/${surahId}/Ayah/${ayahNumber}/Timestamp.json`;
-    const mod = ayahTimestampModules[key];
-    if (!mod) {
-      cache.timestamps.set(cacheKey, null);
-      return null;
-    }
-    const data = (await (mod as () => Promise<string[]>))() as string[];
-    cache.timestamps.set(cacheKey, data);
-    return data;
-  } catch {
-    cache.timestamps.set(cacheKey, null);
-    return null;
-  }
+/** Timestamps for a single verse — just an index into getSurahTimestamps(). */
+export async function getAyahTimestamps(surahId: number, verseNumber: number, reciter: string): Promise<string[] | null> {
+  const all = await getSurahTimestamps(surahId, reciter);
+  return all?.[verseNumber - 1] ?? null;
 }
 
 // ============= Main API =============

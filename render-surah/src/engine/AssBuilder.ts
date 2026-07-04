@@ -1,24 +1,12 @@
-// Builds a .ass subtitle file from a RenderScene + Timeline.
-//
-// Design notes:
-// - Word-level highlighting is NOT done with ASS karaoke (\k) tags — karaoke
-//   fill doesn't give us the "one word swaps to highlightColor, rest stay
-//   arabicColor" look we need, and it fights with RTL shaping. Instead we
-//   emit one Dialogue line per word-timeslot containing the FULL verse text,
-//   with inline \c override tags coloring only the active word.
-// - RTL is left to libass/fribidi: word order in `words` is assumed to be
-//   natural reading order, so we just join with spaces and let the shaper
-//   handle bidi. No manual right-to-left cursor math (that was a canvas-only
-//   concern).
-// - Font switching per-ayah is done via a distinct ASS Style per unique
-//   (font, size, role) combination referenced by each Dialogue line.
-
 import type { RenderScene, RenderVerse, Timeline, TimelineWord, ScenePosition } from "./Types";
 
+function dbg(...args: unknown[]): void {
+  // eslint-disable-next-line no-console
+  console.debug("[AssBuilder]", ...args);
+}
+
 function cssColorToAssBgr(color: string, opacityOverride?: number): string {
-  // Returns "&HAABBGGRR" style hex minus the leading &H (caller wraps it).
-  // ASS alpha is inverted: 00 = opaque, FF = fully transparent.
-  let r = 255, g = 255, b = 255, a = 0; // default opaque white
+  let r = 255, g = 255, b = 255, a = 0; 
   const c = (color || "").trim().toLowerCase();
 
   const hex8 = c.match(/^#([0-9a-f]{8})$/);
@@ -61,7 +49,7 @@ function cssColorToAssBgr(color: string, opacityOverride?: number): string {
 }
 
 function msToAssTime(ms: number): string {
-  const totalCs = Math.max(0, Math.round(ms / 10)); // centiseconds
+  const totalCs = Math.max(0, Math.round(ms / 10)); 
   const h = Math.floor(totalCs / 360000);
   const m = Math.floor((totalCs % 360000) / 6000);
   const s = Math.floor((totalCs % 6000) / 100);
@@ -74,7 +62,6 @@ function assEscape(text: string): string {
 }
 
 function alignmentFor(pos: ScenePosition | undefined): number {
-  // ASS numpad alignment: 7 8 9 / 4 5 6 / 1 2 3 (top/mid/bottom x left/center/right)
   const p = pos ?? "center";
   const row = p.startsWith("top-") ? 7 : p.startsWith("bottom-") ? 1 : 4;
   const col = p.endsWith("-left") ? 0 : p.endsWith("-right") ? 2 : 1;
@@ -100,9 +87,9 @@ interface StyleDef {
   name: string;
   fontName: string;
   fontSize: number;
-  primaryColor: string; // ASS hex, unused per-run (we override inline) but required as default
+  primaryColor: string;
+  secondaryColor: string;
   bold: boolean;
-  rtl: boolean;
 }
 
 function styleKey(fontName: string, fontSize: number, tag: string): string {
@@ -115,8 +102,8 @@ function buildStylesSection(styles: StyleDef[]): string {
     "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, " +
     "Alignment, MarginL, MarginR, MarginV, Encoding";
   const lines = styles.map((s) =>
-    `Style: ${s.name},${s.fontName},${s.fontSize},${s.primaryColor},&H000000FF,&H00000000,&H80000000,` +
-    `${s.bold ? -1 : 0},0,0,0,100,100,0,0,1,${Math.max(2, Math.round(s.fontSize * 0.06))},0,5,10,10,10,1`
+    `Style: ${s.name},${s.fontName},${s.fontSize},${s.primaryColor},${s.secondaryColor},&H00000000,&H80000000,` +
+    `${s.bold ? -1 : 0},0,0,0,100,100,0,0,1,0,0,5,10,10,10,1`
   );
   return `[V4+ Styles]\n${header}\n${lines.join("\n")}\n`;
 }
@@ -125,20 +112,32 @@ export interface AssBuildResult {
   assText: string;
 }
 
-export function buildAss(scene: RenderScene, timeline: Timeline): AssBuildResult {
+export async function buildAss(
+  scene: RenderScene,
+  timeline: Timeline,
+  fontFamilyPaths?: Map<string, string>,
+): Promise<AssBuildResult> {
   const { width, height } = scene;
 
+  dbg(`buildAss: running in standard native engine timeline mode — verses=${scene.verses.length}`);
+
   const styles = new Map<string, StyleDef>();
-  const ensureStyle = (tag: string, fontName: string, fontSize: number, rtl: boolean, bold: boolean): string => {
+  
+  const arabicColor = cssColorToAssBgr(scene.arabicColor);
+  const highlightColor = cssColorToAssBgr(scene.highlightColor);
+  const translationColor = cssColorToAssBgr(scene.translationColor);
+  const transliterationColor = cssColorToAssBgr(scene.transliterationColor);
+
+  const ensureStyle = (tag: string, fontName: string, fontSize: number, bold: boolean): string => {
     const key = styleKey(fontName, fontSize, tag);
     if (!styles.has(key)) {
-      styles.set(key, {
-        name: key,
-        fontName,
-        fontSize,
-        primaryColor: "&H00FFFFFF",
-        bold,
-        rtl,
+      styles.set(key, { 
+        name: key, 
+        fontName, 
+        fontSize, 
+        primaryColor: arabicColor,      // Unhighlighted color base
+        secondaryColor: highlightColor,  // Karaoke active highlighted state color
+        bold 
       });
     }
     return key;
@@ -151,65 +150,80 @@ export function buildAss(scene: RenderScene, timeline: Timeline): AssBuildResult
     wordsByVerse.get(w.verseIdx)!.push(w);
   }
 
-  const arabicAlign = alignmentFor(scene.arabicPosition);
-  const arabicPosXY = posFor(scene, scene.arabicPosition);
+  const arabicAlign = alignmentFor(scene.arabicPosition ?? "center");
+  const arabicPosXY = posFor(scene, scene.arabicPosition ?? "center");
   const translationAlign = alignmentFor(scene.translationPosition ?? "bottom-center");
   const translationPosXY = posFor(scene, scene.translationPosition ?? "bottom-center");
   const transliterationAlign = alignmentFor(scene.transliterationPosition ?? "bottom-center");
   const transliterationPosXY = posFor(scene, scene.transliterationPosition ?? "bottom-center");
 
-  const arabicColor = cssColorToAssBgr(scene.arabicColor);
-  const highlightColor = cssColorToAssBgr(scene.highlightColor);
-  const translationColor = cssColorToAssBgr(scene.translationColor);
-  const transliterationColor = cssColorToAssBgr(scene.transliterationColor);
-
-  scene.verses.forEach((verse: RenderVerse, vi: number) => {
+  for (let vi = 0; vi < scene.verses.length; vi++) {
+    const verse: RenderVerse = scene.verses[vi];
     const vWords = (wordsByVerse.get(vi) || []).sort((a, b) => a.startMs - b.startMs);
-    if (vWords.length === 0) return;
+
+    if (vWords.length === 0) continue;
 
     const fontName = verse.arabicFontFamily || scene.arabicFontFamily;
-    const arStyle = ensureStyle("AR", fontName, scene.arabicSize, true, false);
+    const arStyle = ensureStyle("AR", fontName, scene.arabicSize, false);
 
-    // One Dialogue line per word-timeslot; each shows the whole verse with
-    // only that word colored as the highlight.
-    for (let wi = 0; wi < vWords.length; wi++) {
-      const slot = vWords[wi];
-      const runs = verse.words.map((word, idx) => {
-        const color = idx === wi ? highlightColor : arabicColor;
-        return `{\\c${color}}${assEscape(word)}`;
-      });
-      const text = `{\\an${arabicAlign}\\pos(${arabicPosXY.x},${arabicPosXY.y})}` + runs.join(" ");
-      events.push(
-        `Dialogue: 0,${msToAssTime(slot.startMs)},${msToAssTime(slot.endMs)},${arStyle},,0,0,0,,${text}`
-      );
+    const spokenWordsCount = vWords.filter(w => w.startMs !== w.endMs).length;
+    const verseStart = vWords[0]?.startMs ?? 0;
+    const verseEnd = vWords[spokenWordsCount - 1]?.endMs ?? 5840;
+
+    // ---------------------------------------------------------------------------
+    // BUILD CONTINUOUS KARAOKE HIGHLIGHT TIMELINES
+    // ---------------------------------------------------------------------------
+    let karaokeBodyText = "";
+    
+    for (let currentWordIdx = 0; currentWordIdx < verse.words.length; currentWordIdx++) {
+      const wordText = verse.words[currentWordIdx];
+      
+      // If it's the decorative final Ayah number marker glyph
+      if (currentWordIdx === verse.words.length - 1) {
+        // Render it persistently as unhighlighted base color text by giving it zero timing weight
+        karaokeBodyText += `{\\k0}${assEscape(wordText)}`;
+        continue;
+      }
+
+      const activeSlot = vWords[currentWordIdx];
+      if (!activeSlot) {
+        karaokeBodyText += `{\\k0}${assEscape(wordText)} `;
+        continue;
+      }
+
+      // ASS Karaoke tags use centiseconds (1cs = 10ms)
+      const durationMs = activeSlot.endMs - activeSlot.startMs;
+      const durationCs = Math.max(1, Math.round(durationMs / 10));
+
+      // Append standard space tracking separators between internal words
+      const trailingSpace = (currentWordIdx < verse.words.length - 2) ? " " : "";
+      
+      karaokeBodyText += `{\\k${durationCs}}${assEscape(wordText)}${trailingSpace}`;
     }
 
-    // Translation / transliteration span the full verse duration.
-    const verseStart = vWords[0].startMs;
-    const verseEnd = vWords[vWords.length - 1].endMs;
+    // Output the entire combined Arabic dialogue row in one clean line string configuration
+    const fullArabicLine = `{\\an${arabicAlign}\\pos(${arabicPosXY.x},${arabicPosXY.y})}${karaokeBodyText}`;
+    events.push(`Dialogue: 0,${msToAssTime(verseStart)},${msToAssTime(verseEnd)},${arStyle},,0,0,0,,${fullArabicLine}`);
 
+    // Translation / Transliteration Layout Blocks
     if (verse.translation) {
-      const trStyle = ensureStyle("TR", "Inter", scene.translationSize, false, false);
-      const text = `{\\an${translationAlign}\\pos(${translationPosXY.x},${translationPosXY.y})\\c${translationColor}}${assEscape(verse.translation)}`;
+      const trStyle = ensureStyle("TR", "Inter", scene.translationSize, false);
+      styles.get(trStyle)!.primaryColor = translationColor; // Keep standard single track coloring mapping
+      const text = `{\\an${translationAlign}\\pos(${translationPosXY.x},${translationPosXY.y})}${assEscape(verse.translation)}`;
       events.push(`Dialogue: 0,${msToAssTime(verseStart)},${msToAssTime(verseEnd)},${trStyle},,0,0,0,,${text}`);
     }
 
     if (verse.transliteration) {
-      const tlStyle = ensureStyle("TL", "Inter", scene.transliterationSize, false, false);
-      const text = `{\\an${transliterationAlign}\\pos(${transliterationPosXY.x},${transliterationPosXY.y})\\c${transliterationColor}\\i1}${assEscape(verse.transliteration)}`;
+      const tlStyle = ensureStyle("TL", "Inter", scene.transliterationSize, false);
+      styles.get(tlStyle)!.primaryColor = transliterationColor;
+      const text = `{\\an${transliterationAlign}\\pos(${transliterationPosXY.x},${transliterationPosXY.y})\\i1}${assEscape(verse.transliteration)}`;
       events.push(`Dialogue: 0,${msToAssTime(verseStart)},${msToAssTime(verseEnd)},${tlStyle},,0,0,0,,${text}`);
     }
-  });
+  }
 
-  const scriptInfo =
-    `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nWrapStyle: 0\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.601\n`;
-
+  const scriptInfo = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nWrapStyle: 0\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.601\n`;
   const stylesSection = buildStylesSection(Array.from(styles.values()));
+  const eventsSection = `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
 
-  const eventsHeader =
-    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
-  const eventsSection = `[Events]\n${eventsHeader}\n${events.join("\n")}\n`;
-
-  const assText = `${scriptInfo}\n${stylesSection}\n${eventsSection}`;
-  return { assText };
+  return { assText: `${scriptInfo}\n${stylesSection}\n${eventsSection}` };
 }

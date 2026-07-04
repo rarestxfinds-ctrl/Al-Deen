@@ -1,14 +1,19 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect, useMemo } from 'react';
-import { 
-  getSurahAudioUrl, 
-  getPageAudioUrl, 
-  getAyahAudioUrl,
+import {
+  getSurahAudioUrl,
   getSurahTimestamps,
-  getAyahTimestamps
+  getAyahTimestamps,
+  getPageSegments,
 } from "Server/API/Quran";
 import { useApp } from "Client/Context/App";
 
 type PlaybackMode = 'surah' | 'page' | 'ayah';
+
+interface Clip {
+  surahId: number;
+  startMs: number;
+  endMs: number;
+}
 
 interface AudioContextType {
   isPlaying: boolean;
@@ -37,6 +42,22 @@ interface AudioContextType {
 
 const AppAudioContext = createContext<AudioContextType | undefined>(undefined);
 
+// ---- helpers -----------------------------------------------------------
+
+function parseRange(r: string): { start: number; end: number } {
+  const [start, end] = r.split("-").map(Number);
+  return { start, end };
+}
+
+/** First word's start ms .. last word's end ms for a given verse, from getSurahTimestamps data. */
+function verseMsRange(data: string[][], verseIndex1: number): { start: number; end: number } | null {
+  const words = data[verseIndex1 - 1];
+  if (!words || words.length === 0) return null;
+  const { start } = parseRange(words[0]);
+  const { end } = parseRange(words[words.length - 1]);
+  return { start, end };
+}
+
 export function AudioProvider({ children }: { children: ReactNode }) {
   const { selectedReciter } = useApp();
 
@@ -56,53 +77,43 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playbackModeRef = useRef<PlaybackMode>('surah');
+
+  // Word-level timestamps for whichever surah's audio file is currently loaded
+  // (used for word-by-word highlighting in 'surah' and 'page' modes).
   const timestampsRef = useRef<Array<{ verse: number; word: number; start: number; end: number }> | null>(null);
+  const loadedSurahForTimestampsRef = useRef<number | null>(null);
+
+  // Raw per-verse word timestamps for the currently playing ayah (used for
+  // 'ayah' mode word highlighting — same absolute ms scale as the full file).
   const ayahTimestampsRef = useRef<string[] | null>(null);
 
-  // ── Load timestamps for surah/page mode ─────────────────────────────────────
-  useEffect(() => {
-    if (!currentSurah) {
-      timestampsRef.current = null;
-      setActiveVerse(null);
-      setActiveWord(null);
-      return;
-    }
-    
-    getSurahTimestamps(currentSurah, selectedReciter).then((data) => {
-      if (data) {
-        const flatTimestamps: Array<{ verse: number; word: number; start: number; end: number }> = [];
-        for (let v = 0; v < data.length; v++) {
-          const words = data[v];
-          for (let w = 0; w < words.length; w++) {
-            const [start, end] = words[w].split("-").map(Number);
-            flatTimestamps.push({
-              verse: v + 1,
-              word: w,
-              start: start,
-              end: end
-            });
-          }
-        }
-        timestampsRef.current = flatTimestamps;
-      } else {
-        timestampsRef.current = null;
-      }
-    });
-  }, [currentSurah, selectedReciter]);
+  // A clip is a {surahId, startMs, endMs} slice of a full-surah audio file.
+  // 'ayah' mode uses a single clip; 'page' mode uses a queue (a page can span
+  // more than one surah); 'surah' mode plays the whole file (no clip bounds).
+  const clipQueueRef = useRef<Clip[]>([]);
+  const clipIndexRef = useRef<number>(0);
+  const stopAtMsRef = useRef<number | null>(null);
+  const pendingSeekMsRef = useRef<number | null>(null);
 
-  // ── Load ayah timestamps when ayah changes (used for seeking, not for initial play) ──
-  useEffect(() => {
-    if (!currentAyah) {
-      ayahTimestampsRef.current = null;
-      return;
+  // ── Load flattened word timestamps for a surah's full audio file ───────────
+  const loadTimestampsForSurah = useCallback(async (surahId: number) => {
+    loadedSurahForTimestampsRef.current = surahId;
+    const data = await getSurahTimestamps(surahId, selectedReciter);
+    if (loadedSurahForTimestampsRef.current !== surahId) return; // stale
+    if (data) {
+      const flat: Array<{ verse: number; word: number; start: number; end: number }> = [];
+      for (let v = 0; v < data.length; v++) {
+        const words = data[v];
+        for (let w = 0; w < words.length; w++) {
+          const { start, end } = parseRange(words[w]);
+          flat.push({ verse: v + 1, word: w, start, end });
+        }
+      }
+      timestampsRef.current = flat;
+    } else {
+      timestampsRef.current = null;
     }
-    // Only load if not already set (to avoid double load after playAyah)
-    if (!ayahTimestampsRef.current) {
-      getAyahTimestamps(currentAyah.surahId, currentAyah.ayahNumber, selectedReciter).then((data) => {
-        ayahTimestampsRef.current = data;
-      });
-    }
-  }, [currentAyah, selectedReciter]);
+  }, [selectedReciter]);
 
   // ── Main audio element setup ────────────────────────────────────────────────
   useEffect(() => {
@@ -118,12 +129,20 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         setProgress((ct / audio.duration) * 100);
       }
 
-      if (playbackMode === 'surah' || playbackMode === 'page') {
+      const ms = ct * 1000;
+
+      // Stop at clip boundary (ayah / page-segment playback embedded in a full file).
+      if (stopAtMsRef.current != null && ms >= stopAtMsRef.current) {
+        advanceOrFinish();
+        return;
+      }
+
+      const mode = playbackModeRef.current;
+      if (mode === 'surah' || mode === 'page') {
         const ts = timestampsRef.current;
         if (ts && ts.length > 0) {
-          const ms = ct * 1000;
-          let foundVerse = null;
-          let foundWord = null;
+          let foundVerse: number | null = null;
+          let foundWord: number | null = null;
           for (let i = 0; i < ts.length; i++) {
             const item = ts[i];
             if (ms >= item.start && ms < item.end) {
@@ -135,19 +154,17 @@ export function AudioProvider({ children }: { children: ReactNode }) {
           setActiveVerse(foundVerse);
           setActiveWord(foundWord);
         }
-      } else if (playbackMode === 'ayah') {
+      } else if (mode === 'ayah') {
         const ts = ayahTimestampsRef.current;
         if (ts && ts.length > 0) {
-          const ms = ct * 1000;
-          let foundWord = null;
+          let foundWord: number | null = null;
           for (let i = 0; i < ts.length; i++) {
-            const [start, end] = ts[i].split("-").map(Number);
+            const { start, end } = parseRange(ts[i]);
             if (ms >= start && ms < end) {
               foundWord = i;
               break;
             }
           }
-          setActiveVerse(currentAyah?.ayahNumber ?? null);
           setActiveWord(foundWord);
         }
       } else {
@@ -157,6 +174,10 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     };
 
     const handleLoadedMetadata = () => {
+      if (pendingSeekMsRef.current != null) {
+        audio.currentTime = pendingSeekMsRef.current / 1000;
+        pendingSeekMsRef.current = null;
+      }
       setDuration(audio.duration);
       setIsLoading(false);
     };
@@ -177,15 +198,27 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       audio.pause();
       audio.src = '';
     };
-  }, [playbackMode, currentAyah]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const loadAndPlay = useCallback(async (src: string) => {
+  // ── Load a surah's audio file (raw, whole file, no clip bounds) ────────────
+  const loadAndPlay = useCallback(async (surahId: number, seekMs?: number, stopMs?: number) => {
     const audio = audioRef.current;
     if (!audio) return;
     setIsLoading(true);
     setActiveVerse(null);
     setActiveWord(null);
-    audio.src = src;
+    stopAtMsRef.current = stopMs ?? null;
+    pendingSeekMsRef.current = seekMs ?? null;
+
+    const url = await getSurahAudioUrl(surahId, selectedReciter);
+    if (!url) {
+      console.error(`No audio found for surah ${surahId} reciter ${selectedReciter}`);
+      setIsLoading(false);
+      return;
+    }
+
+    audio.src = url;
     audio.playbackRate = playbackSpeed;
     try {
       await audio.play();
@@ -194,35 +227,65 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       console.error('Audio playback error:', error);
       setIsLoading(false);
     }
-  }, [playbackSpeed]);
+  }, [selectedReciter, playbackSpeed]);
 
-  const handleAudioEnded = useCallback(() => {
+  // ── Advance to next clip in queue, or finish (handles repeat) ──────────────
+  const advanceOrFinish = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const shouldRepeat =
-      (playbackModeRef.current === 'surah' && repeatMode === 'surah') ||
-      (playbackModeRef.current === 'page' && repeatMode === 'page') ||
-      (playbackModeRef.current === 'ayah' && repeatMode === 'ayah');
+    const queue = clipQueueRef.current;
+    const nextIndex = clipIndexRef.current + 1;
 
-    if (shouldRepeat) {
+    if (queue.length > 0 && nextIndex < queue.length) {
+      clipIndexRef.current = nextIndex;
+      const clip = queue[nextIndex];
+      if (clip.surahId === loadedSurahForTimestampsRef.current && audio.src.includes(String(clip.surahId))) {
+        // Same file already loaded — just seek within it.
+        stopAtMsRef.current = clip.endMs;
+        audio.currentTime = clip.startMs / 1000;
+        audio.play();
+      } else {
+        loadTimestampsForSurah(clip.surahId);
+        loadAndPlay(clip.surahId, clip.startMs, clip.endMs);
+      }
+      return;
+    }
+
+    const mode = playbackModeRef.current;
+    const shouldRepeat =
+      (mode === 'surah' && repeatMode === 'surah') ||
+      (mode === 'page' && repeatMode === 'page') ||
+      (mode === 'ayah' && repeatMode === 'ayah');
+
+    if (shouldRepeat && queue.length > 0) {
+      clipIndexRef.current = 0;
+      const clip = queue[0];
+      stopAtMsRef.current = clip.endMs;
+      audio.currentTime = clip.startMs / 1000;
+      audio.play();
+    } else if (shouldRepeat) {
       audio.currentTime = 0;
       audio.play();
     } else {
+      audio.pause();
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
       setActiveVerse(null);
       setActiveWord(null);
     }
-  }, [repeatMode]);
+  }, [loadAndPlay, loadTimestampsForSurah, repeatMode]);
 
+  // ── Natural end-of-file (only reached in 'surah' mode, since ayah/page clips
+  //    stop early via stopAtMsRef) ────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.addEventListener('ended', handleAudioEnded);
-    return () => audio.removeEventListener('ended', handleAudioEnded);
-  }, [handleAudioEnded]);
+    const handleEnded = () => advanceOrFinish();
+    audio.addEventListener('ended', handleEnded);
+    return () => audio.removeEventListener('ended', handleEnded);
+  }, [advanceOrFinish]);
 
   // ── Play Full Surah ─────────────────────────────────────────────────────────
   const playFullSurah = useCallback(async (surahNumber: number) => {
@@ -231,25 +294,36 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     setCurrentPage(null);
     setCurrentAyah(null);
     setCurrentSurah(surahNumber);
-    const url = await getSurahAudioUrl(surahNumber, selectedReciter);
-    if (!url) {
-      console.error(`No audio found for surah ${surahNumber} reciter ${selectedReciter}`);
-      setIsLoading(false);
-      return;
-    }
+    clipQueueRef.current = [];
+    clipIndexRef.current = 0;
 
-    // For surahs other than Al-Fatihah (1) and At-Tawbah (9), prepend the reciter's
-    // Basmallah (Surah 1, Ayah 1) before starting the surah audio.
+    await loadTimestampsForSurah(surahNumber);
+
+    // Prepend the reciter's Basmallah (Surah 1, Ayah 1) for every surah except
+    // Al-Fatihah (1) and At-Tawbah (9).
     const needsBasmallah = surahNumber !== 1 && surahNumber !== 9;
     if (needsBasmallah) {
       try {
-        const basmallahUrl = await getAyahAudioUrl(1, 1, selectedReciter);
-        if (basmallahUrl) {
+        const basmallahUrl = await getSurahAudioUrl(1, selectedReciter);
+        const basmallahTimestamps = await getSurahTimestamps(1, selectedReciter);
+        const range = basmallahTimestamps ? verseMsRange(basmallahTimestamps, 1) : null;
+        if (basmallahUrl && range) {
           setIsLoading(true);
           await new Promise<void>((resolve) => {
             const pre = new Audio(basmallahUrl);
+            pre.currentTime = range.start / 1000;
             pre.playbackRate = playbackSpeed;
-            const done = () => { pre.removeEventListener('ended', done); pre.removeEventListener('error', done); resolve(); };
+            const done = () => {
+              pre.removeEventListener('timeupdate', onTime);
+              pre.removeEventListener('ended', done);
+              pre.removeEventListener('error', done);
+              pre.pause();
+              resolve();
+            };
+            const onTime = () => {
+              if (pre.currentTime * 1000 >= range.end) done();
+            };
+            pre.addEventListener('timeupdate', onTime);
             pre.addEventListener('ended', done);
             pre.addEventListener('error', done);
             pre.play().catch(done);
@@ -260,48 +334,72 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    loadAndPlay(url);
-  }, [loadAndPlay, selectedReciter, playbackSpeed]);
+    loadAndPlay(surahNumber);
+  }, [loadAndPlay, loadTimestampsForSurah, selectedReciter, playbackSpeed]);
 
-  // ── Play Page ───────────────────────────────────────────────────────────────
+  // ── Play Page — a page can span multiple surahs, so build a clip queue ─────
   const playPage = useCallback(async (pageNumber: number) => {
     playbackModeRef.current = 'page';
     setPlaybackMode('page');
     setCurrentSurah(null);
     setCurrentAyah(null);
     setCurrentPage(pageNumber);
-    const url = await getPageAudioUrl(pageNumber, selectedReciter);
-    if (url) {
-      loadAndPlay(url);
-    } else {
-      console.error(`No audio found for page ${pageNumber} reciter ${selectedReciter}`);
+
+    const segments = getPageSegments(pageNumber);
+    if (!segments || segments.length === 0) {
+      console.error(`No segments found for page ${pageNumber}`);
       setIsLoading(false);
+      return;
     }
-  }, [loadAndPlay, selectedReciter]);
 
-  // ── Play Ayah – load timestamps FIRST, then play ────────────────────────────
+    setIsLoading(true);
+    const clips: Clip[] = [];
+    for (const seg of segments) {
+      const data = await getSurahTimestamps(seg.surah, selectedReciter);
+      if (!data) continue;
+      const startRange = verseMsRange(data, seg.startVerse);
+      const endRange = verseMsRange(data, seg.endVerse);
+      if (!startRange || !endRange) continue;
+      clips.push({ surahId: seg.surah, startMs: startRange.start, endMs: endRange.end });
+    }
+
+    if (clips.length === 0) {
+      console.error(`Could not resolve audio ranges for page ${pageNumber}`);
+      setIsLoading(false);
+      return;
+    }
+
+    clipQueueRef.current = clips;
+    clipIndexRef.current = 0;
+    await loadTimestampsForSurah(clips[0].surahId);
+    loadAndPlay(clips[0].surahId, clips[0].startMs, clips[0].endMs);
+  }, [loadAndPlay, loadTimestampsForSurah, selectedReciter]);
+
+  // ── Play a single Ayah — a one-clip queue against the full surah file ──────
   const playAyah = useCallback(async (surahId: number, ayahNumber: number) => {
-    // Load ayah timestamps before starting playback
-    const timestamps = await getAyahTimestamps(surahId, ayahNumber, selectedReciter);
-    if (timestamps) {
-      ayahTimestampsRef.current = timestamps;
-    } else {
-      ayahTimestampsRef.current = null;
-    }
-
     playbackModeRef.current = 'ayah';
     setPlaybackMode('ayah');
     setCurrentSurah(null);
     setCurrentPage(null);
     setCurrentAyah({ surahId, ayahNumber });
 
-    const url = await getAyahAudioUrl(surahId, ayahNumber, selectedReciter);
-    if (url) {
-      loadAndPlay(url);
-    } else {
+    const words = await getAyahTimestamps(surahId, ayahNumber, selectedReciter);
+    ayahTimestampsRef.current = words;
+
+    if (!words || words.length === 0) {
       console.error(`No audio found for ayah ${surahId}:${ayahNumber} reciter ${selectedReciter}`);
       setIsLoading(false);
+      return;
     }
+
+    const { start } = parseRange(words[0]);
+    const { end } = parseRange(words[words.length - 1]);
+
+    clipQueueRef.current = [{ surahId, startMs: start, endMs: end }];
+    clipIndexRef.current = 0;
+    setActiveVerse(ayahNumber);
+
+    loadAndPlay(surahId, start, end);
   }, [loadAndPlay, selectedReciter]);
 
   const togglePlayPause = useCallback(() => {
@@ -334,14 +432,28 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     setActiveWord(null);
     timestampsRef.current = null;
     ayahTimestampsRef.current = null;
+    loadedSurahForTimestampsRef.current = null;
+    clipQueueRef.current = [];
+    clipIndexRef.current = 0;
+    stopAtMsRef.current = null;
+    pendingSeekMsRef.current = null;
   }, []);
 
+  // Seeking only makes unambiguous sense in whole-file 'surah' mode; for
+  // 'ayah'/'page' clips it's clamped to stay inside the current clip's bounds.
   const seekTo = useCallback((newProgress: number) => {
     const audio = audioRef.current;
-    if (audio && audio.duration) {
+    if (!audio || !audio.duration) return;
+
+    const clip = clipQueueRef.current[clipIndexRef.current];
+    if (clip) {
+      const span = clip.endMs - clip.startMs;
+      const targetMs = clip.startMs + (newProgress / 100) * span;
+      audio.currentTime = targetMs / 1000;
+    } else {
       audio.currentTime = (newProgress / 100) * audio.duration;
-      setProgress(newProgress);
     }
+    setProgress(newProgress);
   }, []);
 
   const setVolume = useCallback((volume: number) => {

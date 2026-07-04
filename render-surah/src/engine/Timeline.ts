@@ -1,35 +1,43 @@
-// Build a word-level Timeline from existing ayah Timestamp.json files.
-// Falls back to a flat perWordMs when no timestamps are available.
-//
-// Intro/outro are gone from this Timeline — the new pipeline uses a single
-// background.mp4 for the whole duration. If you still want bumper clips,
-// concat them into background.mp4 upstream (or pad the audio) before this
-// stage; the timeline here only covers the recited body.
+// Build a word-level Timeline from real per-verse timestamp data (already
+// resolved upstream by Render-Processor.ts via getSurahTimestamps /
+// getAyahTimestamps). Falls back to a flat perWordMs when a verse has no
+// timestamp data, or when its timestamp count doesn't match its word count.
 
-import { getAyahTimestamps } from "Server/API/Quran";
 import type { RenderVerse, Timeline, TimelineWord } from "./Types";
 
 export interface BuildTimelineArgs {
-  surahId: number;
   verses: RenderVerse[];
-  reciter: string;
-  /** Used when a verse has no timestamp data. */
+  /** One entry per verse, aligned by index to `verses`. Each entry is either
+   *  an array of "start-end" ms range strings (one per spoken word, already
+   *  rebased to 0ms at the clip's start — see Render-Processor.ts), or null
+   *  if no real timestamp data is available for that verse. */
+  timestamps: (string[] | null)[];
+  /** Used when a verse has no timestamp data, or its range count doesn't
+   *  match its spoken word count. */
   fallbackPerWordMs: number;
 }
 
 let lastTimeline: Timeline | null = null;
 let lastIndex = 0;
 
+function dbgTime(...args: unknown[]): void {
+  // eslint-disable-next-line no-console
+  console.debug("[TimelineBuilder]", ...args);
+}
+
 /**
- * Parse "start-end" (ms) range strings. Falls back to linear interpolation
- * across the verse's full duration when word counts mismatch.
+ * Parse "start-end" (ms) range strings without stripping the base offset —
+ * the ranges passed in are already rebased to 0ms at the clip's start by
+ * Render-Processor.ts.
  */
 function rangesToWordTimings(
+  verseIdx: number,
   ranges: string[] | null,
   wordCount: number,
   fallbackPerWordMs: number
 ): { startMs: number; endMs: number }[] {
   if (!ranges || ranges.length === 0) {
+    dbgTime(`verse[${verseIdx}]: ⚠ No ranges array received. Generating linear fallbacks.`);
     const out: { startMs: number; endMs: number }[] = [];
     for (let i = 0; i < wordCount; i++) {
       out.push({
@@ -48,22 +56,21 @@ function rangesToWordTimings(
     .filter((x) => x.endMs > x.startMs);
 
   if (parsed.length === 0) {
-    return rangesToWordTimings(null, wordCount, fallbackPerWordMs);
+    dbgTime(`verse[${verseIdx}]: ❌ All range strings failed to parse or had 0 duration.`);
+    return rangesToWordTimings(verseIdx, null, wordCount, fallbackPerWordMs);
   }
 
-  // Normalize relative to the verse start (ranges from Timestamp.json are
-  // ABSOLUTE within the surah audio file, but we only use intra-verse deltas).
-  const base = parsed[0].startMs;
-  const norm = parsed.map((p) => ({
-    startMs: p.startMs - base,
-    endMs: p.endMs - base,
-  }));
+  dbgTime(`verse[${verseIdx}]: Successfully parsed ${parsed.length} ranges ->`, JSON.stringify(parsed));
 
-  // If counts match — perfect.
-  if (norm.length === wordCount) return norm;
+  if (parsed.length === wordCount) {
+    dbgTime(`verse[${verseIdx}]: Count matches perfectly (${parsed.length} tokens). Using exact timestamp mappings.`);
+    return parsed;
+  }
 
-  // Stretch / squeeze: distribute available range linearly across word count.
-  const totalMs = norm[norm.length - 1].endMs;
+  // Stretch/squeeze fallback if counts drift (e.g. word tokenization
+  // doesn't line up 1:1 with audio-timestamp segmentation for this verse).
+  dbgTime(`verse[${verseIdx}]: ⚠ Mismatch! Got ${parsed.length} ranges, but verse needs ${wordCount} words. Stretching timeline evenly.`);
+  const totalMs = parsed[parsed.length - 1].endMs;
   const out: { startMs: number; endMs: number }[] = [];
   for (let i = 0; i < wordCount; i++) {
     out.push({
@@ -75,35 +82,61 @@ function rangesToWordTimings(
 }
 
 export async function buildTimeline(args: BuildTimelineArgs): Promise<Timeline> {
-  const { surahId, verses, reciter, fallbackPerWordMs } = args;
+  const { verses, timestamps, fallbackPerWordMs } = args;
+
+  dbgTime(`⚡ buildTimeline initiated — Verses to process: ${verses.length}`);
 
   const words: TimelineWord[] = [];
   let cursor = 0;
 
   for (let vi = 0; vi < verses.length; vi++) {
     const v = verses[vi];
-    const wc = Math.max(1, v.words.length);
-    let ranges: string[] | null = null;
-    try {
-      ranges = await getAyahTimestamps(surahId, v.verseNumber, reciter);
-    } catch {
-      ranges = null;
+
+    // Separate total visual tokens from actual spoken audio blocks — the
+    // last token may be the trailing ayah-number marker glyph, which has
+    // no spoken audio of its own.
+    const totalWc = v.words.length;
+    const spokenWc = Math.max(1, totalWc - 1);
+
+    dbgTime(`----------------------------------------------------------------------`);
+    dbgTime(`Processing verse index [${vi}] (Ayah Number: ${v.verseNumber})`);
+    dbgTime(`Visual Token Count (totalWc): ${totalWc} | Expected Spoken Words (spokenWc): ${spokenWc}`);
+
+    const ranges = timestamps[vi] ?? null;
+    if (ranges) {
+      dbgTime(`verse[${vi}]: real timestamps provided (${ranges.length} ranges)`);
+    } else {
+      dbgTime(`verse[${vi}]: no real timestamps for this verse — using linear fallback`);
     }
-    const wt = rangesToWordTimings(ranges, wc, fallbackPerWordMs);
-    for (let wi = 0; wi < wc; wi++) {
-      const t = wt[wi];
+
+    const wt = rangesToWordTimings(vi, ranges, spokenWc, fallbackPerWordMs);
+
+    for (let wi = 0; wi < totalWc; wi++) {
+      // The final token (ayah-number marker) gets zero duration, pinned to
+      // the end of the verse's spoken audio.
+      const t = wi < spokenWc
+        ? wt[wi]
+        : { startMs: wt[wt.length - 1]?.endMs ?? 0, endMs: wt[wt.length - 1]?.endMs ?? 0 };
+
       words.push({
         verseIdx: vi,
         wordIdx: wi,
-        startMs: cursor + t.startMs,
-        endMs: cursor + t.endMs,
+        startMs: t.startMs,
+        endMs: t.endMs,
       });
     }
-    const verseDur = wt[wt.length - 1]?.endMs ?? wc * fallbackPerWordMs;
-    cursor += verseDur;
+
+    const verseDur = wt[wt.length - 1]?.endMs ?? (spokenWc * fallbackPerWordMs);
+    dbgTime(`Verse calculated final timeline boundary: ${verseDur}ms`);
+    cursor = Math.max(cursor, verseDur);
   }
 
   const bodyEndMs = cursor;
+  dbgTime(`======================================================================`);
+  dbgTime(`🏁 buildTimeline Complete!`);
+  dbgTime(`Total word timeline events generated: ${words.length}`);
+  dbgTime(`Final timeline runtime (bodyEndMs): ${bodyEndMs}ms`);
+
   return {
     bodyStartMs: 0,
     bodyEndMs,
@@ -112,9 +145,7 @@ export async function buildTimeline(args: BuildTimelineArgs): Promise<Timeline> 
   };
 }
 
-/** Locate the active word at time t (binary-ish; word counts are small). Still
- *  useful for a live preview UI that wants to highlight along with playback,
- *  even though the export path no longer uses it directly. */
+/** Locate the active word at time t */
 export function activeWordAt(timeline: Timeline, timeMs: number): TimelineWord | null {
   if (timeMs < timeline.bodyStartMs || timeMs >= timeline.bodyEndMs) return null;
   if (lastTimeline !== timeline) {

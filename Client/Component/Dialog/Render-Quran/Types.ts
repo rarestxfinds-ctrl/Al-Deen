@@ -118,23 +118,24 @@ export function fontClass(f: RenderFont): string {
     default:           return "font-uthmani";
   }
 }
-/** Return per-page font family name (e.g. "Uthmani-V2-3") for KFC variants. */
+// Client/Component/Dialog/Types.ts
 export function pageFontFamily(font: RenderFont, surahId: number, verseNumber: number): string | undefined {
-  if (font === "uthmani_v1" || font === "uthmani_v2" || font === "uthmani_v4") {
-    const version = font === "uthmani_v1" ? "1" : font === "uthmani_v2" ? "2" : "4";
-    // Walk pages until we find this verse's segment.
+  if (font === "uthmani_v1" || font === "uthmani_v2") {
     for (let pageNum = 1; pageNum <= 604; pageNum++) {
       const segs = getPageSegments(pageNum);
       if (!segs) continue;
       const s = segs.find((x) => x.surah === surahId);
       if (s && verseNumber >= s.startVerse && verseNumber <= s.endVerse) {
-        return `Uthmani-V${version}-${pageNum}`;
+        return font === "uthmani_v1"
+          ? `QCF_P${String(pageNum).padStart(3, "0")}`
+          : `QCF20${String(pageNum).padStart(2, "0")}`;
       }
     }
-    return `Uthmani-V${version}`;
+    return "KFGQPC HAFS Uthmanic Script";
   }
-  if (font === "indopak") return "IndoPak";
-  return "Uthmani";
+  if (font === "uthmani") return "KFGQPC HAFS Uthmanic Script";
+  if (font === "indopak") return "AlQuran IndoPak by QuranWBW";
+  return "KFGQPC HAFS Uthmanic Script";
 }
 
 // ---- Color helpers ----

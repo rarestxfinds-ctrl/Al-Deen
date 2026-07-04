@@ -1,6 +1,6 @@
 // Client/Component/Quran/Layout/Safhah/Utility.tsx
 import React, { useRef } from "react";
-import { getWordAudioUrl, getAyahAudioUrl } from "Server/API/Quran";
+import { getSurahAudioUrl, getAyahTimestamps } from "Server/API/Quran";
 import { useApp } from "Client/Context/App";
 import { Tooltip } from "Client/Component/UI/Tooltip";
 import type { WordTooltipProps } from "./Types";
@@ -17,7 +17,6 @@ export function WordTooltip({
   let tooltipContent: React.ReactNode = null;
   
   if (translation && transliteration) {
-    // Both exist - Translation above (black), Transliteration below (grey)
     tooltipContent = (
       <div className="space-y-0.5">
         <div className="text-black dark:text-white text-sm">
@@ -29,14 +28,12 @@ export function WordTooltip({
       </div>
     );
   } else if (translation) {
-    // Only translation
     tooltipContent = (
       <div className="text-black dark:text-white text-sm">
         {translation}
       </div>
     );
   } else if (transliteration) {
-    // Only transliteration
     tooltipContent = (
       <div className="text-gray-500 dark:text-gray-400 text-sm">
         {transliteration}
@@ -49,7 +46,7 @@ export function WordTooltip({
       content={tooltipContent} 
       enabled={enabled && !!tooltipContent} 
       side="top" 
-      offset={48}  // Increased from 32 to 48 for even higher position
+      offset={48}
     >
       <span
         onClick={onClick}
@@ -63,21 +60,84 @@ export function WordTooltip({
   );
 }
 
+// ── ms range string "start-end" → { start, end } ────────────────────────────
+function parseRange(r: string): { start: number; end: number } {
+  const [start, end] = r.split("-").map(Number);
+  return { start, end };
+}
+
 export function useAudioPlayback(surahId: number) {
   const { hoverRecitation, selectedReciter } = useApp();
   const [playingKey, setPlayingKey] = React.useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playAudio = (url: string, key: string) => {
+  const stopCurrent = () => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
+  };
+
+  // Plays a slice [startMs, endMs) of the full surah audio file, stopping
+  // itself at endMs since there's no standalone ayah/word audio file anymore.
+  const playClip = (url: string, key: string, startMs: number, endMs: number) => {
+    stopCurrent();
     const audio = new Audio(url);
     audioRef.current = audio;
-    audio.onended = () => { audioRef.current = null; setPlayingKey(null); };
-    audio.onerror = () => { audioRef.current = null; setPlayingKey(null); };
-    audio.play().catch(() => { audioRef.current = null; setPlayingKey(null); });
+    audio.currentTime = startMs / 1000;
+
+    const onTimeUpdate = () => {
+      if (audio.currentTime * 1000 >= endMs) {
+        cleanup();
+      }
+    };
+    const cleanup = () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.pause();
+      audioRef.current = null;
+      setPlayingKey(null);
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.onended = cleanup;
+    audio.onerror = cleanup;
+    audio.play().catch(cleanup);
+  };
+
+  // Plays the whole ayah's slice of the surah's audio file.
+  const playAyahClip = async (verseNumber: number, key: string) => {
+    const words = await getAyahTimestamps(surahId, verseNumber, selectedReciter);
+    if (!words || words.length === 0) {
+      setPlayingKey(null);
+      return;
+    }
+    const { start } = parseRange(words[0]);
+    const { end } = parseRange(words[words.length - 1]);
+
+    const url = await getSurahAudioUrl(surahId, selectedReciter);
+    if (!url) {
+      setPlayingKey(null);
+      return;
+    }
+    playClip(url, key, start, end);
+  };
+
+  // Plays just one word's slice of the ayah, using its individual timestamp entry.
+  const playWordClip = async (verseNumber: number, wordIndex: number, key: string) => {
+    const words = await getAyahTimestamps(surahId, verseNumber, selectedReciter);
+    const wordRange = words?.[wordIndex];
+    if (!wordRange) {
+      setPlayingKey(null);
+      return;
+    }
+    const { start, end } = parseRange(wordRange);
+
+    const url = await getSurahAudioUrl(surahId, selectedReciter);
+    if (!url) {
+      setPlayingKey(null);
+      return;
+    }
+    playClip(url, key, start, end);
   };
 
   const playWordAudio = async (verseNumber: number, wordIndex: number) => {
@@ -85,25 +145,14 @@ export function useAudioPlayback(surahId: number) {
     const key = `word-${verseNumber}-${wordIndex}`;
     if (playingKey === key) return;
     setPlayingKey(key);
-
-    const wordUrl = await getWordAudioUrl(surahId, verseNumber, wordIndex + 1);
-    if (wordUrl) {
-      playAudio(wordUrl, key);
-    } else {
-      const ayahUrl = await getAyahAudioUrl(surahId, verseNumber, selectedReciter);
-      if (ayahUrl) playAudio(ayahUrl, key);
-      else setPlayingKey(null);
-    }
+    await playWordClip(verseNumber, wordIndex, key);
   };
 
   const playVerseAudio = async (verseNumber: number) => {
     const key = `ayah-${verseNumber}`;
     if (playingKey === key) return;
     setPlayingKey(key);
-
-    const ayahUrl = await getAyahAudioUrl(surahId, verseNumber, selectedReciter);
-    if (ayahUrl) playAudio(ayahUrl, key);
-    else setPlayingKey(null);
+    await playAyahClip(verseNumber, key);
   };
 
   const isPlaying = (key: string) => playingKey === key;

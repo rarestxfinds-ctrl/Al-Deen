@@ -7,5 +7,4 @@
 
 export * from "../../../render-surah/src/engine/Types";
 export { buildTimeline, activeWordAt } from "../../../render-surah/src/engine/Timeline";
-export { buildAss } from "../../../render-surah/src/engine/AssBuilder";
 export { pageFontFamily } from "Client/Component/Dialog/Render-Quran/Types";
