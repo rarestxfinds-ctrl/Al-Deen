@@ -1,15 +1,27 @@
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "Client/Component/Layout/Index";
 import { Card } from "Client/Component/UI/Card";
 import { Button } from "Client/Component/UI/Button";
-import { useHadithCorpus } from "Server/API/Hadith";
 import { useTranslation } from "Client/Hook/Use-Translation";
+
+// Fetch function targeting your GitHub Codespaces forwarded address
+async function fetchCorpusFromBackend() {
+  const response = await fetch("https://automatic-space-doodle-7vgjvxj75g5x2x74v-8081.app.github.dev/api/hadith-corpus");
+  if (!response.ok) throw new Error("Failed to load backend corpus data");
+  return response.json();
+}
 
 const Chapter = () => {
   const { Collection } = useParams<{ Collection: string }>();
   const { t } = useTranslation();
   
-  const { data: corpus, isLoading } = useHadithCorpus();
+  // React Query manages client-side caching smoothly
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["hadithCorpusBackend"],
+    queryFn: fetchCorpusFromBackend,
+    staleTime: 1000 * 60 * 15, // Cache on front-end for 15 minutes
+  });
 
   if (isLoading) {
     return (

@@ -6,7 +6,7 @@ import {
   type HadithChapterMeta,
   type HadithChapter,
   type Hadith,
-} from 'Server/API/Hadith';
+} from 'render-surah/API/Hadith';
 
 export function useHadithChapters(collectionId: string) {
   return useQuery<HadithChapterMeta[], Error>({

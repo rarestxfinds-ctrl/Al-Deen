@@ -2,6 +2,8 @@
 import express from "express";
 import cors from "cors";
 import { renderSurahRouter } from "./routes/renderSurah";
+import { getHadithCorpus } from "../API/Hadith"; 
+import { getAidCorpus } from "../API/Aid"; // 🌟 Added import for your Aid utility
 
 const app = express();
 app.use(cors()); // lock this down to your app's origin before going to prod
@@ -11,6 +13,28 @@ app.use(cors()); // lock this down to your app's origin before going to prod
 // alongside the background file in renderSurahRouter). Keep this small;
 // it must NOT be raised to "cover" video uploads, those go through multer.
 app.use(express.json({ limit: "10mb" }));
+
+// 🌟 Route: Exposes the Hadith corpus directly on the app instance
+app.get("/api/hadith-corpus", async (req, res) => {
+  try {
+    const data = await getHadithCorpus();
+    res.json(data);
+  } catch (error) {
+    console.error("Error in /hadith-corpus route:", error);
+    res.status(500).json({ error: "Failed to retrieve Hadith corpus" });
+  }
+});
+
+// 🌟 New Route: Exposes the precompiled Aid asset database directly to the front-end search utility
+app.get("/api/aid-corpus", async (req, res) => {
+  try {
+    const data = await getAidCorpus();
+    res.json(data);
+  } catch (error) {
+    console.error("Error in /aid-corpus route:", error);
+    res.status(500).json({ error: "Failed to retrieve Aid corpus database" });
+  }
+});
 
 app.use("/api", renderSurahRouter);
 

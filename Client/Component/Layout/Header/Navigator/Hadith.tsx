@@ -1,14 +1,35 @@
 // Client/Component/Layout/Header/Navigator/Hadith.tsx
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query"; // 🌟 Swapped for global state query engine
 import { Check, ChevronDown } from "lucide-react";
 import { Button } from "Client/Component/UI/Button";
 import { Container } from "Client/Component/UI/Container";
 import { cn } from "Client/Library/utils";
-import { hadithCollections, useHadithCorpus } from "Server/API/Hadith";
 import { NavigatorLayout } from "./Utility";
 
 type HadithLevel = "collection" | "chapter" | "hadith";
+
+// 🌟 Local placeholder tracking array for immediate client fallback structures
+const baselineFallbackCollections = [
+  {
+    id: "Sahih-Muslim",
+    slug: "Sahih-Muslim",
+    name: "Sahih Muslim",
+    author: "Muslim",
+    topFolder: "Sahih",
+    authorFolder: "Muslim",
+    hadithCount: 0, 
+    description: "Sahih collection compiled by Muslim."
+  }
+];
+
+// Fetch matching endpoint declared on your central Node infrastructure instance
+async function fetchCorpusFromBackend() {
+  const response = await fetch("http://localhost:8081/api/hadith-corpus");
+  if (!response.ok) throw new Error("Failed to load backend corpus data");
+  return response.json();
+}
 
 function parseRoute(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
@@ -54,7 +75,13 @@ export function Hadith_Navigator() {
   });
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const { data: corpus } = useHadithCorpus();
+
+  // 🌟 Read data directly from Node backend query engine
+  const { data: corpus } = useQuery({
+    queryKey: ["hadithCorpusBackend"],
+    queryFn: fetchCorpusFromBackend,
+    staleTime: 1000 * 60 * 15,
+  });
 
   useEffect(() => {
     const activeRoute = parseRoute(location.pathname);
@@ -156,7 +183,8 @@ export function Hadith_Navigator() {
 
   const filteredCollections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    const sourceCollections = corpus?.collections || hadithCollections;
+    // 🌟 Safely point source mapping parameters to cache or fallback array
+    const sourceCollections = corpus?.collections || baselineFallbackCollections;
     return sourceCollections.filter((c: any) =>
       !q ? true : c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
     );
@@ -185,7 +213,8 @@ export function Hadith_Navigator() {
       return targetChap?.name ?? `Chapter ${route.chapterId}`;
     }
     if (route?.collectionSlug) {
-      const sourceCollections = corpus?.collections || hadithCollections;
+      // 🌟 Point inline label compiler to correct data source safely
+      const sourceCollections = corpus?.collections || baselineFallbackCollections;
       const c = sourceCollections.find((x: any) => x.slug.toLowerCase() === route.collectionSlug?.toLowerCase());
       return c?.name ?? route.collectionSlug;
     }

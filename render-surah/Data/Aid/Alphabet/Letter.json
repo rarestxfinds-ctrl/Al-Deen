@@ -1,0 +1,394 @@
+[
+  {
+    "id": "alif",
+    "name": "Alif",
+    "arabicName": "أَلِف",
+    "forms": {
+      "isolated": "ا",
+      "initial": "ا",
+      "medial": "ـا",
+      "final": "ـا"
+    },
+    "pronunciation": "a/aa",
+    "example": "أَمَل",
+    "exampleTranslation": "Hope"
+  },
+  {
+    "id": "ba",
+    "name": "Ba",
+    "arabicName": "بَاء",
+    "forms": {
+      "isolated": "ب",
+      "initial": "بـ",
+      "medial": "ـبـ",
+      "final": "ـب"
+    },
+    "pronunciation": "b",
+    "example": "بَيْت",
+    "exampleTranslation": "House"
+  },
+  {
+    "id": "ta",
+    "name": "Ta",
+    "arabicName": "تَاء",
+    "forms": {
+      "isolated": "ت",
+      "initial": "تـ",
+      "medial": "ـتـ",
+      "final": "ـت"
+    },
+    "pronunciation": "t",
+    "example": "تَمْر",
+    "exampleTranslation": "Dates"
+  },
+  {
+    "id": "tha",
+    "name": "Tha",
+    "arabicName": "ثَاء",
+    "forms": {
+      "isolated": "ث",
+      "initial": "ثـ",
+      "medial": "ـثـ",
+      "final": "ـث"
+    },
+    "pronunciation": "th",
+    "example": "ثَمَر",
+    "exampleTranslation": "Fruit"
+  },
+  {
+    "id": "jeem",
+    "name": "Jeem",
+    "arabicName": "جِيم",
+    "forms": {
+      "isolated": "ج",
+      "initial": "جـ",
+      "medial": "ـجـ",
+      "final": "ـج"
+    },
+    "pronunciation": "j",
+    "example": "جَمَل",
+    "exampleTranslation": "Camel"
+  },
+  {
+    "id": "ha",
+    "name": "Ha",
+    "arabicName": "حَاء",
+    "forms": {
+      "isolated": "ح",
+      "initial": "حـ",
+      "medial": "ـحـ",
+      "final": "ـح"
+    },
+    "pronunciation": "h (heavy)",
+    "example": "حَيَاة",
+    "exampleTranslation": "Life"
+  },
+  {
+    "id": "kha",
+    "name": "Kha",
+    "arabicName": "خَاء",
+    "forms": {
+      "isolated": "خ",
+      "initial": "خـ",
+      "medial": "ـخـ",
+      "final": "ـخ"
+    },
+    "pronunciation": "kh",
+    "example": "خَبَر",
+    "exampleTranslation": "News"
+  },
+  {
+    "id": "dal",
+    "name": "Dal",
+    "arabicName": "دَال",
+    "forms": {
+      "isolated": "د",
+      "initial": "د",
+      "medial": "ـد",
+      "final": "ـد"
+    },
+    "pronunciation": "d",
+    "example": "دَار",
+    "exampleTranslation": "Home"
+  },
+  {
+    "id": "thal",
+    "name": "Thal",
+    "arabicName": "ذَال",
+    "forms": {
+      "isolated": "ذ",
+      "initial": "ذ",
+      "medial": "ـذ",
+      "final": "ـذ"
+    },
+    "pronunciation": "dh",
+    "example": "ذَهَب",
+    "exampleTranslation": "Gold"
+  },
+  {
+    "id": "ra",
+    "name": "Ra",
+    "arabicName": "رَاء",
+    "forms": {
+      "isolated": "ر",
+      "initial": "ر",
+      "medial": "ـر",
+      "final": "ـر"
+    },
+    "pronunciation": "r",
+    "example": "رَحْمَة",
+    "exampleTranslation": "Mercy"
+  },
+  {
+    "id": "zay",
+    "name": "Zay",
+    "arabicName": "زَاي",
+    "forms": {
+      "isolated": "ز",
+      "initial": "ز",
+      "medial": "ـز",
+      "final": "ـز"
+    },
+    "pronunciation": "z",
+    "example": "زَيْت",
+    "exampleTranslation": "Oil"
+  },
+  {
+    "id": "seen",
+    "name": "Seen",
+    "arabicName": "سِين",
+    "forms": {
+      "isolated": "س",
+      "initial": "سـ",
+      "medial": "ـسـ",
+      "final": "ـس"
+    },
+    "pronunciation": "s",
+    "example": "سَمَاء",
+    "exampleTranslation": "Sky"
+  },
+  {
+    "id": "sheen",
+    "name": "Sheen",
+    "arabicName": "شِين",
+    "forms": {
+      "isolated": "ش",
+      "initial": "شـ",
+      "medial": "ـشـ",
+      "final": "ـش"
+    },
+    "pronunciation": "sh",
+    "example": "شَمْس",
+    "exampleTranslation": "Sun"
+  },
+  {
+    "id": "sad",
+    "name": "Sad",
+    "arabicName": "صَاد",
+    "forms": {
+      "isolated": "ص",
+      "initial": "صـ",
+      "medial": "ـصـ",
+      "final": "ـص"
+    },
+    "pronunciation": "s (heavy)",
+    "example": "صَبْر",
+    "exampleTranslation": "Patience"
+  },
+  {
+    "id": "dad",
+    "name": "Dad",
+    "arabicName": "ضَاد",
+    "forms": {
+      "isolated": "ض",
+      "initial": "ضـ",
+      "medial": "ـضـ",
+      "final": "ـض"
+    },
+    "pronunciation": "d (heavy)",
+    "example": "ضَوْء",
+    "exampleTranslation": "Light"
+  },
+  {
+    "id": "taa",
+    "name": "Taa",
+    "arabicName": "طَاء",
+    "forms": {
+      "isolated": "ط",
+      "initial": "طـ",
+      "medial": "ـطـ",
+      "final": "ـط"
+    },
+    "pronunciation": "t (heavy)",
+    "example": "طَرِيق",
+    "exampleTranslation": "Path"
+  },
+  {
+    "id": "thaa",
+    "name": "Thaa",
+    "arabicName": "ظَاء",
+    "forms": {
+      "isolated": "ظ",
+      "initial": "ظـ",
+      "medial": "ـظـ",
+      "final": "ـظ"
+    },
+    "pronunciation": "dh (heavy)",
+    "example": "ظُلْم",
+    "exampleTranslation": "Oppression"
+  },
+  {
+    "id": "ayn",
+    "name": "Ayn",
+    "arabicName": "عَيْن",
+    "forms": {
+      "isolated": "ع",
+      "initial": "عـ",
+      "medial": "ـعـ",
+      "final": "ـع"
+    },
+    "pronunciation": "' (deep throat)",
+    "example": "عِلْم",
+    "exampleTranslation": "Knowledge"
+  },
+  {
+    "id": "ghayn",
+    "name": "Ghayn",
+    "arabicName": "غَيْن",
+    "forms": {
+      "isolated": "غ",
+      "initial": "غـ",
+      "medial": "ـغـ",
+      "final": "ـغ"
+    },
+    "pronunciation": "gh",
+    "example": "غَيْب",
+    "exampleTranslation": "Unseen"
+  },
+  {
+    "id": "fa",
+    "name": "Fa",
+    "arabicName": "فَاء",
+    "forms": {
+      "isolated": "ف",
+      "initial": "فـ",
+      "medial": "ـفـ",
+      "final": "ـف"
+    },
+    "pronunciation": "f",
+    "example": "فَجْر",
+    "exampleTranslation": "Dawn"
+  },
+  {
+    "id": "qaf",
+    "name": "Qaf",
+    "arabicName": "قَاف",
+    "forms": {
+      "isolated": "ق",
+      "initial": "قـ",
+      "medial": "ـقـ",
+      "final": "ـق"
+    },
+    "pronunciation": "q (deep)",
+    "example": "قَلْب",
+    "exampleTranslation": "Heart"
+  },
+  {
+    "id": "kaf",
+    "name": "Kaf",
+    "arabicName": "كَاف",
+    "forms": {
+      "isolated": "ك",
+      "initial": "كـ",
+      "medial": "ـكـ",
+      "final": "ـك"
+    },
+    "pronunciation": "k",
+    "example": "كِتَاب",
+    "exampleTranslation": "Book"
+  },
+  {
+    "id": "lam",
+    "name": "Lam",
+    "arabicName": "لَام",
+    "forms": {
+      "isolated": "ل",
+      "initial": "لـ",
+      "medial": "ـلـ",
+      "final": "ـل"
+    },
+    "pronunciation": "l",
+    "example": "لَيْل",
+    "exampleTranslation": "Night"
+  },
+  {
+    "id": "meem",
+    "name": "Meem",
+    "arabicName": "مِيم",
+    "forms": {
+      "isolated": "م",
+      "initial": "مـ",
+      "medial": "ـمـ",
+      "final": "ـم"
+    },
+    "pronunciation": "m",
+    "example": "مَاء",
+    "exampleTranslation": "Water"
+  },
+  {
+    "id": "noon",
+    "name": "Noon",
+    "arabicName": "نُون",
+    "forms": {
+      "isolated": "ن",
+      "initial": "نـ",
+      "medial": "ـنـ",
+      "final": "ـن"
+    },
+    "pronunciation": "n",
+    "example": "نُور",
+    "exampleTranslation": "Light"
+  },
+  {
+    "id": "ha2",
+    "name": "Ha",
+    "arabicName": "هَاء",
+    "forms": {
+      "isolated": "ه",
+      "initial": "هـ",
+      "medial": "ـهـ",
+      "final": "ـه"
+    },
+    "pronunciation": "h",
+    "example": "هُدَى",
+    "exampleTranslation": "Guidance"
+  },
+  {
+    "id": "waw",
+    "name": "Waw",
+    "arabicName": "وَاو",
+    "forms": {
+      "isolated": "و",
+      "initial": "و",
+      "medial": "ـو",
+      "final": "ـو"
+    },
+    "pronunciation": "w / oo",
+    "example": "وَقْت",
+    "exampleTranslation": "Time"
+  },
+  {
+    "id": "ya",
+    "name": "Ya",
+    "arabicName": "يَاء",
+    "forms": {
+      "isolated": "ي",
+      "initial": "يـ",
+      "medial": "ـيـ",
+      "final": "ـي"
+    },
+    "pronunciation": "y / ee",
+    "example": "يَوْم",
+    "exampleTranslation": "Day"
+  }
+]

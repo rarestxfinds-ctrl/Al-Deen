@@ -1,16 +1,51 @@
-// TajweedSubcategory.tsx
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "Client/Component/Layout/Index";
-import { getTajweedCategoryDetail } from "Server/API/Aid";
 import { Button } from "Client/Component/UI/Button";
 import TajweedDetail from "./Detail"; // adjust import path as needed
 
+// Fetch function targeting your GitHub Codespaces forwarded address
+async function fetchAidCorpusFromBackend() {
+  const response = await fetch("https://automatic-space-doodle-7vgjvxj75g5x2x74v-8081.app.github.dev/api/aid-corpus");
+  if (!response.ok) throw new Error("Failed to load backend aid corpus data");
+  return response.json();
+}
+
 export default function TajweedSubcategory() {
   const { categoryId, subcategoryId } = useParams<{ categoryId: string; subcategoryId: string }>();
-  const category = getTajweedCategoryDetail(categoryId || "");
-  const subfolder = category?.subfolders.find(f => f.id === subcategoryId);
 
-  // Not a subfolder — hand off to Detail which handles flat leaves
+  // Leverage React Query to fetch data asynchronously or fetch directly from the client cache layer
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["aidCorpusBackend"],
+    queryFn: fetchAidCorpusFromBackend,
+    staleTime: 1000 * 60 * 15, // Cache client-side for 15 minutes
+  });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, idx) => (
+            <Button key={idx} fullWidth disabled className="!p-5 animate-pulse opacity-50">
+              Loading subcategories...
+            </Button>
+          ))}
+        </div>
+      </Layout>
+    );
+  }
+
+  // Safely grab the precompiled category from your corpus structure layout tree
+  const category = corpus?.tajweedCategories?.find(
+    (cat: any) => cat.id?.toLowerCase() === categoryId?.toLowerCase()
+  );
+
+  // If the base category exists, check if this is an explicitly nested subfolder slice
+  const subfolder = category?.subfolders?.find(
+    (f: any) => f.id?.toLowerCase() === subcategoryId?.toLowerCase()
+  );
+
+  // Not a subfolder (flat leaf rule matching category/subcategory path pattern) — hand off to Detail layout
   if (!subfolder) {
     return <TajweedDetail />;
   }
@@ -18,17 +53,22 @@ export default function TajweedSubcategory() {
   if (!category) {
     return (
       <Layout>
-        <div className="text-center">
-          <p className="text-muted-foreground">Not found</p>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Category context not found</p>
         </div>
       </Layout>
     );
   }
 
+  const subcategoriesList = subfolder.subcategories || [];
+
   return (
     <Layout>
       <div className="space-y-3">
-        {subfolder.subcategories.map((sub) => (
+        {subcategoriesList.length === 0 && (
+          <p className="text-muted-foreground text-sm text-center py-4">No subcategories available in this folder</p>
+        )}
+        {subcategoriesList.map((sub: any) => (
           <Link key={sub.id} to={`/Aid/Arabic/Tajweed/${category.id}/${subfolder.id}/${sub.id}`} className="block">
             <Button className="!p-5 w-full !justify-start !text-left" fullWidth>
               <div className="flex-1 min-w-0">

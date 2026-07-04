@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { toast } from "sonner";
 import { Button } from "Client/Component/UI/Button";
 import { Input } from "Client/Component/UI/Input";

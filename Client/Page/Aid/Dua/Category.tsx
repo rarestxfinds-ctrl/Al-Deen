@@ -1,11 +1,11 @@
 import { useParams, Link } from "react-router-dom";
-import { Layout } from "Client/Component/Layout/Index";
+import { useQuery } from "@tanstack/react-query";
 import { Copy, Share2, ChevronDown } from "lucide-react";
-import { getDuaCategory, type DuaItem } from "Server/API/Aid";
 import { toast } from "Client/Hook/Use-Toast";
 import { Button } from "Client/Component/UI/Button";
 import { Container } from "Client/Component/UI/Container";
 import { Tooltip } from "Client/Component/UI/Tooltip";
+import { Layout } from "Client/Component/Layout/Index";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,17 @@ import {
 import { ShareDialog } from "Client/Component/Dialog/Share";
 import { useApp } from "Client/Context/App";
 import { useState } from "react";
+
+// Local typing matching your corpus structure
+interface DuaItem {
+  id?: string;
+  arabic: string;
+  translation: string;
+  reference: string;
+  transliteration?: string | string[];
+  wbw?: string[];
+  extraReferences?: string[];
+}
 
 function formatNameFromId(id: string): string {
   return id
@@ -59,6 +70,13 @@ function ReferenceLink({ reference }: { reference: string }) {
   return <span className="text-xs text-muted-foreground">{cleanRef}</span>;
 }
 
+// Fetch function targeting your GitHub Codespaces forwarded address
+async function fetchAidCorpusFromBackend() {
+  const response = await fetch("https://automatic-space-doodle-7vgjvxj75g5x2x74v-8081.app.github.dev/api/aid-corpus");
+  if (!response.ok) throw new Error("Failed to load backend aid corpus data");
+  return response.json();
+}
+
 const Dua_Category = () => {
   const { categoryId } = useParams<{ categoryId: string }>();
   const {
@@ -78,8 +96,40 @@ const Dua_Category = () => {
   const [activeTooltip, setActiveTooltip] = useState<{ duaIndex: number; wordIndex: number } | null>(null);
   const [shareDua, setShareDua] = useState<DuaItem | null>(null);
 
+  // Grab corpus data asynchronously using React Query
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["aidCorpusBackend"],
+    queryFn: fetchAidCorpusFromBackend,
+    staleTime: 1000 * 60 * 15, // Cache client-side for 15 minutes
+  });
+
   const categoryName = categoryId ? formatNameFromId(categoryId) : "";
-  const category = categoryName ? getDuaCategory(categoryName) : null;
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <section>
+          <div className="mx-auto max-w-3xl space-y-5">
+            {[...Array(3)].map((_, idx) => (
+              <Container key={idx} className="p-5 space-y-4 animate-pulse">
+                <div className="flex justify-between items-center">
+                  <div className="h-6 bg-muted rounded w-24"></div>
+                  <div className="h-6 bg-muted rounded w-12"></div>
+                </div>
+                <div className="h-12 bg-muted rounded w-full justify-self-end"></div>
+                <div className="h-5 bg-muted rounded w-3/4"></div>
+              </Container>
+            ))}
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  // Traverses the precompiled corpus layout safely on the frontend client-side
+  const category = corpus?.duas?.find(
+    (c: any) => c.name?.toLowerCase() === categoryName?.toLowerCase() || c.id?.toLowerCase() === categoryId?.toLowerCase()
+  );
 
   if (!category) {
     return (
@@ -329,12 +379,14 @@ const Dua_Category = () => {
     );
   };
 
+  const duasList: DuaItem[] = category?.duas || [];
+
   return (
     <Layout>
       <section>
         <div className="mx-auto max-w-3xl">
           <div className="space-y-5">
-            {category.duas.map((dua, index) => renderDua(dua, index))}
+            {duasList.map((dua, index) => renderDua(dua, index))}
           </div>
         </div>
       </section>

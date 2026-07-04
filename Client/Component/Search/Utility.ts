@@ -2,9 +2,6 @@
 
 import { Home, BookOpen, BookText, MessageSquare, Clock, Sparkles, Calculator, Compass, Gamepad2, Users, Landmark, CalendarDays } from "lucide-react";
 import { surahList, juzData } from "Server/API/Quran";
-import { hadithCollections } from "Server/API/Hadith";
-import { duaCategories, getTajweedCategories, getLetters } from "Server/API/Aid";
-import vocabularyData from "Server/Data/Aid/Arabic/Vocabulary.json";
 import { normalizeArabic } from "Client/Utility/Quran/Normalize-Arabic";
 import { matchAnyField } from "./AdvancedQuery";
 import type { SearchCategory, SearchResult, SearchCategoryConfig } from "./Types";
@@ -55,7 +52,6 @@ export const CATEGORIES: SearchCategoryConfig[] = [
 ];
 
 export const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
-
 export const AVAILABLE_SURAHS_FOR_VERSE_SEARCH = [1, 112, 113, 114];
 
 export interface VerseResult {
@@ -67,21 +63,69 @@ export interface VerseResult {
   verseKey: string;
 }
 
-// ============= Helpers =============
-export function getResultTypeLabel(category: SearchCategory): string {
-  switch (category) {
-    case "quran": return "Quran Results";
-    case "hadith": return "Hadith Collections";
-    case "aid": return "Aid Results";
-    default: return "Pages";
+// ============= Synchronized Client-Side State Mirrors =============
+let localHadithCollections: any[] = [
+  {
+    id: "Sahih-Muslim",
+    slug: "Sahih-Muslim",
+    name: "Sahih Muslim",
+    author: "Muslim",
+    topFolder: "Sahih",
+    authorFolder: "Muslim",
+    hadithCount: 0,
+    description: "Sahih collection compiled by Muslim."
+  }
+];
+
+let cachedAidCorpus: any = null;
+let _aidIndex: AidEntry[] | null = null;
+let isSyncingAid = false;
+
+// ============= API Worker Layer (Codespace Safe Routes) =============
+const BACKEND_BASE_URL = "https://automatic-space-doodle-7vgjvxj75g5x2x74v-8081.app.github.dev";
+
+async function syncHadithCollectionsFromBackend() {
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/hadith-corpus`);
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data?.collections) {
+      localHadithCollections = data.collections;
+    }
+  } catch (error) {
+    console.error("Failed syncing search utility Hadith cache:", error);
   }
 }
 
-export function getCategoryLabel(category: SearchCategory): string {
-  return CATEGORY_MAP[category]?.label || "Search";
+async function syncAidCorpusFromBackend(): Promise<any> {
+  if (cachedAidCorpus) return cachedAidCorpus;
+  if (isSyncingAid) {
+    // Await loop guard to handle multi-entry debouncing
+    while (isSyncingAid) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return cachedAidCorpus;
+  }
+
+  isSyncingAid = true;
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/aid-corpus`);
+    if (!response.ok) throw new Error("Failed to load backend aid corpus data");
+    cachedAidCorpus = await response.json();
+    return cachedAidCorpus;
+  } catch (error) {
+    console.error("Failed syncing search utility Aid cache:", error);
+    return null;
+  } finally {
+    isSyncingAid = false;
+  }
 }
 
-// ============= Scoring =============
+// Baseline data population fired on script execution
+syncHadithCollectionsFromBackend();
+syncAidCorpusFromBackend();
+
+// ============= Scoring Helpers =============
 function scoreMatch(query: string, candidates: Array<string | undefined | null>): number {
   const q = query.trim().toLowerCase();
   if (!q) return 0;
@@ -124,7 +168,7 @@ function levenshtein(a: string, b: string): number {
   return dp[b.length];
 }
 
-// ============= Aid index =============
+// ============= Client-Side Index Structuring =============
 interface AidEntry {
   id: string;
   title: string;
@@ -135,46 +179,51 @@ interface AidEntry {
   searchable: string[];
 }
 
-let _aidIndex: AidEntry[] | null = null;
-function getAidIndex(): AidEntry[] {
+async function getAidIndex(): Promise<AidEntry[]> {
   if (_aidIndex) return _aidIndex;
+  
+  const corpus = await syncAidCorpusFromBackend();
+  if (!corpus) return [];
+
   const entries: AidEntry[] = [];
 
-  // Duas
-  for (const cat of duaCategories) {
-    const slug = cat.name.replace(/ /g, "-");
-    entries.push({
-      id: `dua-${slug}`,
-      title: cat.name,
-      subtitle: `${cat.duas.length} duas`,
-      path: `/Aid/Dua/${slug}`,
-      type: "Dua",
-      searchable: [cat.name, "dua"],
-    });
+  // 1. Duas
+  if (Array.isArray(corpus.duas)) {
+    for (const cat of corpus.duas) {
+      const slug = cat.name.replace(/ /g, "-");
+      entries.push({
+        id: `dua-${slug}`,
+        title: cat.name,
+        subtitle: `${cat.duas?.length || 0} duas`,
+        path: `/Aid/Dua/${slug}`,
+        type: "Dua",
+        searchable: [cat.name, "dua"],
+      });
+    }
   }
 
-  // Arabic vocabulary (categories, subcategories, words)
-  try {
-    const vocab = vocabularyData as any;
-    for (const cat of vocab.categories || []) {
+  // 2. Arabic Vocabulary mapping
+  if (Array.isArray(corpus.arabicVocabulary)) {
+    const mainVocab = corpus.arabicVocabulary.find((v: any) => v.id === "Arabic");
+    const subCategories = mainVocab?.subcategories || corpus.arabicVocabulary;
+
+    for (const cat of subCategories) {
       entries.push({
         id: `arabic-cat-${cat.id}`,
         title: cat.name,
         subtitle: "Arabic Category",
-        arabicName: cat.arabicName,
-        path: `/Aid/Arabic/${cat.title}`,
+        path: `/Aid/Arabic/${cat.id}`,
         type: "Arabic",
-        searchable: [cat.name, cat.arabicName, cat.id],
+        searchable: [cat.name, cat.id],
       });
       for (const sub of cat.subcategories || []) {
         entries.push({
           id: `arabic-sub-${cat.id}-${sub.id}`,
           title: sub.name,
           subtitle: `${cat.name} · ${sub.words?.length || 0} words`,
-          arabicName: sub.arabicName,
           path: `/Aid/Arabic/${cat.id}/${sub.id}`,
           type: "Arabic",
-          searchable: [sub.name, sub.arabicName, sub.id],
+          searchable: [sub.name, sub.id],
         });
         for (const word of sub.words || []) {
           entries.push({
@@ -189,13 +238,11 @@ function getAidIndex(): AidEntry[] {
         }
       }
     }
-  } catch (e) {
-    console.error("Aid vocabulary index failed", e);
   }
 
-  // Tajweed categories + rules
-  try {
-    for (const cat of getTajweedCategories()) {
+  // 3. Tajweed
+  if (Array.isArray(corpus.tajweedCategories)) {
+    for (const cat of corpus.tajweedCategories) {
       entries.push({
         id: `tajweed-${cat.id}`,
         title: cat.name,
@@ -215,13 +262,11 @@ function getAidIndex(): AidEntry[] {
         });
       }
     }
-  } catch (e) {
-    console.error("Aid tajweed index failed", e);
   }
 
-  // Alphabet letters
-  try {
-    for (const l of getLetters()) {
+  // 4. Alphabet Letters
+  if (Array.isArray(corpus.alphabet)) {
+    for (const l of corpus.alphabet) {
       entries.push({
         id: `letter-${l.id}`,
         title: l.name,
@@ -232,11 +277,9 @@ function getAidIndex(): AidEntry[] {
         searchable: [l.name, l.pronunciation, l.forms?.isolated],
       });
     }
-  } catch (e) {
-    console.error("Aid alphabet index failed", e);
   }
 
-  // Aid static pages
+  // 5. Aid Static Pages Fallback Descriptor Map
   const aidPages = [
     { name: "Prayer Times", path: "/Aid/Prayers", terms: "salah namaz prayer timetable adhan" },
     { name: "Qibla", path: "/Aid/Qibla" },
@@ -267,7 +310,7 @@ function getAidIndex(): AidEntry[] {
       subtitle: "Aid Page",
       path: p.path,
       type: "Page",
-      searchable: [p.name, (p as any).terms],
+      searchable: [p.name, p.terms || ""],
     });
   }
 
@@ -275,13 +318,13 @@ function getAidIndex(): AidEntry[] {
   return entries;
 }
 
-// ============= Main search =============
-export function searchByCategory(
+// ============= Main Search Controller (Converted to Async Promise) =============
+export async function searchByCategory(
   query: string,
   category: SearchCategory,
   navLinks: Array<{ name: string; path: string }>,
   supportLinks: Array<{ name: string; path: string }>
-): SearchResult[] {
+): Promise<SearchResult[]> {
   if (!query.trim()) return [];
   const scored: Array<SearchResult & { _score: number }> = [];
 
@@ -354,6 +397,7 @@ export function searchByCategory(
           });
         }
       }
+      
       const hizbMatch = query.match(/^hizb\s*(\d+)$/i);
       if (hizbMatch) {
         const n = parseInt(hizbMatch[1]);
@@ -390,14 +434,15 @@ export function searchByCategory(
     }
 
     case "hadith": {
-      for (const collection of hadithCollections) {
-        const s = scoreMatch(query, [collection.name, (collection as any).arabicName, (collection as any).slug]);
+      syncHadithCollectionsFromBackend();
+      for (const collection of localHadithCollections) {
+        const s = scoreMatch(query, [collection.name, collection.arabicName, collection.slug]);
         if (s > 0) {
           scored.push({
             id: collection.id,
             title: collection.name,
             subtitle: `${collection.hadithCount.toLocaleString()} hadith`,
-            arabicName: (collection as any).arabicName,
+            arabicName: collection.arabicName,
             path: `/Hadith/${collection.id}`,
             type: "Collection",
             _score: s,
@@ -408,7 +453,7 @@ export function searchByCategory(
     }
 
     case "aid": {
-      const idx = getAidIndex();
+      const idx = await getAidIndex();
       for (const e of idx) {
         const s = scoreMatch(query, e.searchable);
         const advanced = matchAnyField(query, () => e.searchable);
@@ -432,24 +477,39 @@ export function searchByCategory(
   return scored.slice(0, 8).map(({ _score, ...rest }) => rest);
 }
 
-// ============= Per-category helpers (kept for /Search page) =============
-export function searchPages(query: string): SearchResult[] {
+// ============= Synchronous Adapters / Per-Category Handlers =============
+export function getResultTypeLabel(category: SearchCategory): string {
+  switch (category) {
+    case "quran": return "Quran Results";
+    case "hadith": return "Hadith Collections";
+    case "aid": return "Aid Results";
+    default: return "Pages";
+  }
+}
+
+export function getCategoryLabel(category: SearchCategory): string {
+  return CATEGORY_MAP[category]?.label || "Search";
+}
+
+export async function searchPages(query: string): Promise<SearchResult[]> {
   return searchByCategory(query, "pages", [], []);
 }
 
-export function searchSurahs(query: string): SearchResult[] {
-  return searchByCategory(query, "quran", [], []).filter(r => r.type === "Surah");
+export async function searchSurahs(query: string): Promise<SearchResult[]> {
+  const list = await searchByCategory(query, "quran", [], []);
+  return list.filter(r => r.type === "Surah");
 }
 
-export function searchHadiths(query: string): SearchResult[] {
+export async function searchHadiths(query: string): Promise<SearchResult[]> {
   return searchByCategory(query, "hadith", [], []);
 }
 
-export function searchDuas(query: string): SearchResult[] {
-  return searchByCategory(query, "aid", [], []).filter(r => r.type === "Dua");
+export async function searchDuas(query: string): Promise<SearchResult[]> {
+  const list = await searchByCategory(query, "aid", [], []);
+  return list.filter(r => r.type === "Dua");
 }
 
-export function searchAid(query: string): SearchResult[] {
+export async function searchAid(query: string): Promise<SearchResult[]> {
   return searchByCategory(query, "aid", [], []);
 }
 

@@ -7,7 +7,7 @@ import { useBookmarks } from "Client/Hook/Use-Bookmarks";
 import { useReadingProgress } from "Client/Hook/Use-Reading-Progress";
 import { useNotes } from "Client/Hook/Use-Notes";
 import { surahList } from "Server/API/Quran";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { toast } from "sonner";
 import { User } from "lucide-react";
 import { CredentialModal } from "./Modal/Index";

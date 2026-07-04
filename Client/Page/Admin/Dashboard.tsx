@@ -4,7 +4,7 @@ import { Layout } from "Client/Component/Layout/Index";
 import { Container } from "Client/Component/UI/Container";
 import { Button } from "Client/Component/UI/Button";
 import { useAdmin } from "Client/Context/Admin";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { Users, Activity, LogOut, Shield, Eye, MousePointerClick, Clock } from "lucide-react";
 
 interface VisitorStats {

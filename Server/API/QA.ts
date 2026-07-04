@@ -1,4 +1,4 @@
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 
 export interface QAQuestion {
   id: string;

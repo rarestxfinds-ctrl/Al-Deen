@@ -1,14 +1,25 @@
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query"; // 🌟 Swapped to standard react-query
 import { Layout } from "Client/Component/Layout/Index";
 import { Button } from "Client/Component/UI/Button";
-import { useHadithCorpus } from "Server/API/Hadith";
 import NotFound from "../404";
+
+// Fetch utility routing requests to your backend Express server
+async function fetchCorpusFromBackend() {
+  const response = await fetch("http://localhost:8081/api/hadith-corpus");
+  if (!response.ok) throw new Error("Failed to load backend corpus data");
+  return response.json();
+}
 
 const Narration = () => {
   const { Collection, Chapter } = useParams<{ Collection: string; Chapter: string }>();
 
-  // 🌟 Hooks directly into the global data cache line
-  const { data: corpus, isLoading } = useHadithCorpus();
+  // 🌟 Connect query tool targeting backend api surface
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["hadithCorpusBackend"],
+    queryFn: fetchCorpusFromBackend,
+    staleTime: 1000 * 60 * 15,
+  });
 
   if (isLoading) {
     return (
@@ -20,7 +31,6 @@ const Narration = () => {
     );
   }
 
-  // Find target collection and nested chapter out of cached data instantly
   const collection = corpus?.collections?.find(
     (c: any) => c.slug.toLowerCase() === Collection?.toLowerCase()
   );
@@ -34,7 +44,6 @@ const Narration = () => {
 
   return (
     <Layout>
-      {/* Full‑width grid, no extra margins or padding */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {hadithIds.map((id: string) => (
           <Link key={id} to={`/Hadith/${collection.slug}/${Chapter}/${id}`}>

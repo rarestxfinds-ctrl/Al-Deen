@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "Client/Hook/Use-Toast";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { cn } from "Client/Library/utils";
 import { useIsMobile } from "Client/Hook/Use-Mobile";
 import ReactMarkdown from "react-markdown";

@@ -5,7 +5,7 @@ import { useAuth } from "Client/Context/Auth";
 import { useQuranGoals, GOAL_PRESETS, type GoalPreset } from "Client/Hook/Use-Quran-Goals";
 import { useReadingProgress } from "Client/Hook/Use-Reading-Progress";
 import { surahList, juzData } from "Server/API/Quran";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Container } from "Client/Component/UI/Container";
 import { Button } from "Client/Component/UI/Button";

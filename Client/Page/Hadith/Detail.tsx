@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query"; // 🌟 Swapped to standard react-query
 import { Layout } from "Client/Component/Layout/Index";
 import { Copy, Share2, BookmarkPlus, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
-import { useHadithCorpus } from "Server/API/Hadith";
 import { useApp } from "Client/Context/App";
 import { useBookmarks } from "Client/Hook/Use-Bookmarks";
 import { useAuth } from "Client/Context/Auth";
@@ -12,6 +12,13 @@ import { Button } from "Client/Component/UI/Button";
 import { Tooltip } from "Client/Component/UI/Tooltip";
 import { ShareDialog } from "Client/Component/Dialog/Share";
 import { useState } from "react";
+
+// Fetch utility routing requests to your backend Express server
+async function fetchCorpusFromBackend() {
+  const response = await fetch("http://localhost:8081/api/hadith-corpus");
+  if (!response.ok) throw new Error("Failed to load backend corpus data");
+  return response.json();
+}
 
 const Detail = () => {
   const { Collection, Chapter, HadithId } = useParams();
@@ -27,7 +34,12 @@ const Detail = () => {
 
   const [shareOpen, setShareOpen] = useState(false);
 
-  const { data: corpus, isLoading } = useHadithCorpus();
+  // 🌟 Direct connection to Node Server via useQuery
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["hadithCorpusBackend"],
+    queryFn: fetchCorpusFromBackend,
+    staleTime: 1000 * 60 * 15,
+  });
 
   const toRem = (size: number, base = 1.2) => `${(base * size) / 5}rem`;
 
@@ -96,7 +108,6 @@ const Detail = () => {
 
   const arabicWords = arabicText.split(" ");
 
-  // 🌟 Optimized render token matching Sunnah.com inline flow constraints
   const renderWord = (word: string, idx: number) => {
     const wbwTranslation = hadith.wbw?.[idx];
     
@@ -153,10 +164,7 @@ const Detail = () => {
             </div>
           </div>
 
-          {/* Split View Content Layout Engine */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            
-            {/* Translation Block - Left Column Side */}
             {showHadithTranslation && englishText && (
               <div className="order-2 lg:order-1 mt-2 lg:mt-0" dir="ltr">
                 <p
@@ -168,7 +176,6 @@ const Detail = () => {
               </div>
             )}
 
-            {/* Arabic Block - Right Column Side */}
             {arabicText && (
               <div
                 className="order-1 lg:order-2 leading-loose text-justify"
@@ -180,7 +187,6 @@ const Detail = () => {
                   textJustify: "inter-word"
                 }}
               >
-                {/* Clean inline rendering branch configuration layout matches Sunnah.com approach */}
                 {showHadithHoverTranslation ? (
                   arabicWords.map((word, idx) => renderWord(word, idx))
                 ) : (
@@ -188,11 +194,9 @@ const Detail = () => {
                 )}
               </div>
             )}
-
           </div>
         </Container>
 
-        {/* Previous / Next Pagination Links */}
         <div className="flex items-center justify-between mt-6 pt-4">
           {prevHadith ? (
             <Link to={`/Hadith/${collection.slug}/${Chapter}/${prevHadith.id}`}>

@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "Client/Component/Layout/Index";
 import { Container } from "Client/Component/UI/Container";
 import { Button } from "Client/Component/UI/Button";
-import { getArabicWord } from "Server/API/Aid";
 import { useArabicBookmarks } from "Client/Hook/Use-Arabic-Bookmarks";
 import { useTranslation } from "Client/Hook/Use-Translation";
 import { Bookmark, BookmarkCheck, Volume2 } from "lucide-react";
+
+// Fetch function targeting your GitHub Codespaces forwarded address
+async function fetchAidCorpusFromBackend() {
+  const response = await fetch("https://automatic-space-doodle-7vgjvxj75g5x2x74v-8081.app.github.dev/api/aid-corpus");
+  if (!response.ok) throw new Error("Failed to load backend aid corpus data");
+  return response.json();
+}
 
 export default function ArabicWordPage() {
   const { vocabId, categoryId, subId, wordId } = useParams<{
@@ -15,16 +22,47 @@ export default function ArabicWordPage() {
     subId: string;
     wordId: string;
   }>();
-  const word = getArabicWord(categoryId || "", subId || "", wordId || "", vocabId || "");
+
   const bookmarkKey = `${vocabId}/${categoryId}/${subId}/${wordId}`;
   const { isBookmarked, toggle } = useArabicBookmarks();
   const { isRtl } = useTranslation();
   const [revealed, setRevealed] = useState(false);
 
+  // Use React Query to manage the asset lifecycle smoothly and read from cache if available
+  const { data: corpus, isLoading } = useQuery({
+    queryKey: ["aidCorpusBackend"],
+    queryFn: fetchAidCorpusFromBackend,
+    staleTime: 1000 * 60 * 15, // Cache client-side for 15 minutes
+  });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <Container className="w-full !rounded-[48px] p-8 text-center">
+          <p className="text-muted-foreground animate-pulse">Loading word details...</p>
+        </Container>
+      </Layout>
+    );
+  }
+
+  // Deep structural search across the precompiled vocabulary slice inside the corpus
+  let word: any = null;
+  if (Array.isArray(corpus?.arabicVocabulary)) {
+    // Traverse targeting either a parent wrapper or the direct root list array matching the utility definitions
+    const mainVocab = corpus.arabicVocabulary.find((v: any) => v.id === "Arabic");
+    const subCategories = mainVocab?.subcategories || corpus.arabicVocabulary;
+
+    const targetCategory = subCategories.find((c: any) => c.id === categoryId);
+    const targetSub = targetCategory?.subcategories?.find((s: any) => s.id === subId);
+    if (targetSub?.words) {
+      word = targetSub.words.find((w: any) => w.id === wordId);
+    }
+  }
+
   if (!word) {
     return (
       <Layout>
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 py-8">
           <p className="text-muted-foreground">Word not found</p>
           <Link to={`/Aid/Arabic/${vocabId}/${categoryId}/${subId}`}>
             <Button variant="outline">Back</Button>

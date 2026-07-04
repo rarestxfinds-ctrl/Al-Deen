@@ -1,14 +1,39 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "Client/Component/Layout/Index";
 import { Card } from "Client/Component/UI/Card";
-import { useHadithCorpus, hadithCollections } from "Server/API/Hadith";
+
+// 🌟 Local frontend placeholder array for immediate rendering while loading
+const fallbackCollections = [
+  {
+    id: "Sahih-Muslim",
+    slug: "Sahih-Muslim",
+    name: "Sahih Muslim",
+    author: "Muslim",
+    topFolder: "Sahih",
+    authorFolder: "Muslim",
+    hadithCount: 0, 
+    description: "Sahih collection compiled by Muslim."
+  }
+];
+
+// Fetch function pulling data directly from your updated Node backend
+async function fetchCorpusFromBackend() {
+  const response = await fetch("http://localhost:8081/api/hadith-corpus");
+  if (!response.ok) throw new Error("Failed to load backend corpus data");
+  return response.json();
+}
 
 const Collection = () => {
-  // 🌟 Hooks directly into the automatic cache layer
-  const { data: corpus } = useHadithCorpus();
+  // 🌟 Connects to the server endpoint instead of the client-side hook
+  const { data: corpus } = useQuery({
+    queryKey: ["hadithCorpusBackend"],
+    queryFn: fetchCorpusFromBackend,
+    staleTime: 1000 * 60 * 15, // Cache client side for 15 minutes
+  });
 
-  // Fallback to placeholder array while loading
-  const displayCollections = corpus?.collections || hadithCollections;
+  // Safe fallback to placeholder array if data is still downloading
+  const displayCollections = corpus?.collections || fallbackCollections;
 
   return (
     <Layout>

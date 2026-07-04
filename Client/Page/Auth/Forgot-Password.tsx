@@ -6,7 +6,7 @@ import { Container } from "Client/Component/UI/Container";
 import { Button } from "Client/Component/UI/Button";
 import { Input } from "Client/Component/UI/Input";
 import { toast } from "Client/Hook/Use-Toast";
-import { supabase } from "Server/Integration/Supabase/client";
+import { supabase } from "Client/Integration/supabase/client";
 import { z } from "zod";
 
 const emailSchema = z.object({
