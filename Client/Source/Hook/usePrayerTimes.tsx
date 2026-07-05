@@ -17,6 +17,43 @@ function methodFromId(id: number) {
     case 10: return CalculationMethod.Qatar();
     case 11: return CalculationMethod.Singapore();
     case 13: return CalculationMethod.Turkey();
+    case 15: return CalculationMethod.MoonsightingCommittee();
+    case 12: { // Union Organization Islamic de France ~ 12° / 12°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 12; p.ishaAngle = 12; return p;
+    }
+    case 14: { // Russia (Spiritual Board) ~ 16° / 15°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 16; p.ishaAngle = 15; return p;
+    }
+    case 17: { // JAKIM Malaysia ~ 20° / 18°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 20; p.ishaAngle = 18; return p;
+    }
+    case 18: { // Tunisia ~ 18° / 18°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 18; p.ishaAngle = 18; return p;
+    }
+    case 19: { // Algeria ~ 18° / 17°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 18; p.ishaAngle = 17; return p;
+    }
+    case 20: { // KEMENAG Indonesia ~ 20° / 18°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 20; p.ishaAngle = 18; return p;
+    }
+    case 21: { // Morocco ~ 19° / 17°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 19; p.ishaAngle = 17; return p;
+    }
+    case 22: { // Lisboa ~ 18° / 17°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 18; p.ishaAngle = 17; return p;
+    }
+    case 23: { // Jordan Awqaf ~ 18° / 18°
+      const p = CalculationMethod.Other();
+      p.fajrAngle = 18; p.ishaAngle = 18; return p;
+    }
     default: return CalculationMethod.MuslimWorldLeague();
   }
 }
@@ -203,6 +240,23 @@ export function usePrayerTimes() {
       3: "Muslim World League (MWL)",
       4: "Umm Al-Qura University, Makkah",
       5: "Egyptian General Authority of Survey",
+      7: "Institute of Geophysics, Tehran",
+      8: "Gulf Region",
+      9: "Kuwait",
+      10: "Qatar",
+      11: "Majlis Ugama Islam Singapura",
+      12: "Union Organization Islamic de France",
+      13: "Diyanet İşleri Başkanlığı, Turkey",
+      14: "Spiritual Board of Russia",
+      15: "Moonsighting Committee Worldwide",
+      16: "Dubai",
+      17: "JAKIM, Malaysia",
+      18: "Tunisia",
+      19: "Algeria",
+      20: "KEMENAG, Indonesia",
+      21: "Morocco",
+      22: "Comunidade Islâmica de Lisboa",
+      23: "Ministry of Awqaf, Jordan",
     };
     return methods[settings.method] || "Unknown";
   }, [settings.method]);
