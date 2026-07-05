@@ -10,7 +10,9 @@
     "dev:client": "npm run dev --workspace=Client --silent",
     "dev:server": "npm run dev --workspace=Server --silent",
     "dev": "npm run dev:orchestrate --silent",
-    "dev:orchestrate": "concurrently --kill-others --prefix \"[{name}]\" --names \"Client,Server\" --prefix-colors \"cyan,magenta\" \"npm run dev:client\" \"npm run dev:server\""
+    "dev:orchestrate": "concurrently --kill-others --prefix \"[{name}]\" --names \"Client,Server\" --prefix-colors \"cyan,magenta\" \"npm run dev:client\" \"npm run dev:server\"",
+    "build": "npm run build --workspace=Client --silent",
+    "build:dev": "npm run build:dev --workspace=Client --silent"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
