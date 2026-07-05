@@ -26,10 +26,13 @@ interface Reply {
   authorHandle: string;
   content: string;
   createdAt: number;
+  parentId: string | null; // null = top-level reply on the post
+  likes?: string[];
 }
 
-const STORAGE_KEY = "ummah-posts-v1";
+const STORAGE_KEY = "ummah-posts-v3";
 const MAX_LEN = 280;
+const MAX_DEPTH = 4; // depth cap for nested replies
 
 function loadPosts(): Post[] {
   try {
