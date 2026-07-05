@@ -61,6 +61,7 @@ export default function Ummah() {
   const [draft, setDraft] = useState("");
   const [replyOpen, setReplyOpen] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   useEffect(() => { setPosts(loadPosts()); }, []);
 
@@ -112,9 +113,143 @@ export default function Ummah() {
       id: crypto.randomUUID(),
       authorId: user.id, authorName, authorHandle,
       content: content.slice(0, MAX_LEN), createdAt: Date.now(),
+      parentId: null, likes: [],
     };
     const next = posts.map(p => p.id === postId ? { ...p, replies: [...p.replies, reply] } : p);
     setPosts(next); savePosts(next); setReplyDraft(""); setReplyOpen(null);
+  };
+
+  const submitNestedReply = (postId: string, parentId: string | null) => {
+    const content = replyDraft.trim();
+    if (!content || !user) return;
+    const reply: Reply = {
+      id: crypto.randomUUID(),
+      authorId: user.id, authorName, authorHandle,
+      content: content.slice(0, MAX_LEN), createdAt: Date.now(),
+      parentId, likes: [],
+    };
+    const next = posts.map(p => p.id === postId ? { ...p, replies: [...p.replies, reply] } : p);
+    setPosts(next); savePosts(next); setReplyDraft(""); setReplyOpen(null);
+  };
+
+  const toggleReplyLike = (postId: string, replyId: string) => {
+    if (!user) return;
+    const next = posts.map(p => p.id !== postId ? p : ({
+      ...p,
+      replies: p.replies.map(r => r.id !== replyId ? r : ({
+        ...r,
+        likes: (r.likes ?? []).includes(user.id)
+          ? (r.likes ?? []).filter(x => x !== user.id)
+          : [...(r.likes ?? []), user.id],
+      })),
+    }));
+    setPosts(next); savePosts(next);
+  };
+
+  const deleteReply = (postId: string, replyId: string) => {
+    const next = posts.map(p => {
+      if (p.id !== postId) return p;
+      // Also drop descendants
+      const toRemove = new Set<string>([replyId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const r of p.replies) {
+          if (r.parentId && toRemove.has(r.parentId) && !toRemove.has(r.id)) {
+            toRemove.add(r.id); changed = true;
+          }
+        }
+      }
+      return { ...p, replies: p.replies.filter(r => !toRemove.has(r.id)) };
+    });
+    setPosts(next); savePosts(next);
+  };
+
+  const renderThread = (post: Post, parentId: string | null, depth: number) => {
+    const children = post.replies
+      .filter(r => (r.parentId ?? null) === parentId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    if (children.length === 0) return null;
+    return (
+      <div className={depth === 0 ? "mt-3 space-y-3" : "mt-2 space-y-2"}>
+        {children.map(r => {
+          const key = `${post.id}:${r.id}`;
+          const isCollapsed = !!collapsed[key];
+          const mine = !!user && r.authorId === user.id;
+          const liked = !!user && (r.likes ?? []).includes(user.id);
+          const canReply = depth + 1 < MAX_DEPTH;
+          const descendantCount = post.replies.filter(x => {
+            // count if r is ancestor
+            let cur: Reply | undefined = x;
+            while (cur?.parentId) {
+              if (cur.parentId === r.id) return true;
+              cur = post.replies.find(y => y.id === cur!.parentId);
+            }
+            return false;
+          }).length;
+          return (
+            <div key={r.id} className="border-l-2 border-border/40 pl-3">
+              <div className="flex items-start gap-2">
+                <button
+                  onClick={() => setCollapsed(c => ({ ...c, [key]: !c[key] }))}
+                  className="text-[10px] text-muted-foreground w-4 shrink-0 hover:text-primary"
+                  title={isCollapsed ? "Expand" : "Collapse"}
+                >
+                  {isCollapsed ? "+" : "−"}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap text-xs">
+                    <span className="font-semibold">{r.authorName}</span>
+                    <span className="text-muted-foreground">@{r.authorHandle} · {timeAgo(r.createdAt)}</span>
+                    {isCollapsed && descendantCount > 0 && (
+                      <span className="text-muted-foreground">· {descendantCount} hidden</span>
+                    )}
+                    {mine && !isCollapsed && (
+                      <button onClick={() => deleteReply(post.id, r.id)} className="ml-auto text-muted-foreground hover:text-destructive" title="Delete">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <>
+                      <p className="mt-0.5 text-sm whitespace-pre-wrap break-words">{r.content}</p>
+                      <div className="flex items-center gap-4 mt-1 text-muted-foreground text-[11px]">
+                        <button onClick={() => toggleReplyLike(post.id, r.id)} className={`flex items-center gap-1 hover:text-rose-500 ${liked ? "text-rose-500" : ""}`}>
+                          <Heart className={`h-3 w-3 ${liked ? "fill-current" : ""}`} /> {(r.likes ?? []).length}
+                        </button>
+                        {canReply ? (
+                          <button
+                            onClick={() => { setReplyOpen(replyOpen === key ? null : key); setReplyDraft(""); }}
+                            className="hover:text-primary"
+                          >Reply</button>
+                        ) : (
+                          <span className="italic opacity-60">Max depth reached</span>
+                        )}
+                      </div>
+                      {replyOpen === key && user && (
+                        <div className="mt-2 space-y-2">
+                          <Textarea
+                            value={replyDraft}
+                            onChange={(e) => setReplyDraft(e.target.value.slice(0, MAX_LEN))}
+                            placeholder={`Reply to @${r.authorHandle}`}
+                            className="min-h-[50px]"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button type="button" onClick={() => setReplyOpen(null)} variant="secondary" size="sm">Cancel</Button>
+                            <Button type="button" onClick={() => submitNestedReply(post.id, r.id)} variant="primary" size="sm">Reply</Button>
+                          </div>
+                        </div>
+                      )}
+                      {renderThread(post, r.id, depth + 1)}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
