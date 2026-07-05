@@ -333,17 +333,7 @@ export default function Ummah() {
                       </div>
                     )}
 
-                    {p.replies.length > 0 && (
-                      <div className="mt-3 space-y-2 border-l-2 border-border/40 pl-3">
-                        {p.replies.map(r => (
-                          <div key={r.id} className="text-xs">
-                            <span className="font-semibold">{r.authorName}</span>{" "}
-                            <span className="text-muted-foreground">@{r.authorHandle} · {timeAgo(r.createdAt)}</span>
-                            <p className="mt-0.5 whitespace-pre-wrap break-words">{r.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {p.replies.length > 0 && renderThread(p, null, 0)}
                   </div>
                 </div>
               </Card>
