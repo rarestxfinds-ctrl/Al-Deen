@@ -1,1 +1,0 @@
-const a=["WalAAasr","Inna al-insana lafee khusr","Illa allatheena amanoowaAAamiloo assalihati watawasaw bilhaqqiwatawasaw bissabr"];export{a as default};

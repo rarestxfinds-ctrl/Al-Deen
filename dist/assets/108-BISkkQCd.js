@@ -1,1 +1,0 @@
-const t=["ﱶ ﱷ ﱸ ﱹ","ﱺ ﱻ ﱼ ﱽ","ﱾ ﱿ ﲀ ﲁ ﲂ"];export{t as default};

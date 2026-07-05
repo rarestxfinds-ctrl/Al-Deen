@@ -1,1 +1,0 @@
-const a=["Wadduha","Wallayli itha saja","Ma waddaAAaka rabbuka wama qala","Walal-akhiratu khayrun laka minaal-oola","Walasawfa yuAAteeka rabbuka fatarda","Alam yajidka yateeman faawa","Wawajadaka dallan fahada","Wawajadaka AAa-ilan faaghna","Faamma alyateema fala taqhar","Waamma assa-ila falatanhar","Waamma biniAAmati rabbika fahaddith"];export{a as default};

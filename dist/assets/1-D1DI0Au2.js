@@ -1,1 +1,0 @@
-const a=["Bismi Allahi arrahmani arraheem","Alhamdu lillahi rabbi alAAalameen","Arrahmani arraheem","Maliki yawmi addeen","Iyyaka naAAbudu wa-iyyaka nastaAAeen","Ihdina assirata almustaqeem","Sirata allatheena anAAamta AAalayhim ghayri almaghdoobi AAalayhim wala addalleen"];export{a as default};
