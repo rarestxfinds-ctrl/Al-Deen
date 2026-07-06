@@ -88,8 +88,9 @@ async def transcribe_handler(websocket):
         if audio_buffer:
             await transcribe_audio(bytes(audio_buffer), websocket, is_final=True)
 async def main():
-    async with websockets.serve(transcribe_handler, "0.0.0.0", 8082):
-        print("✅ ASR server listening on ws://0.0.0.0:8082")
+    port = int(os.environ.get("ASR_PORT", "8084"))
+    async with websockets.serve(transcribe_handler, "0.0.0.0", port):
+        print(f"✅ ASR server listening on ws://0.0.0.0:{port}")
         await asyncio.Future()
 
 if __name__ == "__main__":
