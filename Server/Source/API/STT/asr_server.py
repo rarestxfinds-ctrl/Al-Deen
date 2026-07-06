@@ -88,9 +88,10 @@ async def transcribe_handler(websocket):
         if audio_buffer:
             await transcribe_audio(bytes(audio_buffer), websocket, is_final=True)
 async def main():
-    port = int(os.environ.get("ASR_PORT", "8081"))
+    # Unified single-port STT server: clients connect here directly (no proxy).
+    port = int(os.environ.get("STT_PORT", os.environ.get("ASR_PORT", "8081")))
     async with websockets.serve(transcribe_handler, "0.0.0.0", port):
-        print(f"✅ ASR server listening on ws://0.0.0.0:{port}")
+        print(f"✅ Unified STT server listening on ws://0.0.0.0:{port}")
         await asyncio.Future()
 
 if __name__ == "__main__":
