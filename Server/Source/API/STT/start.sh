@@ -1,27 +1,26 @@
 #!/bin/bash
-# Kill any existing instances
+# STT stack: Python Whisper ASR on :8084, Node WS proxy on :8083.
+# Main app API keeps :8081, render service uses its own port.
+
 pkill -f asr_server.py
 pkill -f quran-proxy.mjs
-
-# Wait a moment for ports to be released
 sleep 1
 
-# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# .../Server/Source/API/STT -> project root is 4 levels up
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
-# Activate virtual environment
+export ASR_PORT="${ASR_PORT:-8084}"
+export STT_PROXY_PORT="${STT_PROXY_PORT:-8083}"
+
 source "$PROJECT_ROOT/stt_env/bin/activate"
 
-# Start Python ASR server
-python "$PROJECT_ROOT/Server/API/STT/asr_server.py" &
+python "$SCRIPT_DIR/asr_server.py" &
 ASR_PID=$!
 
 echo "Waiting for ASR server to load model..."
 sleep 10
 
-# Start Node proxy
-node "$PROJECT_ROOT/Server/API/STT/quran-proxy.mjs"
+node "$SCRIPT_DIR/quran-proxy.mjs"
 
-# When Node exits, kill the Python server
 kill $ASR_PID

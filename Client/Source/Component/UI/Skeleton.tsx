@@ -1,7 +1,6 @@
-import { cn } from "@/Library/utils";
-
-function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+// Loading UI globally disabled — Skeleton renders nothing.
+function Skeleton(_props: React.HTMLAttributes<HTMLDivElement>) {
+  return null;
 }
 
 export { Skeleton };

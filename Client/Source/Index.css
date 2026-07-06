@@ -562,3 +562,6 @@ html.high-contrast.dark {
   display: none;
 }
 }
+/* Loading UI globally disabled — hide spinners and pulse placeholders. */
+.animate-spin { display: none !important; }
+.animate-pulse { animation: none !important; }

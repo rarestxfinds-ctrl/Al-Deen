@@ -4,12 +4,15 @@ import type { AssembledVerse } from 'Server/API/Quran';
 import { useAudioLevel } from './Use-Audio-Level';
 
 function getProxyUrl(): string {
+  const envUrl = (import.meta.env.VITE_STT_PROXY_URL as string | undefined)?.trim();
+  if (envUrl) return envUrl;
   const host = window.location.hostname;
   if (host.endsWith('.app.github.dev')) {
-    const withProxy = host.replace(/-\d+(\.app\.github\.dev)$/, '-8081$1');
+    // Codespaces: swap the port suffix on the forwarded host to the STT proxy port (8083).
+    const withProxy = host.replace(/-\d+(\.app\.github\.dev)$/, '-8083$1');
     return `wss://${withProxy}`;
   }
-  return 'ws://localhost:8081';
+  return 'ws://localhost:8083';
 }
 
 // Exponential backoff (ms): 1s, 2s, 4s, 8s, 15s cap.
@@ -275,7 +278,7 @@ export function useDeepgram({
       };
       ws.onerror = () => {
         setConnectionStatus('failed');
-        setError('WebSocket error — is the STT proxy running on port 8081?');
+          setError('WebSocket error — is the STT proxy running on port 8083?');
         reject(new Error('WebSocket connection failed'));
       };
       ws.onclose = (event) => {

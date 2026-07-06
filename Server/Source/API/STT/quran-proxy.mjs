@@ -1,10 +1,13 @@
 import { WebSocketServer } from 'ws';
 import WebSocket from 'ws';
 
-const LOCAL_ASR_URL = 'ws://localhost:8082';
+// Main app server runs on 8081; STT proxy uses 8083, ASR on 8084.
+const ASR_PORT  = process.env.ASR_PORT  ? Number(process.env.ASR_PORT)  : 8084;
+const PROXY_PORT = process.env.STT_PROXY_PORT ? Number(process.env.STT_PROXY_PORT) : 8083;
+const LOCAL_ASR_URL = `ws://localhost:${ASR_PORT}`;
 
-const wss = new WebSocketServer({ port: 8081, host: '0.0.0.0' });
-console.log('✅ Quran proxy listening on port 8081');
+const wss = new WebSocketServer({ port: PROXY_PORT, host: '0.0.0.0' });
+console.log(`✅ Quran STT proxy listening on port ${PROXY_PORT} (ASR: ${LOCAL_ASR_URL})`);
 
 wss.on('connection', (clientWs) => {
   console.log('🔌 Client connected');
