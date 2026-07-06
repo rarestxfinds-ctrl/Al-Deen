@@ -1,4 +1,4 @@
-import { Info, Play, Pause, Loader2, BookOpen, Video } from "lucide-react";
+import { Info, Play, Pause, BookOpen, Video } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/Component/UI/tooltip";
 import { useAudio } from "@/Context/Audio";
 import { useTranslation } from "@/Hook/Use-Translation";
@@ -120,9 +120,7 @@ export function SurahHeader({
                     onClick={handleAudioClick}
                     aria-label={isThisSurahPlaying ? "Pause" : "Play surah"}
                   >
-                    {isAudioLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isThisSurahPlaying ? (
+                    {isThisSurahPlaying ? (
                       <Pause className="h-4 w-4" />
                     ) : (
                       <Play className="h-4 w-4" />

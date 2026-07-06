@@ -15,7 +15,6 @@ import { useQuranData } from "@/Hook/Use-Quran-Data";
 import { useReadingSession } from "@/Hook/Use-Reading-Session";
 import { useQuranGoals } from "@/Hook/Use-Quran-Goals";
 import { Button } from "@/Component/UI/button";
-import { Skeleton } from "@/Component/UI/Skeleton";
 import { Container } from "@/Component/UI/Container";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -273,11 +272,7 @@ const KalimaIndex = () => {
               onRenderClick={() => setRenderDialog({ open: true, mode: "render" })}
             />
           )}
-          <Container className={`w-full ${showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"} mb-12`}>
-            <div className="p-6">
-              <Skeleton className="h-8 w-full" />
-            </div>
-          </Container>
+          <Container className={`w-full ${showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"} mb-12`} />
         </div>
       </Layout>
     );

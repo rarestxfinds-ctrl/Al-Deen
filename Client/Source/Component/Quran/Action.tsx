@@ -1,4 +1,4 @@
-import { Info, Play, Pause, Loader2 } from "lucide-react";
+import { Info, Play, Pause } from "lucide-react";
 import { TooltipProvider } from "@/Component/UI/tooltip";
 import { useAudio } from "@/Context/Audio";
 import { useTranslation } from "@/Hook/Use-Translation";
@@ -52,9 +52,7 @@ export function Action({ surahId, onInfoClick, onAudioClick }: ActionsProps) {
             disabled={isAudioLoading}
             onClick={handleAudioClick}
           >
-            {isAudioLoading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />Loading...</>
-            ) : isThisSurahPlaying ? (
+            {isThisSurahPlaying ? (
               <><Pause className="h-4 w-4 fill-current" />{t.quran.pauseAudio}</>
             ) : (
               <><Play className="h-4 w-4 fill-current" />{t.quran.playAudio}</>

@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
-  Loader2,
   Repeat,
   Calendar,
   Clock,
@@ -174,16 +173,7 @@ export function Creation({ onCreateGoal, onClose }: Creation_Props) {
   const stepTitle =
     step === 1 ? "Choose a Goal" : step === 2 ? (isCustom ? "Configure" : "Frequency") : "Schedule";
 
-  if (isCorpusLoading) {
-    return (
-      <div className="container max-w-md mx-auto flex items-center justify-center min-h-[580px]">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Loading goal configurations...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isCorpusLoading) return null;
 
   return (
     <div className="container max-w-md mx-auto select-none">
@@ -431,13 +421,7 @@ export function Creation({ onCreateGoal, onClose }: Creation_Props) {
                 disabled={isCreating}
                 className="flex-grow font-bold uppercase tracking-widest text-[10px] h-12"
               >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating
-                  </>
-                ) : (
-                  "Start Goal"
-                )}
+                {isCreating ? "Creating" : "Start Goal"}
               </Button>
             )}
           </div>

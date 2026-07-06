@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { Layout } from "@/Component/Layout/Index";
 import { usePrayerTimes } from "@/Hook/usePrayerTimes";
 import { Header } from "./Header";
@@ -36,18 +35,7 @@ export default function PrayerTimes() {
   const nextPrayer = timings ? getNextPrayer(timings) : null;
   const progress = timings && nextPrayer ? getElapsedProgress(timings, nextPrayer) : 0;
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="container max-w-2xl mx-auto py-6">
-          <div className="glass-card p-12 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground text-sm">Fetching prayer times...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  if (loading) return null;
 
   if (error) {
     return (

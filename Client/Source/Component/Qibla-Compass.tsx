@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Compass, Navigation, AlertCircle, Loader2 } from "lucide-react";
+import { Compass, Navigation, AlertCircle } from "lucide-react";
 
 // Kaaba coordinates
 const KAABA_LAT = 21.4225;
@@ -176,7 +176,7 @@ export function QiblaCompass({ latitude, longitude }: QiblaCompassProps) {
               disabled={loading}
               className="glass-btn px-4 py-2 text-sm flex items-center gap-2"
             >
-              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Compass className="h-3.5 w-3.5" />}
+              <Compass className="h-3.5 w-3.5" />
               Enable Compass
             </button>
           ) : permissionState === "unsupported" || permissionState === "denied" ? (
@@ -190,9 +190,7 @@ export function QiblaCompass({ latitude, longitude }: QiblaCompassProps) {
               </p>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Detecting compass...
-            </p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">Detecting compass...</p>
           )}
         </div>
       </div>
