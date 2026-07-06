@@ -1,10 +1,10 @@
-import { ReactNode, lazy, Suspense, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Header } from "@/Component/Layout/Header/Index.tsx";
 import { PageTransition } from "@/Component/Page-Transition";
 import { cn } from "@/Library/utils";
 
-const SettingsSidebar = lazy(() => import("@/Component/Settings/Index").then(module => ({ default: module.SettingsSidebar })));
-const SpotlightSearch = lazy(() => import("@/Component/Search/Index"));
+import { SettingsSidebar } from "@/Component/Settings/Index";
+import SpotlightSearch from "@/Component/Search/Index";
 
 interface LayoutProps {
   children: ReactNode;
@@ -44,10 +44,8 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
         </main>
       </PageTransition>
       
-      <Suspense fallback={null}>
-        <SettingsSidebar />
-        <SpotlightSearch />
-      </Suspense>
+      <SettingsSidebar />
+      <SpotlightSearch />
     </div>
   );
 }
