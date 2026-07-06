@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Layout } from "@/Component/Layout/Index";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
-import { Loader2, MapPin, Navigation, AlertCircle, ExternalLink } from "lucide-react";
+import { MapPin, Navigation, AlertCircle, ExternalLink } from "lucide-react";
 
 interface Masjid {
   id: number;
@@ -127,12 +127,7 @@ export default function MasjidFinder() {
           </div>
         </Container>
 
-        {loading ? (
-          <Container className="p-12 flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Finding masjids near you...</p>
-          </Container>
-        ) : error ? (
+        {loading ? null : error ? (
           <Container className="p-8 text-center flex flex-col items-center gap-3">
             <AlertCircle className="h-6 w-6 text-destructive" />
             <p className="text-muted-foreground">{error}</p>

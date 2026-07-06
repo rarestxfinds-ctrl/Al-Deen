@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/Component/Layout/Index";
-import { Loader2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
 import { usePrayerTimes } from "@/Hook/usePrayerTimes";
@@ -34,17 +34,7 @@ export default function PrayerPage() {
   const nextPrayer = timings ? getNextPrayer(timings) : null;
   const progress = timings && nextPrayer ? getElapsedProgress(timings, nextPrayer) : 0;
 
-  // Loading state
-  if (loading) {
-    return (
-      <Layout>
-        <Container className="w-full !rounded-[48px] p-12 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Fetching prayer times...</p>
-        </Container>
-      </Layout>
-    );
-  }
+  if (loading) return null;
 
   // Error state
   if (error) {

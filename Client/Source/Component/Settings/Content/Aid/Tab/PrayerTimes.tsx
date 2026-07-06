@@ -1,6 +1,6 @@
 // Component/Settings/Content/Aid/Tab/PrayerTimes.tsx
 import { useState } from "react";
-import { Clock, MapPin, Search, Loader2, X } from "lucide-react";
+import { Clock, MapPin, Search, X } from "lucide-react";
 import { Switch } from "@/Component/UI/Switch";
 import { Card } from "@/Component/UI/Card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Component/UI/Select";
@@ -203,11 +203,7 @@ export function PrayerTimesTab() {
               
               {showDropdown && (
                 <div className="absolute z-20 mt-1 w-full bg-white dark:bg-black border-2 border-black dark:border-white rounded-[20px] shadow-lg max-h-60 overflow-y-auto">
-                  {isSearching ? (
-                    <div className="p-4 text-center">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
-                    </div>
-                  ) : suggestions.length > 0 ? (
+                  {isSearching ? null : suggestions.length > 0 ? (
                     suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}

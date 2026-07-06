@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "@/Component/UI/Skeleton";
 import { Button } from "@/Component/UI/Button";
 import { Container } from "@/Component/UI/Container";
 import { Bookmark, Trash2 } from "lucide-react";
@@ -36,13 +35,7 @@ export function BookmarksTab({
 
   const surahList = useMemo(() => corpus?.surahs || [], [corpus]);
 
-  if (isLoading || isCorpusLoading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-[40px]" />)}
-      </div>
-    );
-  }
+  if (isLoading || isCorpusLoading) return null;
 
   if (bookmarks.length === 0) {
     return (

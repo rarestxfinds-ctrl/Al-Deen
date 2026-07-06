@@ -1,6 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { Layout } from "@/Component/Layout/Index";
-import { Search, Loader2, ArrowRight } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/Library/utils";
 import { useTranslation } from "@/Hook/Use-Translation";
@@ -247,12 +247,7 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                {isLoadingVerses ? (
-                  <Container className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="ml-2 text-sm text-muted-foreground">Searching verses...</span>
-                  </Container>
-                ) : verseResults.length > 0 ? (
+                {verseResults.length > 0 ? (
                   <div className="space-y-2">
                     {surahResults.length > 0 && <div className="h-px bg-border/30 my-2" />}
                     {verseResults.map((result) => (
@@ -325,7 +320,7 @@ export default function SearchPage() {
             )}
 
             {/* No Results */}
-            {!isLoadingVerses && resultCount === 0 && (
+            {resultCount === 0 && (
               <Container className="text-center py-12">
                 <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="font-medium mb-1">No results in {currentCategory?.label}</p>

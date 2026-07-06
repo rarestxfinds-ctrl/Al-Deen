@@ -3,7 +3,7 @@ import { Textarea } from "@/Component/UI/Textarea";
 import { useNotes } from "@/Hook/Use-Notes";
 import { useAuth } from "@/Context/Auth";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Save, Trash2, User } from "lucide-react";
+import { Save, Trash2, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/Hook/Use-Mobile";
 import { useTranslation } from "@/Hook/Use-Translation";
@@ -244,7 +244,7 @@ export const NotesDialog = memo(function NotesDialog({
             disabled={isDeleting}
             className="text-destructive hover:text-destructive"
           >
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            <Trash2 className="h-4 w-4 mr-2" />
             {t.common.delete}
           </Button>
         ) : <div />}
@@ -252,7 +252,7 @@ export const NotesDialog = memo(function NotesDialog({
           onClick={handleSave} 
           disabled={isSaving || !content.trim()}
         >
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          <Save className="h-4 w-4 mr-2" />
           {t.common.save} Privately
         </Button>
       </div>

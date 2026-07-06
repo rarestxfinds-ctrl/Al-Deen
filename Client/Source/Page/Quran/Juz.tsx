@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { Layout } from "@/Component/Layout/Index";
-import { AlertCircle, Play, Pause, Loader2 } from "lucide-react";
+import { AlertCircle, Play, Pause } from "lucide-react";
 import { Alert, AlertDescription } from "@/Component/UI/Alert";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
@@ -120,9 +120,7 @@ export default function Juz() {
             disabled={isAudioLoading}
             aria-label={isPlaying ? "Pause Juz" : "Play Juz"}
           >
-            {isAudioLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isPlaying ? (
+            {isPlaying ? (
               <Pause className="h-4 w-4" />
             ) : (
               <Play className="h-4 w-4" />

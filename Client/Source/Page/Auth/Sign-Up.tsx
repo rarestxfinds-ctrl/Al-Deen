@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/Component/Layout/Index";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
 import { Input } from "@/Component/UI/Input";
@@ -191,7 +191,6 @@ export default function SignUp() {
             variant="outline"
             className="w-full font-bold"
           >
-            {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
             Create Account
           </Button>
         </form>

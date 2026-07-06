@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/Component/Layout/Index";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
 import { Input } from "@/Component/UI/Input";
@@ -98,7 +98,6 @@ export default function ForgotPassword() {
             variant="outline"
             className="w-full font-bold"
           >
-            {isLoading && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
             Send Reset Link
           </Button>
         </form>

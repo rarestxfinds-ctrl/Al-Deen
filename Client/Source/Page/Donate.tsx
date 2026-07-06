@@ -23,7 +23,6 @@ import {
   Building2,
   Copy,
   ExternalLink,
-  Loader2,
   ArrowLeft
 } from "lucide-react";
 import { toast } from "@/Hook/Use-Toast";
@@ -323,8 +322,6 @@ export default function Donate() {
 
             {checkoutStep === "stripe_redirect" && (
               <div className="flex flex-col items-center py-6 gap-3 animate-in fade-in duration-150">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Contacting gateway networks...</p>
                 <Button variant="outline" size="sm" className="mt-2" onClick={() => setCheckoutStep("choose_provider")}>Cancel</Button>
               </div>
             )}

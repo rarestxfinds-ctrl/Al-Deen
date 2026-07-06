@@ -6,7 +6,7 @@ import { Label } from "@/Component/UI/Label";
 import { Switch } from "@/Component/UI/Switch";
 import { Slider } from "@/Component/UI/Slider";
 import { cn } from "@/Library/utils";
-import { Loader2, Download, Copy, ChevronDown } from "lucide-react";
+import { Download, Copy, ChevronDown } from "lucide-react";
 import { toast } from "@/Hook/Use-Toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -267,7 +267,7 @@ export function RenderSurahSidebar({
             {mode === "render" ? (
               <>
                 <Button className="w-full gap-2 font-medium shadow-sm" onClick={handleRender} disabled={rendering}>
-                  {rendering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  <Download className="h-4 w-4" />
                   {rendering ? `Rendering… ${Math.round(progress * 100)}%` : "Render & Download"}
                 </Button>
                 {rendering && (

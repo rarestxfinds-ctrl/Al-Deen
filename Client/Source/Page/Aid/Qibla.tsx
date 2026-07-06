@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/Component/Layout/Index";
-import { Loader2 } from "lucide-react";
 import { QiblaCompass } from "@/Component/Qibla-Compass";
 import { Container } from "@/Component/UI/Container";
 
@@ -40,12 +39,7 @@ const QiblaPage = () => {
   return (
     <Layout>
       <Container className="w-full !rounded-[48px]">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 p-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground text-sm">Getting your location...</p>
-          </div>
-        ) : error ? (
+        {loading ? null : error ? (
           <div className="p-8 text-center">
             <p className="text-muted-foreground">{error}</p>
           </div>

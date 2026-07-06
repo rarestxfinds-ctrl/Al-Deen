@@ -1,6 +1,5 @@
 import { useRef, useState, memo, useEffect } from "react";
 import DOMPurify from "dompurify";
-import { Skeleton } from "@/Component/UI/Skeleton";
 import { ScrollArea } from "@/Component/UI/Scroll-Area";
 import { Container } from "@/Component/UI/Container";
 import { Button } from "@/Component/UI/Button";
@@ -162,14 +161,7 @@ export const TafsirDialog = memo(function TafsirDialog({
 
       {/* Tafsir Content */}
       <Container className="!py-5 !px-6">
-        {isLoadingTafsir ? (
-          <div className="space-y-4">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-        ) : tafsirError ? (
+        {tafsirError ? (
           <div className="text-center py-8 text-destructive flex flex-col items-center gap-2">
             <AlertCircle className="h-8 w-8" />
             <p>{tafsirError}</p>

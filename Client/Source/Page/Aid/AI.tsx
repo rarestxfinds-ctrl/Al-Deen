@@ -6,7 +6,6 @@ import { Textarea } from "@/Component/UI/Textarea";
 import { Input } from "@/Component/UI/Input";
 import {
   Send,
-  Loader2,
   Plus,
   Search,
   PanelLeftClose,
@@ -514,14 +513,6 @@ export default function AI() {
                     </div>
                   );
                 })}
-                {loading && (
-                  <div className="flex justify-start">
-                    <div className="text-sm flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Thinking…
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="pt-2">{composer}</div>
             </>

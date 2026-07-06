@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   Play,
   Pause,
-  Loader2,
   X,
   ListMusic,
   Search,
@@ -351,9 +350,7 @@ export const AudioPlayerMain = ({
             onClick={onTogglePlayPause}
             disabled={isLoading}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isPlaying ? (
+            {isPlaying ? (
               <Pause className="h-4 w-4" />
             ) : (
               <Play className="h-4 w-4 ml-0.5" />

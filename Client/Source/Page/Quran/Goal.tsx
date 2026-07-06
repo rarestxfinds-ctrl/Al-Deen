@@ -5,7 +5,6 @@ import { useAuth } from "@/Context/Auth";
 import { useQuranGoals } from "@/Hook/Use-Quran-Goals";
 import { useReadingProgress } from "@/Hook/Use-Reading-Progress";
 import { supabase } from "@/Integration/supabase/client";
-import { Loader2 } from "lucide-react";
 import { Container } from "@/Component/UI/Container";
 import { Active } from "@/Component/Quran/Goal/Active";
 import { Creation } from "@/Component/Quran/Goal/Creation";
@@ -175,17 +174,7 @@ export default function Goal() {
     setShowCreation(false);
   };
 
-  if (authLoading || goalsLoading || isCorpusLoading) {
-    return (
-      <Layout>
-        <div className="min-h-[80vh] flex items-center justify-center">
-          <Container className="!p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </Container>
-        </div>
-      </Layout>
-    );
-  }
+  if (authLoading || goalsLoading || isCorpusLoading) return null;
 
   if (!user) return null;
 
