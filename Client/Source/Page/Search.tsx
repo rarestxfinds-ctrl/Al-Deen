@@ -320,7 +320,7 @@ export default function SearchPage() {
             )}
 
             {/* No Results */}
-            {!isLoadingVerses && resultCount === 0 && (
+            {resultCount === 0 && (
               <Container className="text-center py-12">
                 <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="font-medium mb-1">No results in {currentCategory?.label}</p>
