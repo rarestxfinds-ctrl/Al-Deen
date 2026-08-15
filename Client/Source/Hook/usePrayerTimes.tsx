@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Coordinates, CalculationMethod, PrayerTimes as AdhanPrayerTimes, Madhab, HighLatitudeRule, SunnahTimes } from "adhan";
 import uq from "@umalqura/core";
-import { useApp } from "@/Context/App";
-import type { PrayerTimesData, HijriDate, LocationData, PrayerSettings } from "@/Component/Aid/Prayer/Types";
+import { useApp } from "@Web/Context/App";
+import type { PrayerTimesData, HijriDate, LocationData, PrayerSettings } from "@Web/Component/Aid/Prayer/Types";
 
 function methodFromId(id: number) {
   switch (id) {

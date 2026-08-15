@@ -1,4 +1,4 @@
-import { useApp } from "@/Context/App";
+import { useApp } from "@Web/Context/App";
 import { getTranslation, isRtlLanguage, TranslationKeys } from "@/Internationalization";
 
 export function useTranslation() {

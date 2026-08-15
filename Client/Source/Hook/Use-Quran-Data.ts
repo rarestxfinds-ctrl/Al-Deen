@@ -1,6 +1,6 @@
 // @/Hook/Use-Quran-Data.ts
 import { useQuery } from '@tanstack/react-query';
-import { useApp, type QuranFontFamily } from '@/Context/App';
+import { useApp, type QuranFontFamily } from '@Web/Context/App';
 
 export type QuranFontType = "V1" | "V2" | "Standard";
 

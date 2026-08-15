@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/Integration/supabase/client";
-import { useAuth } from "@/Context/Auth";
-import { useApp } from "@/Context/App";
+import { useAuth } from "@Web/Context/Auth";
+import { useApp } from "@Web/Context/App";
 
 export function useReadingSession() {
   const { user } = useAuth();

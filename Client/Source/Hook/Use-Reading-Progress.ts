@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/Integration/supabase/client";
-import { useAuth } from "@/Context/Auth";
+import { useAuth } from "@Web/Context/Auth";
 
 interface ReadingProgress {
   last_surah_id: number;

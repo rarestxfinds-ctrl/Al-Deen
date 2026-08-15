@@ -1,0 +1,567 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Amiri:wght@400;700&family=Amiri+Quran&family=Scheherazade+New:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Uthmani Regular (single file) === */
+@font-face {
+  font-family: 'Uthmani';
+  src: url('/Asset/Font/Quran/Uthmani/WOFF2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/TTF.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'KFGQPC-Uthmani';
+  src: url('/Asset/Font/Quran/KFGQPCUthmanTahaNaskh.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V1 - Page 1 (unicode-range based, pages 1-604) === */
+@font-face {
+  font-family: 'Uthmani-V1-1';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF2/1.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF/1.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/TFF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Uthmani-V1-2';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF2/2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/WOFF/2.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V1/Page/TFF/2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V2 - Page 1 (unicode-range based, pages 1-604) === */
+@font-face {
+  font-family: 'Uthmani-V2-1';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF2/1.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF/1.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/TFF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V2 - Page 2 (unicode-range based, pages 1-604) === */
+@font-face {
+  font-family: 'Uthmani-V2-2';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF2/2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/WOFF/2.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V2/Page/TFF/2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V4 - COLRv1 (primary for all themes, palette-switchable) === */
+@font-face {
+  font-family: 'Uthmani-V4-1';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/1.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/1.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Uthmani-V4-2';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/2.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Uthmani-V4-3';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF2/3.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/WOFF/3.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/COLRv1/TTF/3.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V4 OT-SVG Light (Firefox/fallback, light mode) === */
+@font-face {
+  font-family: 'Uthmani V4 SVG Light';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Light/WOFF2/1.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Light/WOFF/1.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Light/TTF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Uthmani V4 OT-SVG Dark (Firefox/fallback, dark mode) === */
+@font-face {
+  font-family: 'Uthmani V4 SVG Dark';
+  src: url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Dark/WOFF2/1.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Dark/WOFF/1.woff') format('woff'),
+       url('/Asset/Font/Quran/Uthmani/KFGQPC/V4/Page/OT-SVG/Dark/TTF/1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === V4 dark mode font-palette: use palette index 1 (dark) === */
+@font-palette-values --v4-dark {
+  font-family: 'Uthmani V4';
+  base-palette: 1;
+}
+
+/* === IndoPak === */
+@font-face {
+  font-family: 'IndoPak';
+  src: url('/Asset/Font/Quran/Nastaleeq-IndoPak/WOFF2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Nastaleeq-IndoPak/WOFF.woff') format('woff'),
+       url('/Asset/Font/Quran/Nastaleeq-IndoPak/TFF.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Surah Names Font === */
+@font-face {
+  font-family: 'Surah';
+  src: url('/Asset/Font/Quran/Surah/WOFF2.woff2') format('woff2'),
+       url('/Asset/Font/Quran/Surah/WOFF.woff') format('woff'),
+       url('/Asset/Font/Quran/Surah/TTF.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fallback Tajweed font - Color version A */
+@font-face {
+  font-family: 'KFGQPC HAFS Color A';
+  src: url('https://cdn.jsdelivr.net/gh/AbuYusof/Quran-Fonts-HAFS-Uthmanic-Colored-By-Tajweed-Ruls@main/Fonts/KFGQPC%20HAFS%20Uthmanic%20Script%20Color%20A.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/AbuYusof/Quran-Fonts-HAFS-Uthmanic-Colored-By-Tajweed-Ruls@main/Fonts/KFGQPC%20HAFS%20Uthmanic%20Script%20Color%20A.woff') format('woff'),
+       url('https://cdn.jsdelivr.net/gh/AbuYusof/Quran-Fonts-HAFS-Uthmanic-Colored-By-Tajweed-Ruls@main/Fonts/KFGQPC%20HAFS%20Uthmanic%20Script%20Color%20A.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    /* Light Mode - Warm cream with 2% blue tint */
+    --background: 210 8% 94%;
+    --foreground: 210 5% 4%;
+
+    --card: 210 6% 98%;
+    --card-foreground: 210 5% 4%;
+
+    --popover: 210 6% 98%;
+    --popover-foreground: 210 5% 4%;
+
+    /* Neutral primary (black in light mode) */
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 6% 88%;
+    --secondary-foreground: 210 5% 6%;
+
+    --muted: 210 6% 86%;
+    --muted-foreground: 210 3% 25%;
+
+    --accent: 210 6% 88%;
+    --accent-foreground: 210 5% 6%;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 8% 40%;
+    --input: 210 6% 50%;
+    --ring: 210 5% 25%;
+
+    --radius: 1rem;
+
+    /* iOS 26 Liquid Glass Tokens - Light Mode (neutral) */
+    --glass-bg: rgba(240, 240, 240, 0.55);
+    --glass-bg-elevated: rgba(245, 245, 245, 0.70);
+    --glass-bg-hover: rgba(248, 248, 248, 0.80);
+    --glass-border: rgba(0, 0, 0, 0.25);
+    --glass-border-subtle: rgba(0, 0, 0, 0.12);
+    --glass-shadow-inner: inset 2px 2px 0px -2px rgba(250, 250, 250, 0.98), inset 0 0 4px 1px rgba(245, 245, 245, 0.95);
+    --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.10);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 6%;
+    --sidebar-primary: 0 0% 12%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 6%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 0 0% 35%;
+
+    --sidebar-width: 400px;
+  }
+
+  .dark {
+    /* Dark Mode - Rich charcoal with 2% blue tint */
+    --background: 215 12% 6%;
+    --foreground: 210 5% 94%;
+
+    --card: 215 10% 10%;
+    --card-foreground: 210 5% 94%;
+
+    --popover: 215 10% 9%;
+    --popover-foreground: 210 5% 94%;
+
+    /* Neutral primary (white in dark mode) */
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 215 8% 15%;
+    --secondary-foreground: 210 5% 94%;
+
+    --muted: 215 8% 13%;
+    --muted-foreground: 210 3% 58%;
+
+    --accent: 215 8% 15%;
+    --accent-foreground: 210 5% 94%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 10% 55%;
+    --input: 215 10% 50%;
+    --ring: 210 5% 50%;
+
+    /* iOS 26 Liquid Glass Tokens - Dark Mode (neutral) */
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-bg-elevated: rgba(255, 255, 255, 0.10);
+    --glass-bg-hover: rgba(255, 255, 255, 0.15);
+    --glass-border: rgba(255, 255, 255, 0.25);
+    --glass-border-subtle: rgba(255, 255, 255, 0.12);
+    --glass-shadow-inner: inset 2px 2px 0px -2px rgba(255, 255, 255, 0.22), inset 0 0 3px 1px rgba(255, 255, 255, 0.12);
+    --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 90%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 0 0% 50%;
+
+    /* Safhah Arabic hover accent (exception to monochrome) */
+    --quran-hover: 142 65% 55%;
+  }
+
+  :root {
+    /* Safhah Arabic hover accent (light) */
+    --quran-hover: 142 70% 35%;
+  }
+}
+
+/* ===== Accessibility utility classes (toggled on <html>) ===== */
+:root { --ui-text-scale: 1; }
+
+html { font-size: calc(16px * var(--ui-text-scale, 1)); }
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.underline-links a { text-decoration: underline !important; }
+
+html.high-contrast {
+  --border: 0 0% 0%;
+}
+html.high-contrast.dark {
+  --border: 0 0% 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+@layer components {
+  .font-brand {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  .font-heading {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  }
+
+  /* Quran Font Families */
+  
+  /* Uthmani Regular */
+  .font-uthmani {
+    font-family: 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Uthmani V1 - KFGQPC Page-based */
+  .font-uthmani_v1 {
+    font-family: 'Uthmani V1', 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Uthmani V2 - KFGQPC Page-based */
+  .font-uthmani_v2 {
+    font-family: 'Uthmani V2', 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Uthmani V4 - COLRv1 uses built-in palette for light mode, OT-SVG fallback for Firefox */
+  .font-uthmani_v4 {
+    font-family: 'Uthmani V4', 'Uthmani V4 SVG Light', 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Dark mode: use dark base-palette for COLRv1, swap SVG fallback to dark variant */
+  .dark .font-uthmani_v4 {
+    font-family: 'Uthmani V4', 'Uthmani V4 SVG Dark', 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+    font-palette: --v4-dark;
+  }
+
+  /* IndoPak - Nastaliq */
+  .font-indopak {
+    font-family: 'IndoPak';
+  }
+
+  /* Surah Names */
+  .font-surah {
+    font-family: 'Surah', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Legacy aliases */
+  .font-arabic {
+    font-family: 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  .font-uthmani_hafs {
+    font-family: 'Uthmani', 'Amiri', 'Traditional Arabic', serif;
+  }
+
+  /* Tajweed font */
+  .font-tajweed {
+    font-family: 'Uthmani', 'Amiri Quran', 'Amiri', 'Traditional Arabic', serif;
+    font-feature-settings: "calt" 1, "liga" 1, "kern" 1;
+    -webkit-font-feature-settings: "calt" 1, "liga" 1, "kern" 1;
+    -moz-font-feature-settings: "calt" 1, "liga" 1, "kern" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Tajweed color coding */
+.tajweed-text tajweed { display: inline; }
+
+/* Silent / weak letters */
+.dark .tajweed-text {color:#000EBC; }
+.tajweed-text tajweed.ham_wasl       { color: #AAAAAA; } /* Silent Hamza */
+.tajweed-text tajweed.laam_shamsiyah { color: #AAAAAA; } /* Silent Laam */
+
+/* Madd (prolongation) */
+.tajweed-text tajweed.madda_normal       { color: #537FFF; } /* Normal madd 2 */
+.tajweed-text tajweed.madda_permissible  { color: #4050FF; } /* Separated madd 2/4/6 */
+.tajweed-text tajweed.madda_necessary    { color: #000EBC; } /* Necessary madd 6 */
+.tajweed-text tajweed.madda_obligatory   { color: #2144C1; } /* Connected madd 4/5 */
+
+/* Qalqala (echo) */
+.tajweed-text tajweed.qalaqala { color: #DD0008; }
+
+/* Ghunna (nasalization) */
+.tajweed-text tajweed.ghunnah         { color: #FF7E1E; }
+.tajweed-text tajweed.ikhpiaa         { color: #26BFFD; } /* Ikhfa */
+.tajweed-text tajweed.ikhpiaa_shafawi { color: #D500B7; } /* Ikhfa Shafawi */
+.tajweed-text tajweed.iqlab           { color: #26BFFD; } /* Iqlab */
+
+/* Idghaam (merging) */
+.tajweed-text tajweed.idghaam_ghunnah       { color: #169200; }
+.tajweed-text tajweed.idghaam_no_ghunnah    { color: #169200; }
+.tajweed-text tajweed.idghaam_shafawi       { color: #58B800; }
+.tajweed-text tajweed.idghaam_mutajanisayn  { color: #A1A1A1; }
+.tajweed-text tajweed.idghaam_mutaqaribayn  { color: #A1A1A1; }
+
+.verse-highlight {
+  color: var(--primary) !important;
+  filter: brightness(5);
+  transition: all 0.2s ease;
+}
+
+/* Dark mode verse highlight */
+.dark .verse-highlight {
+  color: var(--primary) !important;
+  filter: brightness(5);
+}
+/* Tafkhim (heavy/emphatic) */
+.tajweed-text tajweed.tafkhim { color: #BB4F00; }
+
+/* Verse highlight - when hovering over verse marker or verse end */
+.tajweed-text .verse-highlight {
+  color: var(--primary) !important;
+  filter: brightness(1.1);
+  transition: all 0.2s ease;
+}
+
+/* Dark mode verse highlight */
+.dark .tajweed-text .verse-highlight {
+  color: var(--primary) !important;
+  filter: brightness(1.2);
+}
+
+/* Dark mode */
+.dark .tajweed-text tajweed.ham_wasl         { color: #888888; }
+.dark .tajweed-text tajweed.laam_shamsiyah   { color: #888888; }
+.dark .tajweed-text tajweed.madda_normal     { color: #7B9FFF; }
+.dark .tajweed-text tajweed.madda_permissible{ color: #6B7BFF; }
+.dark .tajweed-text tajweed.madda_necessary  { color: #5B6EFF; }
+.dark .tajweed-text tajweed.madda_obligatory { color: #5B78FF; }
+.dark .tajweed-text tajweed.qalaqala         { color: #FF4D4D; }
+.dark .tajweed-text tajweed.ghunnah          { color: #FFA44D; }
+.dark .tajweed-text tajweed.ikhpiaa          { color: #4DD4FF; }
+.dark .tajweed-text tajweed.ikhpiaa_shafawi  { color: #E64DCC; }
+.dark .tajweed-text tajweed.iqlab            { color: #4DD4FF; }
+.dark .tajweed-text tajweed.idghaam_ghunnah  { color: #2BBF0E; }
+.dark .tajweed-text tajweed.idghaam_no_ghunnah { color: #2BBF0E; }
+.dark .tajweed-text tajweed.idghaam_shafawi  { color: #7ADB26; }
+.dark .tajweed-text tajweed.idghaam_mutajanisayn { color: #C0C0C0; }
+.dark .tajweed-text tajweed.idghaam_mutaqaribayn { color: #C0C0C0; }
+.dark .tajweed-text tajweed.tafkhim          { color: #E07030; }
+
+.navbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.input input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.input input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.dropdown {
+  padding: 4px;
+}
+
+/* Tooltip */
+.tooltip {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.uthmani-glyph-highlighted {
+  color: transparent;
+  text-shadow: 0 0 0px rgb(0, 192, 128, 1);
+}
+/* Hover effect (for any element that needs hover) */
+.hover-effect:hover::before {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Interactive elements get pointer cursor */
+.interactive {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Active scale effect */
+.active-scale:active {
+  transform: scale(0.98);
+}
+
+/* Content wrapper for proper z-index */
+.content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Container - centered content */
+.container-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Word audio highlight animation */
+@keyframes word-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+.word-playing {
+  animation: word-pulse 0.8s ease-in-out infinite;
+}
+
+/* Safe area padding for mobile devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+}
+/* Loading UI globally disabled — hide spinners and pulse placeholders. */
+.animate-spin { display: none !important; }
+.animate-pulse { animation: none !important; }

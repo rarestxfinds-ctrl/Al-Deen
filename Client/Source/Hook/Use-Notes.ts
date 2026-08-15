@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/Integration/supabase/client";
-import { useAuth } from "@/Context/Auth";
+import { useAuth } from "@Web/Context/Auth";
 import { toast } from "@/Hook/Use-Toast";
 
 interface Note {

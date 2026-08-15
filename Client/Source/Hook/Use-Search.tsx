@@ -1,7 +1,7 @@
 // @/Hook/Use-Search.ts
 import { useState, useEffect } from "react";
-import { ALL_PAGES, searchByCategory } from "@/Component/Search/Utility";
-import type { SearchCategory, SearchResult } from "@/Component/Search/Types";
+import { ALL_PAGES, searchByCategory } from "@Web/Component/Search/Utility";
+import type { SearchCategory, SearchResult } from "@Web/Component/Search/Types";
 
 export function useSearch(initialCategory: SearchCategory = "pages") {
   const [query, setQuery] = useState("");

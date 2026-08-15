@@ -6,16 +6,28 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // vite.config.ts now lives inside Client/, so __dirname IS the Client folder.
-  // Public is a direct sibling of Source inside Client.
   publicDir: path.resolve(__dirname, "./Public"),
 
   server: {
     port: 8080,
     host: true,
-    allowedHosts: true, // Prevents host header injection blocks in cloud proxies
+    allowedHosts: true,
     hmr: {
-      clientPort: 443, // Forces the hot-reload connection over secure HTTPS proxy
+      clientPort: 443,
+    },
+    proxy: {
+      // Forward standard /api routes to Express
+      "/api": {
+        target: "http://localhost:8081", // Match your backend PORT (8081)
+        changeOrigin: true,
+        secure: false,
+      },
+      // Forward /Wajihat-Barmajatt-At-Tatbiqat routes to Express
+      "/Wajihat-Barmajatt-At-Tatbiqat": {
+        target: "http://localhost:8081",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   plugins: [
@@ -59,11 +71,16 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,json}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//, /\.[^/]+$/],
+        navigateFallbackDenylist: [
+          /^\/~oauth/,
+          /^\/api\//,
+          /^\/Wajihat-Barmajatt-At-Tatbiqat\//,
+          /\.[^/]+$/,
+        ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024, // 20MB for large chunks
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
@@ -74,26 +91,24 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            // Font files
             urlPattern: /\.(woff2?|ttf|eot)$/i,
             handler: "CacheFirst",
             options: {
               cacheName: "font-cache",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days
+                maxAgeSeconds: 60 * 60 * 24 * 90,
               },
             },
           },
           {
-            // Audio files
             urlPattern: /\.mp3$/i,
             handler: "CacheFirst",
             options: {
               cacheName: "audio-cache",
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
               rangeRequests: true,
             },
@@ -121,14 +136,13 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            // Prayer times API — stale-while-revalidate for fast repeat loads
             urlPattern: /^https:\/\/api\.aladhan\.com\/.*/i,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "prayer-times-cache",
               expiration: {
                 maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 6, // 6 hours
+                maxAgeSeconds: 60 * 60 * 6,
               },
             },
           },
@@ -139,6 +153,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./Source"),
+      "@Web": path.resolve(__dirname, "./Web"),
+      "@Library": path.resolve(__dirname, "./Source/Library"),
     },
   },
 }));

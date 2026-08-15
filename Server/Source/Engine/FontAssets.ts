@@ -2,7 +2,7 @@
 // scratch directory ffmpeg/libass can scan via `fontsdir`.
 //
 // libass's fontsdir scan is NON-recursive, so the nested
-// Asset/Font/Quran/Uthmani/KFGQPC/V{1,2,4}/Page/TTF/{page}.ttf layout can't be
+// /Asset/Font/Quran/Uthmani/KFGQPC/V{1,2,4}/Page/TTF/{page}.ttf layout can't be
 // passed to ffmpeg directly — we symlink the specific files a given render
 // actually needs into one flat temp folder per job.
 

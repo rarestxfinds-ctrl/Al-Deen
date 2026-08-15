@@ -15,6 +15,7 @@
     "build:dev": "npm run build:dev --workspace=Client --silent"
   },
   "devDependencies": {
+    "@types/sql.js": "^1.4.11",
     "concurrently": "^8.2.2"
   },
   "codespaces": {
@@ -23,5 +24,9 @@
         "visibility": "public"
       }
     }
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "sql.js": "^1.14.2"
   }
 }
