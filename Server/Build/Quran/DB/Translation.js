@@ -5,25 +5,25 @@ import { TRANSLATION_BASE_DIR, CORPUS_QURAN_OUTPUT_DIR } from "../Config.js";
 import { shouldRebuildDb } from "../Utility/Cache.js";
 import { readJsonFile, extractVersesArray, extractVerseString } from "../Utility/Parser.js";
 
-const KALIMA_BASE_DIR = path.join(TRANSLATION_BASE_DIR, "Kalima-Bi-Kalima");
+// Directory matched directly to Server/Data/Quran/Surah/Translation/Word-By-Word
+const WORD_BY_WORD_BASE_DIR = path.join(TRANSLATION_BASE_DIR, "Word-By-Word");
 
 export function buildTranslationDatabases() {
   if (!fs.existsSync(TRANSLATION_BASE_DIR)) return;
 
-  // Track absolute paths of Kalima directories that get merged into standard translations
-  const processedKalimaPaths = new Set();
+  const processedWordByWordPaths = new Set();
 
-  function findKalimaDir(relativePath) {
-    if (!fs.existsSync(KALIMA_BASE_DIR)) return null;
+  function findWordByWordDir(relativePath) {
+    if (!fs.existsSync(WORD_BY_WORD_BASE_DIR)) return null;
 
-    // 1. Exact relative path match (e.g., Kalima-Bi-Kalima/English/Saheeh-International)
-    const exactMatch = path.join(KALIMA_BASE_DIR, relativePath);
+    // 1. Exact relative path match
+    const exactMatch = path.join(WORD_BY_WORD_BASE_DIR, relativePath);
     if (fs.existsSync(exactMatch)) return exactMatch;
 
-    // 2. Folder name match across subdirectories (e.g., Kalima-Bi-Kalima/*/Saheeh-International)
+    // 2. Edition name match (e.g. "Saheeh-International")
     const editionName = path.basename(relativePath);
-    
-    function searchKalimaTree(dir) {
+
+    function searchTree(dir) {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory()) {
@@ -31,18 +31,27 @@ export function buildTranslationDatabases() {
           if (entry.name === editionName) {
             return fullPath;
           }
-          const nested = searchKalimaTree(fullPath);
+          const nested = searchTree(fullPath);
           if (nested) return nested;
         }
       }
       return null;
     }
 
-    return searchKalimaTree(KALIMA_BASE_DIR);
+    return searchTree(WORD_BY_WORD_BASE_DIR);
+  }
+
+  function findFootnoteDir(dir) {
+    const fnDir = path.join(dir, "Footnote");
+    if (fs.existsSync(fnDir) && fs.statSync(fnDir).isDirectory()) {
+      return fnDir;
+    }
+    return null;
   }
 
   function traverse(dir, relativePath) {
-    if (relativePath.startsWith("Kalima-Bi-Kalima")) return;
+    // Skip Word-By-Word directory in primary pass to prevent duplicate compilation
+    if (relativePath.startsWith("Word-By-Word")) return;
 
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     const isEditionFolder = entries.some(
@@ -54,6 +63,10 @@ export function buildTranslationDatabases() {
     } else {
       for (const entry of entries) {
         if (entry.isDirectory()) {
+          // Avoid traversing into nested utility/metadata folders as separate editions
+          if (entry.name === "Footnote" || entry.name === "Word-By-Word") {
+            continue;
+          }
           traverse(
             path.join(dir, entry.name),
             relativePath ? `${relativePath}/${entry.name}` : entry.name
@@ -63,15 +76,17 @@ export function buildTranslationDatabases() {
     }
   }
 
-  function processDatabase(dir, relativePath, options = { hasAyah: true }, forcedKalimaDir = null) {
+  function processDatabase(dir, relativePath, options = { hasAyah: true }, forcedWbwDir = null) {
     const targetDbPath = path.join(CORPUS_QURAN_OUTPUT_DIR, "Translation", `${relativePath}.db`);
 
-    // Locate matching Kalima directory if available
-    const kalimaDir = forcedKalimaDir || findKalimaDir(relativePath);
-    const hasKalima = Boolean(kalimaDir);
+    const wbwDir = forcedWbwDir || findWordByWordDir(relativePath);
+    const footnoteDir = findFootnoteDir(dir);
 
-    if (kalimaDir) {
-      processedKalimaPaths.add(path.resolve(kalimaDir));
+    const hasKalimah = Boolean(wbwDir);
+    const hasFootnote = Boolean(footnoteDir);
+
+    if (wbwDir) {
+      processedWordByWordPaths.add(path.resolve(wbwDir));
     }
 
     if (!shouldRebuildDb(targetDbPath, dir)) {
@@ -93,38 +108,53 @@ export function buildTranslationDatabases() {
 
     if (options.hasAyah) {
       db.exec(`
-        CREATE TABLE IF NOT EXISTS Al_Ayah (
-          Al_Surah INTEGER NOT NULL,
-          Al_Ayah INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS Ayah (
+          Surah INTEGER NOT NULL,
+          Ayah INTEGER NOT NULL,
           Text TEXT NOT NULL,
-          PRIMARY KEY (Al_Surah, Al_Ayah)
+          PRIMARY KEY (Surah, Ayah)
         );
       `);
     }
 
-    if (hasKalima) {
+    if (hasKalimah) {
       db.exec(`
-        CREATE TABLE IF NOT EXISTS Al_Kalimah (
-          Al_Surah INTEGER NOT NULL,
-          Al_Ayah INTEGER NOT NULL,
-          Al_Kalimah INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS Kalimah (
+          Surah INTEGER NOT NULL,
+          Ayah INTEGER NOT NULL,
+          Kalimah INTEGER NOT NULL,
           Text TEXT NOT NULL,
-          PRIMARY KEY (Al_Surah, Al_Ayah, Al_Kalimah)
+          PRIMARY KEY (Surah, Ayah, Kalimah)
         );
       `);
     }
 
-    const insertAlAyah = options.hasAyah
-      ? db.prepare(`INSERT INTO Al_Ayah (Al_Surah, Al_Ayah, Text) VALUES (?, ?, ?)`)
+    if (hasFootnote) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS Footnote (
+          Surah INTEGER NOT NULL,
+          Footnote INTEGER NOT NULL,
+          Text TEXT NOT NULL,
+          PRIMARY KEY (Surah, Footnote)
+        );
+      `);
+    }
+
+    const insertAyah = options.hasAyah
+      ? db.prepare(`INSERT INTO Ayah (Surah, Ayah, Text) VALUES (?, ?, ?)`)
       : null;
 
-    const insertAlKalimah = hasKalima
-      ? db.prepare(`INSERT INTO Al_Kalimah (Al_Surah, Al_Ayah, Al_Kalimah, Text) VALUES (?, ?, ?, ?)`)
+    const insertKalimah = hasKalimah
+      ? db.prepare(`INSERT INTO Kalimah (Surah, Ayah, Kalimah, Text) VALUES (?, ?, ?, ?)`)
+      : null;
+
+    const insertFootnote = hasFootnote
+      ? db.prepare(`INSERT INTO Footnote (Surah, Footnote, Text) VALUES (?, ?, ?)`)
       : null;
 
     const transaction = db.transaction(() => {
       for (let sId = 1; sId <= 114; sId++) {
-        // 1. Insert Al_Ayah
+        // 1. Insert Ayah
         if (options.hasAyah) {
           const rawData = readJsonFile(path.join(dir, `${sId}.json`));
           const versesArray = extractVersesArray(rawData);
@@ -134,24 +164,45 @@ export function buildTranslationDatabases() {
             const verseText = extractVerseString(item);
 
             if (verseText) {
-              insertAlAyah.run(sId, ayahNumber, verseText);
+              insertAyah.run(sId, ayahNumber, verseText);
             }
           });
         }
 
-        // 2. Insert Al_Kalimah
-        if (hasKalima) {
-          const kalimaFile = path.join(kalimaDir, `${sId}.json`);
-          const rawKalimaData = readJsonFile(kalimaFile);
+        // 2. Insert Kalimah (Word by Word)
+        if (hasKalimah) {
+          const wbwFile = path.join(wbwDir, `${sId}.json`);
+          const rawWbwData = readJsonFile(wbwFile);
 
-          if (Array.isArray(rawKalimaData)) {
-            rawKalimaData.forEach((verseArray, vIdx) => {
+          if (Array.isArray(rawWbwData)) {
+            rawWbwData.forEach((verseArray, vIdx) => {
               const ayahNumber = vIdx + 1;
 
               if (Array.isArray(verseArray)) {
                 verseArray.forEach((wordText, kIdx) => {
                   if (wordText && typeof wordText === "string") {
-                    insertAlKalimah.run(sId, ayahNumber, kIdx + 1, wordText.trim());
+                    insertKalimah.run(sId, ayahNumber, kIdx + 1, wordText.trim());
+                  }
+                });
+              }
+            });
+          }
+        }
+
+        // 3. Insert Footnote without Ayah column
+        if (hasFootnote) {
+          const fnFile = path.join(footnoteDir, `${sId}.json`);
+          const rawFnData = readJsonFile(fnFile);
+
+          if (Array.isArray(rawFnData)) {
+            let surahFootnoteCounter = 0;
+
+            rawFnData.forEach((ayahFootnotes) => {
+              if (Array.isArray(ayahFootnotes)) {
+                ayahFootnotes.forEach((fnText) => {
+                  if (fnText && typeof fnText === "string" && fnText.trim()) {
+                    surahFootnoteCounter++;
+                    insertFootnote.run(sId, surahFootnoteCounter, fnText.trim());
                   }
                 });
               }
@@ -166,12 +217,12 @@ export function buildTranslationDatabases() {
     console.log(` -> Compiled tables into Translation/${relativePath}.db`);
   }
 
-  // 1. Process standard translations (Merges Saheeh-International from Kalima-Bi-Kalima/English/)
+  // 1. Process standard translations
   traverse(TRANSLATION_BASE_DIR, "");
 
-  // 2. Process unmatched Kalima-Bi-Kalima paths (Creates Translation/Kalima-Bi-Kalima/English/Direct.db)
-  if (fs.existsSync(KALIMA_BASE_DIR)) {
-    function traverseKalimaStandalone(dir) {
+  // 2. Process standalone Word-By-Word editions (e.g., Word-By-Word/English/Direct)
+  if (fs.existsSync(WORD_BY_WORD_BASE_DIR)) {
+    function traverseWbwStandalone(dir) {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       const isEditionFolder = entries.some(
         (e) => e.isFile() && e.name.endsWith(".json") && !isNaN(parseInt(e.name.replace(".json", "")))
@@ -179,20 +230,19 @@ export function buildTranslationDatabases() {
 
       if (isEditionFolder) {
         const fullPath = path.resolve(dir);
-        if (!processedKalimaPaths.has(fullPath)) {
-          // Output path preserves Kalima-Bi-Kalima subfolders (e.g. Kalima-Bi-Kalima/English/Direct)
+        if (!processedWordByWordPaths.has(fullPath)) {
           const relPath = path.relative(TRANSLATION_BASE_DIR, dir);
           processDatabase(dir, relPath, { hasAyah: false }, dir);
         }
       } else {
         for (const entry of entries) {
           if (entry.isDirectory()) {
-            traverseKalimaStandalone(path.join(dir, entry.name));
+            traverseWbwStandalone(path.join(dir, entry.name));
           }
         }
       }
     }
 
-    traverseKalimaStandalone(KALIMA_BASE_DIR);
+    traverseWbwStandalone(WORD_BY_WORD_BASE_DIR);
   }
 }

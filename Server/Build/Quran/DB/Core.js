@@ -73,131 +73,147 @@ export function buildCoreDatabase() {
   db.pragma("synchronous = NORMAL");
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS Al_Safhah (
-      Al_Safhah INTEGER PRIMARY KEY,
-      Start_Al_Surah INTEGER NOT NULL,
-      Start_Al_Ayah INTEGER NOT NULL,
-      Start_Al_Kalimah INTEGER NOT NULL,
-      End_Al_Surah INTEGER NOT NULL,
-      End_Al_Ayah INTEGER NOT NULL,
-      End_Al_Kalimah INTEGER NOT NULL
+    CREATE TABLE IF NOT EXISTS Page (
+      Page INTEGER PRIMARY KEY,
+      Start_Surah INTEGER NOT NULL,
+      Start_Ayah INTEGER NOT NULL,
+      Start_Kalimah INTEGER NOT NULL,
+      End_Surah INTEGER NOT NULL,
+      End_Ayah INTEGER NOT NULL,
+      End_Kalimah INTEGER NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS Al_Juz (
-      Al_Juz INTEGER PRIMARY KEY,
-      Start_Al_Surah INTEGER NOT NULL,
-      Start_Al_Ayah INTEGER NOT NULL,
-      End_Al_Surah INTEGER NOT NULL,
-      End_Al_Ayah INTEGER NOT NULL
+    CREATE TABLE IF NOT EXISTS Juz (
+      Juz INTEGER PRIMARY KEY,
+      Start_Surah INTEGER NOT NULL,
+      Start_Ayah INTEGER NOT NULL,
+      End_Surah INTEGER NOT NULL,
+      End_Ayah INTEGER NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS Al_Hizb (
-      Al_Hizb INTEGER PRIMARY KEY,
-      Start_Al_Surah INTEGER NOT NULL,
-      Start_Al_Ayah INTEGER NOT NULL,
-      End_Al_Surah INTEGER NOT NULL,
-      End_Al_Ayah INTEGER NOT NULL
+    CREATE TABLE IF NOT EXISTS Hizb (
+      Hizb INTEGER PRIMARY KEY,
+      Start_Surah INTEGER NOT NULL,
+      Start_Ayah INTEGER NOT NULL,
+      End_Surah INTEGER NOT NULL,
+      End_Ayah INTEGER NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS Al_Surah (
-      Al_Surah INTEGER PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS Surah (
+      Surah INTEGER PRIMARY KEY,
       Arabic TEXT NOT NULL,
       Translation TEXT NOT NULL,
       Transliteration TEXT NOT NULL,
       Revelation_Place TEXT,
       Revelation_Order INTEGER,
-      Al_Ayah_Count INTEGER,
-      Start_Al_Safhah INTEGER,
-      End_Al_Safhah INTEGER,
-      IndoPak_Marker TEXT,
+      Ayah_Count INTEGER,
+      Start_Page INTEGER,
+      End_Page INTEGER,
+      Indo_Pak_Ayah_Ending TEXT,
       Layout TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS Al_Ayah (
-      Al_Surah INTEGER NOT NULL,
-      Al_Ayah INTEGER NOT NULL,
+    CREATE TABLE IF NOT EXISTS Ayah (
+      Surah INTEGER NOT NULL,
+      Ayah INTEGER NOT NULL,
       Arabic TEXT NOT NULL,
-      Arabic_V1 TEXT,
-      Arabic_V2 TEXT,
-      PRIMARY KEY (Al_Surah, Al_Ayah),
-      FOREIGN KEY (Al_Surah) REFERENCES Al_Surah(Al_Surah)
+      Presentation_Form_A_Ligature_Based TEXT,
+      Presentation_Form_A_Glyph_Based TEXT,
+      PRIMARY KEY (Surah, Ayah),
+      FOREIGN KEY (Surah) REFERENCES Surah(Surah)
     );
 
-    CREATE TABLE IF NOT EXISTS Al_Kalimah (
-      Al_Surah INTEGER NOT NULL,
-      Al_Ayah INTEGER NOT NULL,
-      Al_Kalimah INTEGER NOT NULL,
+    CREATE TABLE IF NOT EXISTS Kalimah (
+      Surah INTEGER NOT NULL,
+      Ayah INTEGER NOT NULL,
+      Kalimah INTEGER NOT NULL,
       Arabic TEXT NOT NULL,
-      Arabic_V1 TEXT,
-      Arabic_V2 TEXT,
-      PRIMARY KEY (Al_Surah, Al_Ayah, Al_Kalimah),
-      FOREIGN KEY (Al_Surah, Al_Ayah) REFERENCES Al_Ayah(Al_Surah, Al_Ayah)
+      Presentation_Form_A_Ligature_Based TEXT,
+      Presentation_Form_A_Glyph_Based TEXT,
+      PRIMARY KEY (Surah, Ayah, Kalimah),
+      FOREIGN KEY (Surah, Ayah) REFERENCES Ayah(Surah, Ayah)
     );
   `);
 
-  const alSafhahRanges = readJsonFile(path.join(META_DIR, "Page.json")) || [];
-  const parsedAlSafhah = alSafhahRanges.map((r, i) => ({ safhah: i + 1, ...parsePageRange(r) }));
+  const pageRanges = readJsonFile(path.join(META_DIR, "Page.json")) || [];
+  const parsedPages = pageRanges.map((r, i) => ({ page: i + 1, ...parsePageRange(r) }));
 
-  const alHizbData = readJsonFile(path.join(META_DIR, "Hizb.json")) || [];
-  const alJuzData = readJsonFile(path.join(META_DIR, "Juz.json")) || [];
+  const hizbData = readJsonFile(path.join(META_DIR, "Hizb.json")) || [];
+  const juzData = readJsonFile(path.join(META_DIR, "Juz.json")) || [];
 
-  const insertAlSafhah = db.prepare(`
-    INSERT INTO Al_Safhah (Al_Safhah, Start_Al_Surah, Start_Al_Ayah, Start_Al_Kalimah, End_Al_Surah, End_Al_Ayah, End_Al_Kalimah)
+  const insertPage = db.prepare(`
+    INSERT INTO Page (Page, Start_Surah, Start_Ayah, Start_Kalimah, End_Surah, End_Ayah, End_Kalimah)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertAlJuz = db.prepare(`
-    INSERT INTO Al_Juz (Al_Juz, Start_Al_Surah, Start_Al_Ayah, End_Al_Surah, End_Al_Ayah)
+  const insertJuz = db.prepare(`
+    INSERT INTO Juz (Juz, Start_Surah, Start_Ayah, End_Surah, End_Ayah)
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  const insertAlHizb = db.prepare(`
-    INSERT INTO Al_Hizb (Al_Hizb, Start_Al_Surah, Start_Al_Ayah, End_Al_Surah, End_Al_Ayah)
+  const insertHizb = db.prepare(`
+    INSERT INTO Hizb (Hizb, Start_Surah, Start_Ayah, End_Surah, End_Ayah)
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  function safhahRangeForAlSurah(surahId) {
+  function pageRangeForSurah(surahId) {
     let first = null, last = null;
-    for (const s of parsedAlSafhah) {
-      if (s.start.alSurah <= surahId && surahId <= s.end.alSurah) {
-        if (first === null) first = s.safhah;
-        last = s.safhah;
+    for (const p of parsedPages) {
+      const startS = p.start?.alSurah ?? p.start?.surah;
+      const endS = p.end?.alSurah ?? p.end?.surah;
+      if (startS <= surahId && surahId <= endS) {
+        if (first === null) first = p.page;
+        last = p.page;
       }
     }
     return [first, last];
   }
 
-  const alAyahCounts = readJsonFile(path.join(META_DIR, "Surah", "Ayah.json")) || readJsonFile(path.join(META_DIR, "Surah", "Ayahs.json")) || [];
+  const ayahCounts = readJsonFile(path.join(META_DIR, "Surah", "Ayah.json")) || readJsonFile(path.join(META_DIR, "Surah", "Ayahs.json")) || [];
   const translations = readJsonFile(path.join(META_DIR, "Surah", "Translation.json")) || [];
   const transliterations = readJsonFile(path.join(META_DIR, "Surah", "Transliteration.json")) || [];
   const arabicNames = readJsonFile(path.join(META_DIR, "Surah", "Arabic.json")) || [];
-  const places = readJsonFile(path.join(META_DIR, "Surah", "Place.json")) || readJsonFile(path.join(META_DIR, "Revelation", "Place.json")) || [];
-  const orders = readJsonFile(path.join(META_DIR, "Surah", "Order.json")) || readJsonFile(path.join(META_DIR, "Revelation", "Order.json")) || [];
-  const indoPakMarkers = readJsonFile(path.join(META_DIR, "Indo-Pak-Verse-Markers.json")) || [];
+  
+  const places = readJsonFile(path.join(META_DIR, "Surah", "Place.json")) || 
+                 readJsonFile(path.join(META_DIR, "Surah", "Revelation", "Place.json")) || [];
+                 
+  const orders = readJsonFile(path.join(META_DIR, "Surah", "Order.json")) || 
+                 readJsonFile(path.join(META_DIR, "Surah", "Revelation", "Order.json")) || [];
+                 
+  const indoPageAyahEndings = readJsonFile(path.join(META_DIR, "Indo_Pak_Ayah_Ending.json")) || 
+                              readJsonFile(path.join(META_DIR, "Indo-Page-Ayah-Ending.json")) || 
+                              readJsonFile(path.join(META_DIR, "Indo-Pak-Verse-Markers.json")) || [];
 
-  const insertAlSurah = db.prepare(`
-    INSERT INTO Al_Surah (
-      Al_Surah, Arabic, Translation, Transliteration, Revelation_Place, Revelation_Order,
-      Al_Ayah_Count, Start_Al_Safhah, End_Al_Safhah, IndoPak_Marker, Layout
+  const insertSurah = db.prepare(`
+    INSERT INTO Surah (
+      Surah, Arabic, Translation, Transliteration, Revelation_Place, Revelation_Order,
+      Ayah_Count, Start_Page, End_Page, Indo_Pak_Ayah_Ending, Layout
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertAlAyah = db.prepare(`
-    INSERT INTO Al_Ayah (Al_Surah, Al_Ayah, Arabic, Arabic_V1, Arabic_V2)
+  const insertAyah = db.prepare(`
+    INSERT INTO Ayah (Surah, Ayah, Arabic, Presentation_Form_A_Ligature_Based, Presentation_Form_A_Glyph_Based)
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  const insertAlKalimah = db.prepare(`
-    INSERT INTO Al_Kalimah (Al_Surah, Al_Ayah, Al_Kalimah, Arabic, Arabic_V1, Arabic_V2)
+  const insertKalimah = db.prepare(`
+    INSERT INTO Kalimah (Surah, Ayah, Kalimah, Arabic, Presentation_Form_A_Ligature_Based, Presentation_Form_A_Glyph_Based)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
-  let totalAlAyahCount = 0;
-  let totalAlKalimahCount = 0;
+  let totalAyahCount = 0;
+  let totalKalimahCount = 0;
 
   const transaction = db.transaction(() => {
-    parsedAlSafhah.forEach((s) => {
-      insertAlSafhah.run(s.safhah, s.start.alSurah, s.start.alAyah, s.start.alKalimah, s.end.alSurah, s.end.alAyah, s.end.alKalimah);
+    parsedPages.forEach((p) => {
+      const startSurah = p.start?.alSurah ?? p.start?.surah;
+      const startAyah = p.start?.alAyah ?? p.start?.ayah;
+      const startKalimah = p.start?.alKalimah ?? p.start?.word ?? 1;
+      const endSurah = p.end?.alSurah ?? p.end?.surah;
+      const endAyah = p.end?.alAyah ?? p.end?.ayah;
+      const endKalimah = p.end?.alKalimah ?? p.end?.word ?? 1;
+
+      insertPage.run(p.page, startSurah, startAyah, startKalimah, endSurah, endAyah, endKalimah);
     });
 
     const extractRange = (item) => {
@@ -206,10 +222,10 @@ export function buildCoreDatabase() {
       }
       if (!item || typeof item !== "object") return null;
 
-      const startSurah = item.Start_Al_Surah ?? item.start_surah ?? item.startSurah ?? item.start?.alSurah ?? item.start?.surah;
-      const startAyah = item.Start_Al_Ayah ?? item.start_ayah ?? item.startAyah ?? item.start?.alAyah ?? item.start?.ayah;
-      const endSurah = item.End_Al_Surah ?? item.end_surah ?? item.endSurah ?? item.end?.alSurah ?? item.end?.surah;
-      const endAyah = item.End_Al_Ayah ?? item.end_ayah ?? item.endAyah ?? item.end?.alAyah ?? item.end?.ayah;
+      const startSurah = item.Start_Surah ?? item.Start_Al_Surah ?? item.start_surah ?? item.startSurah ?? item.start?.alSurah ?? item.start?.surah;
+      const startAyah = item.Start_Ayah ?? item.Start_Al_Ayah ?? item.start_ayah ?? item.startAyah ?? item.start?.alAyah ?? item.start?.ayah;
+      const endSurah = item.End_Surah ?? item.End_Al_Surah ?? item.end_surah ?? item.endSurah ?? item.end?.alSurah ?? item.end?.surah;
+      const endAyah = item.End_Ayah ?? item.End_Al_Ayah ?? item.end_ayah ?? item.endAyah ?? item.end?.alAyah ?? item.end?.ayah;
 
       if (startSurah != null && startAyah != null && endSurah != null && endAyah != null) {
         return { startSurah, startAyah, endSurah, endAyah };
@@ -217,22 +233,22 @@ export function buildCoreDatabase() {
       return null;
     };
 
-    if (Array.isArray(alJuzData)) {
+    if (Array.isArray(juzData)) {
       let juzIndex = 1;
-      alJuzData.forEach((juz) => {
+      juzData.forEach((juz) => {
         const parsed = extractRange(juz);
         if (parsed) {
-          insertAlJuz.run(juzIndex++, parsed.startSurah, parsed.startAyah, parsed.endSurah, parsed.endAyah);
+          insertJuz.run(juzIndex++, parsed.startSurah, parsed.startAyah, parsed.endSurah, parsed.endAyah);
         }
       });
     }
 
-    if (Array.isArray(alHizbData)) {
+    if (Array.isArray(hizbData)) {
       let hizbIndex = 1;
-      alHizbData.forEach((hizb) => {
+      hizbData.forEach((hizb) => {
         const parsed = extractRange(hizb);
         if (parsed) {
-          insertAlHizb.run(hizbIndex++, parsed.startSurah, parsed.startAyah, parsed.endSurah, parsed.endAyah);
+          insertHizb.run(hizbIndex++, parsed.startSurah, parsed.startAyah, parsed.endSurah, parsed.endAyah);
         }
       });
     }
@@ -257,36 +273,36 @@ export function buildCoreDatabase() {
       const versesTextV1 = extractVersesArray(rawSurahTextV1);
 
       const layoutData = readJsonFile(path.join(SURAH_DIR, "Layout", `${id}.json`));
-      const [safhahStart, safhahEnd] = safhahRangeForAlSurah(id);
+      const [pageStart, pageEnd] = pageRangeForSurah(id);
 
-      insertAlSurah.run(
+      insertSurah.run(
         id,
         arabicNames[idx] ?? "",
         translations[idx] ?? "",
         transliterations[idx] ?? "",
         places[idx] ?? "",
         orders[idx] ?? null,
-        alAyahCounts[idx] ?? versesText.length,
-        safhahStart,
-        safhahEnd,
-        JSON.stringify(indoPakMarkers[idx] || []),
+        ayahCounts[idx] ?? versesText.length,
+        pageStart,
+        pageEnd,
+        JSON.stringify(indoPageAyahEndings[idx] || []),
         layoutData ? JSON.stringify(layoutData) : null
       );
 
       versesText.forEach((rawVerse, vIdx) => {
         const ayahNumber = vIdx + 1;
         const arabicText = extractVerseString(rawVerse);
-        const arabicV1 = extractVerseString(versesTextV1[vIdx]);
-        const arabicV2 = extractVerseString(versesTextV2[vIdx]);
+        const presentationA = extractVerseString(versesTextV1[vIdx]);
+        const presentationB = extractVerseString(versesTextV2[vIdx]);
 
-        insertAlAyah.run(
+        insertAyah.run(
           id,
           ayahNumber,
           arabicText,
-          arabicV1 || null,
-          arabicV2 || null
+          presentationA || null,
+          presentationB || null
         );
-        totalAlAyahCount++;
+        totalAyahCount++;
 
         const kalimahArabic = splitIntoWords(arabicText);
 
@@ -303,26 +319,26 @@ export function buildCoreDatabase() {
           return words;
         };
 
-        const kalimahV1 = parseGlyphs(versesTextV1[vIdx], arabicV1, kalimahArabic.length);
-        const kalimahV2 = parseGlyphs(versesTextV2[vIdx], arabicV2, kalimahArabic.length);
+        const kalimahV1 = parseGlyphs(versesTextV1[vIdx], presentationA, kalimahArabic.length);
+        const kalimahV2 = parseGlyphs(versesTextV2[vIdx], presentationB, kalimahArabic.length);
 
         const maxKalimah = kalimahArabic.length;
 
         for (let kIdx = 0; kIdx < maxKalimah; kIdx++) {
           const kalimahPosition = kIdx + 1;
           const kArabic = kalimahArabic[kIdx] || "";
-          const kArabicV1 = kalimahV1[kIdx] !== undefined ? String(kalimahV1[kIdx]) : null;
-          const kArabicV2 = kalimahV2[kIdx] !== undefined ? String(kalimahV2[kIdx]) : null;
+          const kPresentationA = kalimahV1[kIdx] !== undefined ? String(kalimahV1[kIdx]) : null;
+          const kPresentationB = kalimahV2[kIdx] !== undefined ? String(kalimahV2[kIdx]) : null;
 
-          insertAlKalimah.run(
+          insertKalimah.run(
             id,
             ayahNumber,
             kalimahPosition,
             kArabic,
-            kArabicV1,
-            kArabicV2
+            kPresentationA,
+            kPresentationB
           );
-          totalAlKalimahCount++;
+          totalKalimahCount++;
         }
       });
     }
@@ -330,5 +346,5 @@ export function buildCoreDatabase() {
 
   transaction();
   db.close();
-  console.log(`Core.db built successfully: ${parsedAlSafhah.length} Al_Safhah, ${totalAlAyahCount} Al_Ayah entries, ${totalAlKalimahCount} Al_Kalimah entries.`);
+  console.log(`Core.db built successfully: ${parsedPages.length} Page, ${totalAyahCount} Ayah entries, ${totalKalimahCount} Kalimah entries.`);
 }

@@ -272,7 +272,7 @@ export function Filter({
                     className="w-full justify-between"
                     fullWidth
                   >
-                    <span>{selectedAyah ? `Ayah ${selectedAyah}` : "All Ayahs"}</span>
+                    <span>{selectedAyah ? `Ayah ${selectedAyah}` : "All Ayah"}</span>
                     <ChevronDown
                       className={cn("h-4 w-4 transition-transform", showAyahDropdown && "rotate-180")}
                     />
@@ -293,7 +293,7 @@ export function Filter({
                               : "hover:bg-black/10 dark:hover:bg-white/10"
                           )}
                         >
-                          All Ayahs
+                          All Ayah
                         </button>
                         {ayahs.map((ayah) => (
                           <button

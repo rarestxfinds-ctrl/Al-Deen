@@ -5,15 +5,24 @@ export type QuranLayout = "ayah" | "page";
 
 // Transliterator types (includes "None" option) - for TRANSLITERATION only
 export type TransliteratorType = "None" | "Standard" | "Academic" | "Phonetic" | "KingFahd";
+
+// Interface for API translation objects
+export interface Mudkhal_Qaimat_At_Tarjamah {
+  id: string;
+  name: string;
+  language: string;
+  edition: string;
+}
+
 interface HifzProgress {
-  completedWords: Set<string>; // keys: `${surahId}:${ayah}:${wordIndex}`
-  markWordCompleted: (surahId: number, ayah: number, wordIndex: number) => void;
-  unmarkWordCompleted: (surahId: number, ayah: number, wordIndex: number) => void;
-  isWordCompleted: (surahId: number, ayah: number, wordIndex: number) => boolean;
-  isVerseCompleted: (surahId: number, ayah: number, totalWords: number) => boolean;
-  resetWord: (surahId: number, ayah: number, wordIndex: number) => void;
-  resetVerse: (surahId: number, ayah: number) => void;
-  resetSurah: (surahId: number) => void;
+  completedWords: Set<string>; // keys: `${SurahId}:${ayah}:${wordIndex}`
+  markWordCompleted: (SurahId: number, ayah: number, wordIndex: number) => void;
+  unmarkWordCompleted: (SurahId: number, ayah: number, wordIndex: number) => void;
+  isWordCompleted: (SurahId: number, ayah: number, wordIndex: number) => boolean;
+  isVerseCompleted: (SurahId: number, ayah: number, totalWords: number) => boolean;
+  resetWord: (SurahId: number, ayah: number, wordIndex: number) => void;
+  resetVerse: (SurahId: number, ayah: number) => void;
+  resetSurah: (SurahId: number) => void;
   resetAll: () => void;
 }
 interface AppContextType {
@@ -90,6 +99,13 @@ setReadingTrackingEnabled: (enabled: boolean) => void;
   setSelectedReciter: (reciter: string) => void;
   selectedTranslator: string;
   setSelectedTranslator: (translator: string) => void;
+
+  // Translation catalog (from API) + user-managed active translation IDs
+  availableTranslations: Mudkhal_Qaimat_At_Tarjamah[];
+  setAvailableTranslations: React.Dispatch<React.SetStateAction<Mudkhal_Qaimat_At_Tarjamah[]>>;
+  activeTranslationIds: string[];
+  setActiveTranslationIds: React.Dispatch<React.SetStateAction<string[]>>;
+  toggleTranslation: (id: string) => void;
   
   // Hadith settings - General (main display)
   showHadithTranslation: boolean;
@@ -158,9 +174,9 @@ setReadingTrackingEnabled: (enabled: boolean) => void;
   setSelectedAyahTransliterator: (transliterator: TransliteratorType) => void;
 
     // Surah Info settings
-  surahInfoProvider: string;
+  SurahInfoProvider: string;
   setSurahInfoProvider: (provider: string) => void;
-  surahInfoTextSize: number;
+  SurahInfoTextSize: number;
   setSurahInfoTextSize: (size: number) => void;
 
   // Tafsir settings
@@ -193,6 +209,7 @@ setRecordAudioEnabled: (value: boolean) => void;
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY = "app-settings";
+const ACTIVE_TRANSLATIONS_STORAGE_KEY = "quran_active_translation_ids";
 
 interface PersistedSettings {
   currentLanguage: string;
@@ -264,8 +281,8 @@ tafsirProvider: string;
 tafsirTextSize: number;
 
   // Surah Info
-  surahInfoProvider: string;
-  surahInfoTextSize: number;
+  SurahInfoProvider: string;
+  SurahInfoTextSize: number;
 
   readingIdleTimeout: number;
 readingSaveInterval: number;
@@ -341,8 +358,8 @@ const DEFAULTS: PersistedSettings = {
   transliterationSize: 3,
   selectedAyahTransliterator: "None",
   // Surah Info
-  surahInfoProvider: "Ibn-Ashur",
-  surahInfoTextSize: 3, // Normal
+  SurahInfoProvider: "Ibn-Ashur",
+  SurahInfoTextSize: 3, // Normal
 
   tafsirProvider: "Ibn-Kathir",
 tafsirTextSize: 3, // Normal
@@ -373,6 +390,17 @@ function loadSettings(): PersistedSettings {
 
 function saveSettings(s: PersistedSettings) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+}
+
+function loadActiveTranslationIds(): string[] {
+  try {
+    const saved = localStorage.getItem(ACTIVE_TRANSLATIONS_STORAGE_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -426,6 +454,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showArabicText, setShowArabicText] = useState(initial.showArabicText);
   const [selectedReciter, setSelectedReciter] = useState(initial.selectedReciter);
   const [selectedTranslator, setSelectedTranslator] = useState(initial.selectedTranslator);
+
+  // ---------- Translation catalog (from API) + active translation IDs ----------
+  const [availableTranslations, setAvailableTranslations] = useState<Mudkhal_Qaimat_At_Tarjamah[]>([]);
+  const [activeTranslationIds, setActiveTranslationIds] = useState<string[]>(() => loadActiveTranslationIds());
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TRANSLATIONS_STORAGE_KEY, JSON.stringify(activeTranslationIds));
+    } catch (error) {
+      console.error("Failed to save active translation IDs:", error);
+    }
+  }, [activeTranslationIds]);
+
+  const toggleTranslation = useCallback((id: string) => {
+    setActiveTranslationIds((prevIds) =>
+      prevIds.includes(id)
+        ? prevIds.filter((item) => item !== id)
+        : [...prevIds, id]
+    );
+  }, []);
   
   // Hadith settings
   const [showHadithTranslation, setShowHadithTranslation] = useState(initial.showHadithTranslation);
@@ -458,8 +506,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedAyahTransliterator, setSelectedAyahTransliterator] = useState<TransliteratorType>(initial.selectedAyahTransliterator);
 
   // SurahInfo
-  const [surahInfoProvider, setSurahInfoProvider] = useState(initial.surahInfoProvider);
-  const [surahInfoTextSize, setSurahInfoTextSize] = useState(initial.surahInfoTextSize);
+  const [SurahInfoProvider, setSurahInfoProvider] = useState(initial.SurahInfoProvider);
+  const [SurahInfoTextSize, setSurahInfoTextSize] = useState(initial.SurahInfoTextSize);
 
   // Tafsir settings
 const [tafsirProvider, setTafsirProvider] = useState(initial.tafsirProvider);
@@ -512,13 +560,13 @@ useEffect(() => {
   }, [completedWords]);
 
   // Word-level operations
-  const markWordCompleted = useCallback((surahId: number, ayah: number, wordIndex: number) => {
-    const key = `${surahId}:${ayah}:${wordIndex}`;
+  const markWordCompleted = useCallback((SurahId: number, ayah: number, wordIndex: number) => {
+    const key = `${SurahId}:${ayah}:${wordIndex}`;
     setCompletedWords(prev => new Set(prev).add(key));
   }, []);
 
-  const unmarkWordCompleted = useCallback((surahId: number, ayah: number, wordIndex: number) => {
-    const key = `${surahId}:${ayah}:${wordIndex}`;
+  const unmarkWordCompleted = useCallback((SurahId: number, ayah: number, wordIndex: number) => {
+    const key = `${SurahId}:${ayah}:${wordIndex}`;
     setCompletedWords(prev => {
       const next = new Set(prev);
       next.delete(key);
@@ -526,21 +574,21 @@ useEffect(() => {
     });
   }, []);
 
-  const isWordCompleted = useCallback((surahId: number, ayah: number, wordIndex: number) => {
-    const key = `${surahId}:${ayah}:${wordIndex}`;
+  const isWordCompleted = useCallback((SurahId: number, ayah: number, wordIndex: number) => {
+    const key = `${SurahId}:${ayah}:${wordIndex}`;
     return completedWords.has(key);
   }, [completedWords]);
 
-  const isVerseCompleted = useCallback((surahId: number, ayah: number, totalWords: number) => {
+  const isVerseCompleted = useCallback((SurahId: number, ayah: number, totalWords: number) => {
     // totalWords includes the verse marker; ignore the last word (verse marker)
     for (let i = 0; i < totalWords - 1; i++) {
-      if (!isWordCompleted(surahId, ayah, i)) return false;
+      if (!isWordCompleted(SurahId, ayah, i)) return false;
     }
     return true;
   }, [isWordCompleted]);
 
-  const resetWord = useCallback((surahId: number, ayah: number, wordIndex: number) => {
-    const key = `${surahId}:${ayah}:${wordIndex}`;
+  const resetWord = useCallback((SurahId: number, ayah: number, wordIndex: number) => {
+    const key = `${SurahId}:${ayah}:${wordIndex}`;
     setCompletedWords(prev => {
       const next = new Set(prev);
       next.delete(key);
@@ -548,10 +596,10 @@ useEffect(() => {
     });
   }, []);
 
-  const resetVerse = useCallback((surahId: number, ayah: number) => {
+  const resetVerse = useCallback((SurahId: number, ayah: number) => {
     setCompletedWords(prev => {
       const next = new Set(prev);
-      const prefix = `${surahId}:${ayah}:`;
+      const prefix = `${SurahId}:${ayah}:`;
       for (const key of next) {
         if (key.startsWith(prefix)) next.delete(key);
       }
@@ -559,10 +607,10 @@ useEffect(() => {
     });
   }, []);
 
-  const resetSurah = useCallback((surahId: number) => {
+  const resetSurah = useCallback((SurahId: number) => {
     setCompletedWords(prev => {
       const next = new Set(prev);
-      const prefix = `${surahId}:`;
+      const prefix = `${SurahId}:`;
       for (const key of next) {
         if (key.startsWith(prefix)) next.delete(key);
       }
@@ -612,8 +660,8 @@ useEffect(() => {
       duaArabicFontSize, duaTranslationFontSize, duaTransliterationFontSize,
       duaInlineTranslationFontSize, duaInlineTransliterationFontSize,
       transliterationSize, selectedAyahTransliterator,
-      surahInfoProvider,
-      surahInfoTextSize,
+      SurahInfoProvider,
+      SurahInfoTextSize,
       tafsirProvider,
 tafsirTextSize,
     readingIdleTimeout,
@@ -646,7 +694,7 @@ highContrast, reduceMotion, underlineLinks, screenReaderHints, uiTextScale,
     duaArabicFontSize, duaTranslationFontSize, duaTransliterationFontSize,
     duaInlineTranslationFontSize, duaInlineTransliterationFontSize,
     transliterationSize, selectedAyahTransliterator,
-    surahInfoProvider, surahInfoTextSize,
+    SurahInfoProvider, SurahInfoTextSize,
     tafsirProvider, tafsirTextSize,
   readingIdleTimeout,
   readingSaveInterval,
@@ -700,6 +748,9 @@ highContrast, reduceMotion, underlineLinks, screenReaderHints, uiTextScale,
     showArabicText, setShowArabicText,
     selectedReciter, setSelectedReciter,
     selectedTranslator, setSelectedTranslator,
+    availableTranslations, setAvailableTranslations,
+    activeTranslationIds, setActiveTranslationIds,
+    toggleTranslation,
     showHadithTranslation, setShowHadithTranslation,
     showHadithTransliteration, setShowHadithTransliteration,
     showHadithInlineTranslation, setShowHadithInlineTranslation,
@@ -724,9 +775,9 @@ highContrast, reduceMotion, underlineLinks, screenReaderHints, uiTextScale,
     duaInlineTransliterationFontSize, setDuaInlineTransliterationFontSize,
     transliterationSize, setTransliterationSize,
     selectedAyahTransliterator, setSelectedAyahTransliterator,
-      surahInfoProvider,
+      SurahInfoProvider,
   setSurahInfoProvider,
-  surahInfoTextSize,
+  SurahInfoTextSize,
   setSurahInfoTextSize,
   tafsirProvider, setTafsirProvider,
 tafsirTextSize, setTafsirTextSize,
@@ -760,6 +811,7 @@ recordAudioEnabled, setRecordAudioEnabled,
     inlineTransliteration, inlineTransliterationSize,
     verseTranslation, autoScrollDuringPlayback, selectedTranslations, showArabicText,
     selectedReciter, selectedTranslator,
+    availableTranslations, activeTranslationIds, toggleTranslation,
     showHadithTranslation, showHadithTransliteration,
     showHadithInlineTranslation, showHadithInlineTransliteration,
     showHadithHoverTranslation, showHadithHoverTransliteration,
@@ -771,9 +823,9 @@ recordAudioEnabled, setRecordAudioEnabled,
     duaArabicFontSize, duaTranslationFontSize, duaTransliterationFontSize,
     duaInlineTranslationFontSize, duaInlineTransliterationFontSize,
     transliterationSize, selectedAyahTransliterator,
-      surahInfoProvider,
+      SurahInfoProvider,
   setSurahInfoProvider,
-  surahInfoTextSize,
+  SurahInfoTextSize,
   setSurahInfoTextSize,
   tafsirProvider, setTafsirProvider,
 tafsirTextSize, setTafsirTextSize,

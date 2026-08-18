@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { Layout } from "@Web/Component/Layout/Index";
 import { AudioPlayer } from "@Web/Component/Audio-Player/Index";
 import { SurahHeader } from "@Web/Component/Quran/Surah/Header";
-import { Bitaqah_Al_Ayah } from "@Web/Component/Quran/Takheet/Ayah/Bitaqah";
+import { VerseCard } from "@Web/Component/Quran/Layout/Ayah/VerseCard";
 import { NotesDialog } from "@Web/Component/Dialog/Notes";
 import { ShareDialog } from "@Web/Component/Dialog/Share";
 import { SurahInfoDialog } from "@Web/Component/Dialog/Surah-Info";
@@ -20,12 +20,13 @@ import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Alert, AlertDescription } from "@Web/Component/UI/Alert";
 import { useQuery } from "@tanstack/react-query";
-import { Jalb_Aqsam_As_Safahat_Corpus } from "@/Library/Quran-API";
-import type { Aqsam_As_Safahat } from "@/Library/Quran-Types";
+import { Fetch_Page_Sections_Corpus } from "@/Library/Quran-API";
+import type { Page_Sections } from "@/Library/Quran-API";
+import type { SurahMeta, AssembledVerse } from "@Web/Component/Quran/Layout/Types";
 
 // ============================================================================
 // Network Fetch Client Handler (still the only source we have for the flat
-// surah list + juz data - Jalb_Aqsam_As_Safahat_Corpus only covers page/verse
+// surah list + juz data - Fetch_Page_Sections_Corpus only covers page/verse
 // segment boundaries, not surah metadata or juz groupings)
 // ============================================================================
 async function fetchQuranCorpusFromBackend() {
@@ -35,47 +36,39 @@ async function fetchQuranCorpusFromBackend() {
 }
 
 // Resolves which mushaf page a given surah:verse falls on, using the same
-// Aqsam_As_Safahat corpus map that Bitaqah_Al_Ayah reads internally for its
-// own font-per-page resolution.
+// page-sections corpus map VerseCard reads internally for its own
+// font-per-page resolution. Page_Sections[page] is an array of
+// { Surah, Start_Ayah, End_Ayah } objects (see Page_Sections in
+// Quran-API.ts) — not a delimited string — so this scans the segments
+// directly instead of parsing a "surah:ayah-surah:ayah" format that was
+// never actually returned.
 function findPageForVerse(
   surahPages: [number, number] | undefined,
   surahId: number,
   verseNum: number,
-  pageSegmentsMap: Aqsam_As_Safahat | undefined
+  pageSectionsMap: Page_Sections | undefined
 ): number {
   if (!surahPages) return 1;
-  if (!pageSegmentsMap) return surahPages[0];
+  if (!pageSectionsMap) return surahPages[0];
 
   for (let p = surahPages[0]; p <= surahPages[1]; p++) {
-    const raw = (pageSegmentsMap as Record<string, any>)[String(p)];
-    if (!raw) continue;
+    const segments = pageSectionsMap[p];
+    if (!segments) continue;
 
-    const segmentsStr = Array.isArray(raw) ? raw.join("|") : raw;
-    if (typeof segmentsStr !== "string") continue;
+    const match = segments.find(
+      (segment) =>
+        segment["Surah"] === surahId &&
+        verseNum >= segment["Start_Ayah"] &&
+        verseNum <= segment["End_Ayah"]
+    );
 
-    for (const seg of segmentsStr.split("|")) {
-      const [start, end] = seg.split("-");
-      if (!start || !end) continue;
-
-      const [startSurahVerse] = start.split(".");
-      const [startSurahStr, startVerseStr] = startSurahVerse.split(":");
-      const [endSurahVerse] = end.split(".");
-      const [, endVerseStr] = endSurahVerse.split(":");
-
-      const segSurah = parseInt(startSurahStr, 10);
-      const segStartVerse = parseInt(startVerseStr, 10);
-      const segEndVerse = parseInt(endVerseStr, 10);
-
-      if (segSurah === surahId && verseNum >= segStartVerse && verseNum <= segEndVerse) {
-        return p;
-      }
-    }
+    if (match) return p;
   }
 
   return surahPages[0];
 }
 
-const KalimaIndex = () => {
+const Kalimah = () => {
   const { id, verseId, kalimaId } = useParams<{
     id: string;
     verseId: string;
@@ -114,10 +107,10 @@ const KalimaIndex = () => {
     staleTime: 1000 * 60 * 30,
   });
 
-  // Page/verse segment boundaries - same source Bitaqah_Al_Ayah uses internally.
-  const { data: pageSegmentsMap } = useQuery<Aqsam_As_Safahat>({
-    queryKey: ["aqsamAsSafahat"],
-    queryFn: Jalb_Aqsam_As_Safahat_Corpus,
+  // Page/verse segment boundaries - same source VerseCard uses internally.
+  const { data: pageSectionsMap } = useQuery<Page_Sections>({
+    queryKey: ["pageSectionsCorpus"],
+    queryFn: Fetch_Page_Sections_Corpus,
     staleTime: 1000 * 60 * 60,
   });
 
@@ -156,8 +149,8 @@ const KalimaIndex = () => {
   }, [corpus, SurahId]);
 
   const pageNumber = useMemo(
-    () => findPageForVerse(Surah?.pages as [number, number] | undefined, SurahId, verseNum, pageSegmentsMap),
-    [Surah, SurahId, verseNum, pageSegmentsMap]
+    () => findPageForVerse(Surah?.pages as [number, number] | undefined, SurahId, verseNum, pageSectionsMap),
+    [Surah, SurahId, verseNum, pageSectionsMap]
   );
 
   const getFontClass = () => {
@@ -174,25 +167,40 @@ const KalimaIndex = () => {
   const translationFontSizeValue = `${(1 * translationFontSize) / 3}rem`;
   const transliterationFontSizeValue = `${(1 * transliterationSize) / 3}rem`;
 
-  // Bitaqah_Al_Ayah expects Kalimaat to be Al_Kalimah objects (translation/
-  // transliteration included, as built by Qaimat_Al_Ayaat). Here verse.words
-  // looks like a plain glyph string[] (word = verse.words[wordIndex] is used
-  // directly as a glyph below), which isn't that shape - so Kalimaat is left
-  // unset and Bitaqah_Al_Ayah falls back to rendering the full verse text.
+  // VerseCard expects Words to be word objects carrying translation/
+  // transliteration (as built by AyahList). Here verse.words looks like a
+  // plain glyph string[] (word = verse.words[wordIndex] is used directly as
+  // a glyph below), which isn't that shape - so Words is left unset and
+  // VerseCard falls back to rendering the full verse text.
   // Highlighting just `wordIndex` needs either useQuranData returning
   // structured per-word objects, or a targeted-word prop added to
-  // Bitaqah_Al_Ayah - neither exists in the files I've seen so far.
-  const bitaqahSurah = Surah
+  // VerseCard - neither exists in the files I've seen so far.
+  const cardSurah: SurahMeta | null = Surah
     ? {
-        ...Surah,
-        "As-Surah": Surah.id,
-        "Bidayat-As-Safhah": Surah.pages?.[0],
-        "Nihayat-As-Safhah": Surah.pages?.[1],
-        "At-Tansiq": Surah.englishName,
+        Surah: Surah.id,
+        Arabic: Surah.arabicName ?? "",
+        Translation: Surah.englishName ?? "",
+        Transliteration: Surah.transliteration ?? Surah.englishName ?? "",
+        Revelation_Place: Surah.revelationPlace ?? null,
+        Revelation_Order: Surah.revelationOrder ?? null,
+        Ayah_Count: Surah.numberOfAyahs,
+        Start_Page: Surah.pages?.[0],
+        End_Page: Surah.pages?.[1],
+        Indo_Pak_Ayah_Ending: [],
+        Layout: null,
       }
     : null;
 
-  const bitaqahAyah = verse ? { ...verse, "Al-Ayah": verse.verseNumber } : null;
+  const cardAyah: AssembledVerse | null = verse
+    ? {
+        Surah: SurahId,
+        Ayah: verse.verseNumber,
+        Arabic: (verse as any).arabic ?? (verse as any).text ?? "",
+        Arabic_V1: null,
+        Arabic_V2: null,
+        IndoPakMarker: null,
+      }
+    : null;
 
   // --- Reading session (time‑based goals) ---
   const isTimeGoal = activeGoal?.goal_type === "time_based";
@@ -288,7 +296,7 @@ const KalimaIndex = () => {
     );
   }
 
-  if (error || !verse || word === undefined || !bitaqahAyah || !bitaqahSurah) {
+  if (error || !verse || word === undefined || !cardAyah || !cardSurah) {
     return (
       <Layout hideFooter>
         <div className="w-full max-w-[17em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
@@ -323,21 +331,21 @@ const KalimaIndex = () => {
 
         <Container className={`w-full ${showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"} mb-12`}>
           <div>
-            <Bitaqah_Al_Ayah
-              Al_Ayah={bitaqahAyah}
-              Surah={bitaqahSurah}
-              Izhaar_An_Nass_Al_Arabi={showArabicText && !hideVerses}
-              Tarjamat_Al_Ayah={false}
-              Izhaar_Al_Kitabah_As_Sawtiyyah={false}
-              Hajm_Khatt_Al_Kitabah_As_Sawtiyyah={transliterationFontSizeValue}
-              Hajm_Khatt_At_Tarjamah={translationFontSizeValue}
-              Tarjamah_Ind_Al_Tamreer={hoverTranslation !== "None" ? hoverTranslation : undefined}
-              At_Tarjamah_Al_Mudmajah={inlineTranslation !== "None" ? inlineTranslation : undefined}
-              Al_Kitabah_As_Sawtiyyah_Al_Mudmajah={inlineTransliteration !== "None" ? inlineTransliteration : undefined}
-              Marji_Al_Ayah={(el: HTMLDivElement | null) => {
+            <VerseCard
+              Ayah={cardAyah}
+              Surah={cardSurah}
+              ShowArabicText={showArabicText && !hideVerses}
+              ShowTranslation={false}
+              ShowTransliteration={false}
+              TransliterationFontSize={transliterationFontSizeValue}
+              TranslationFontSize={translationFontSizeValue}
+              HoverTranslation={hoverTranslation !== "None" ? hoverTranslation : undefined}
+              InlineTranslation={inlineTranslation !== "None" ? inlineTranslation : undefined}
+              InlineTransliteration={inlineTransliteration !== "None" ? inlineTransliteration : undefined}
+              AyahRef={(el: HTMLDivElement | null) => {
                 if (el) verseRefs.current.set(verseNum, el);
               }}
-              An_Naqr_Ala_At_Tafseer={() => setTafsirDialog({ open: true, verseNumber: verseNum })}
+              onTafsirClick={() => setTafsirDialog({ open: true, verseNumber: verseNum })}
             />
           </div>
           <div className="flex items-center justify-center pb-1">
@@ -448,4 +456,4 @@ const KalimaIndex = () => {
   );
 };
 
-export default KalimaIndex;
+export default Kalimah;

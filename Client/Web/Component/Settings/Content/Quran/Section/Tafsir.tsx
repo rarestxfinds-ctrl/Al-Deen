@@ -6,7 +6,7 @@ import { useApp } from "@Web/Context/App";
 
 const TAFSIR_PROVIDERS = [
   { value: "Ibn-Kathir", label: "Ibn Kathir" },
-  { value: "Maurif-al-Quran", label: "Mau'if Al-Qu'ran"}
+  { value: "Maurif-Quran", label: "Mau'if Al-Qu'ran"}
   // Add more tafsir providers as you add them
 ];
 

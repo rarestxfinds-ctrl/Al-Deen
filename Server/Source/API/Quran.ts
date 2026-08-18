@@ -3,116 +3,126 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 
-export interface As_Surah {
-  "As-Surah": number;
-  "Al-Arabiyyah": string;
-  "At-Tarjamah": string;
-  "At-Tansiq": string;
-  "Makan-Al-Wahy": string | null;
-  "Tartib-Al-Wahy": number | null;
-  "Adad-Al-Ayat": number;
-  "Bidayat-As-Safhah": number;
-  "Nihayat-As-Safhah": number;
-  "Alamah-Indo-Pak": string[];
-  "Tansiq-Al-Mushaf": Record<string, any> | null;
+// --- LOCAL TYPE DEFINITIONS (SERVER-SIDE) ---
+
+export interface Surah {
+  Surah: number;
+  Arabic: string;
+  Translation: string;
+  Transliteration: string;
+  Revelation_Place: string | null;
+  Revelation_Order: number | null;
+  Ayah_Count: number;
+  Start_Page: number;
+  End_Page: number;
+  Indo_Pak_Ayah_Ending: string[];
+  Layout: Record<string, any> | null;
 }
 
-export interface Al_Ayah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "Al-Arabiyyah": string;
-  "Al-Arabiyyah-A"?: string | null;
-  "Al-Arabiyyah-B"?: string | null;
+export interface Ayah {
+  Surah: number;
+  Ayah: number;
+  Arabic: string;
+  Presentation_Form_A_Ligature_Based?: string | null;
+  Presentation_Form_A_Glyph_Based?: string | null;
 }
 
-export interface Al_Kalimah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "Al-Kalimah": number;
-  "Al-Arabiyyah": string;
-  "Al-Arabiyyah-A"?: string | null;
-  "Al-Arabiyyah-B"?: string | null;
-  translation?: string;
-  transliteration?: string;
-  [Key: string]: any;
+export interface Kalimah {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Arabic: string;
+  Presentation_Form_A_Ligature_Based?: string | null;
+  Presentation_Form_A_Glyph_Based?: string | null;
 }
 
-export interface At_Tarjamah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "At-Tarjamah": string;
-  [Key: string]: any;
+export interface Page {
+  Page: number;
+  Start_Surah: number;
+  Start_Ayah: number;
+  Start_Kalimah: number;
+  End_Surah: number;
+  End_Ayah: number;
+  End_Kalimah: number;
 }
 
-export interface At_Tarjamah_Kalimah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "Al-Kalimah": number;
-  "An-Nass": string;
-  "Al-Mutarjim": string;
+export interface Translation {
+  Surah: number;
+  Ayah: number;
+  Text: string;
+  Edition: string;
 }
 
-export interface An_Naqharah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "An-Nass": string;
-  "Al-Muraqqim": string;
+export interface WBW_Translation {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Text: string;
+  Edition: string;
 }
 
-export interface An_Naqharah_Kalimah {
-  "As-Surah": number;
-  "Al-Ayah": number;
-  "Al-Kalimah": number;
-  "An-Nass": string;
-  "Al-Muraqqim": string;
+export interface Footnote {
+  Surah: number;
+  Footnote: number;
+  Text: string;
+  Edition: string;
 }
 
-export interface Bayanat_As_Surah {
-  "As-Surah": As_Surah;
-  "Al-Ayat": Al_Ayah[];
-  "Al-Kalimat": Al_Kalimah[];
-  "At-Tarjamaat": At_Tarjamah[];
-  "At-Tarjamaat-Kalimah": At_Tarjamah_Kalimah[];
-  "An-Naqharat": An_Naqharah[];
-  "An-Naqharat-Kalimah": An_Naqharah_Kalimah[];
+export interface Transliteration {
+  Surah: number;
+  Ayah: number;
+  Text: string;
+  Edition: string;
 }
 
-export interface QitAt_As_Safhah {
-  "As-Surah": number;
-  "Bidayat-Al-Ayah": number;
-  "Nihayat-Al-Ayah": number;
+export interface WBW_Transliteration {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Text: string;
+  Edition: string;
 }
 
-export interface As_Safhah_Khaam {
-  "As-Safhah": number;
-  "Bidayat-As-Surah": number;
-  "Bidayat-Al-Ayah": number;
-  "Bidayat-Al-Kalimah": number;
-  "Nihayat-As-Surah": number;
-  "Nihayat-Al-Ayah": number;
-  "Nihayat-Al-Kalimah": number;
+export interface Surah_Output {
+  Surah: Surah;
+  Ayaat: Ayah[];
+  Kalimaat: Kalimah[];
+  Pages: Page[];
 }
 
-export interface Mudkhal_Qaimat_At_Tarjamah {
-  id: string;
-  name: string;
-  language: string;
-  edition: string;
+export interface Translation_Output {
+  Translations: Translation[];
+  WBW_Translations?: WBW_Translation[];
+  Footnotes: Footnote[];
 }
 
-export interface Mudkhal_Qaimat_An_Naqharah {
-  id: string;
-  name: string;
-  language: string;
-  edition: string;
+export interface Transliteration_Output {
+  Transliterations: Transliteration[];
+  WBW_Transliterations?: WBW_Transliteration[];
 }
 
-export type Aqsam_As_Safahat = Record<number, QitAt_As_Safhah[]>;
+export interface Page_Range {
+  Surah: number;
+  Start_Ayah: number;
+  End_Ayah: number;
+  Start_Kalimah: number;
+  End_Kalimah: number;
+}
+
+export type Page_Range_Map = Record<number, Page_Range[]>;
+
+export interface Edition {
+  ID: string;
+  Name: string;
+  Language: string;
+}
+
+// --- SERVER SETUP & DATABASE INITIALIZATION ---
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MASAR_USUL_AL_MUTUN = path.resolve(
+const ASSET_CORPUS_PATH = path.resolve(
   __dirname,
   "..",
   "..",
@@ -120,561 +130,480 @@ const MASAR_USUL_AL_MUTUN = path.resolve(
   "Corpus"
 );
 
-const MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH = path.join(
-  MASAR_USUL_AL_MUTUN,
-  "Quran",
-  "Core.db"
-);
+const CORE_DB_PATH = path.join(ASSET_CORPUS_PATH, "Quran", "Core.db");
 
-if (!fs.existsSync(MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH)) {
-  console.error(
-    `[QURAN API ERROR] Missing database at: ${MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH}`
-  );
+if (!fs.existsSync(CORE_DB_PATH)) {
+  console.error(`[QURAN API ERROR] Missing database at: ${CORE_DB_PATH}`);
 }
 
-const QAIDAT_AL_BAYANAT_AL_ASASIYYAH = new Database(
-  MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-  { readonly: true }
-);
-QAIDAT_AL_BAYANAT_AL_ASASIYYAH.pragma("journal_mode = WAL");
+const CoreDB = new Database(CORE_DB_PATH, { readonly: true });
+CoreDB.pragma("journal_mode = WAL");
 
-const ISTILAM_JAMII_AS_SUWAR = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_ALL_SUWAR = CoreDB.prepare(
   `SELECT 
-    Al_Surah AS "As-Surah",
-    Arabic AS "Al-Arabiyyah",
-    Translation AS "At-Tarjamah",
-    Transliteration AS "At-Tansiq",
-    Revelation_Place AS "Makan-Al-Wahy",
-    Revelation_Order AS "Tartib-Al-Wahy",
-    Al_Ayah_Count AS "Adad-Al-Ayat",
-    Start_Al_Safhah AS "Bidayat-As-Safhah",
-    End_Al_Safhah AS "Nihayat-As-Safhah",
-    IndoPak_Marker AS "Alamah-Indo-Pak",
-    Layout AS "Tansiq-Al-Mushaf"
-  FROM Al_Surah ORDER BY Al_Surah ASC`
+    Surah, Arabic, Translation, Transliteration,
+    Revelation_Place, Revelation_Order, Ayah_Count,
+    Start_Page, End_Page, Indo_Pak_Ayah_Ending, Layout
+  FROM Surah ORDER BY Surah ASC`
 );
 
-const ISTILAM_AS_SURAH_BI_RAGHM = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_SURAH_BY_NUMBER = CoreDB.prepare(
   `SELECT 
-    Al_Surah AS "As-Surah",
-    Arabic AS "Al-Arabiyyah",
-    Translation AS "At-Tarjamah",
-    Transliteration AS "At-Tansiq",
-    Revelation_Place AS "Makan-Al-Wahy",
-    Revelation_Order AS "Tartib-Al-Wahy",
-    Al_Ayah_Count AS "Adad-Al-Ayat",
-    Start_Al_Safhah AS "Bidayat-As-Safhah",
-    End_Al_Safhah AS "Nihayat-As-Safhah",
-    IndoPak_Marker AS "Alamah-Indo-Pak",
-    Layout AS "Tansiq-Al-Mushaf"
-  FROM Al_Surah WHERE Al_Surah = ?`
+    Surah, Arabic, Translation, Transliteration,
+    Revelation_Place, Revelation_Order, Ayah_Count,
+    Start_Page, End_Page, Indo_Pak_Ayah_Ending, Layout
+  FROM Surah WHERE Surah = ?`
 );
 
-const ISTILAM_AL_AYAT_BI_RAGHM_AS_SURAH = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_AYAAT_BY_SURAH = CoreDB.prepare(
   `SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Arabic AS "Al-Arabiyyah",
-    Arabic_V1 AS "Al-Arabiyyah-A",
-    Arabic_V2 AS "Al-Arabiyyah-B"
-  FROM Al_Ayah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC`
+    Surah, Ayah, Arabic,
+    Presentation_Form_A_Ligature_Based,
+    Presentation_Form_A_Glyph_Based
+  FROM Ayah WHERE Surah = ? ORDER BY Ayah ASC`
 );
 
-const ISTILAM_AL_KALIMAT_BI_RAGHM_AS_SURAH = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_KALIMAAT_BY_SURAH = CoreDB.prepare(
   `SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Al_Kalimah AS "Al-Kalimah",
-    Arabic AS "Al-Arabiyyah",
-    Arabic_V1 AS "Al-Arabiyyah-A",
-    Arabic_V2 AS "Al-Arabiyyah-B"
-  FROM Al_Kalimah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC, Al_Kalimah ASC`
+    Surah, Ayah, Kalimah, Arabic,
+    Presentation_Form_A_Ligature_Based,
+    Presentation_Form_A_Glyph_Based
+  FROM Kalimah WHERE Surah = ? ORDER BY Ayah ASC, Kalimah ASC`
 );
 
-const ISTILAM_JAMII_AS_SAFAHAT = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_ALL_PAGES = CoreDB.prepare(
   `SELECT 
-    Al_Safhah AS "As-Safhah",
-    Start_Al_Surah AS "Bidayat-As-Surah",
-    Start_Al_Ayah AS "Bidayat-Al-Ayah",
-    Start_Al_Kalimah AS "Bidayat-Al-Kalimah",
-    End_Al_Surah AS "Nihayat-As-Surah",
-    End_Al_Ayah AS "Nihayat-Al-Ayah",
-    End_Al_Kalimah AS "Nihayat-Al-Kalimah"
-  FROM Al_Safhah ORDER BY Al_Safhah ASC`
+    Page, Start_Surah, Start_Ayah, Start_Kalimah,
+    End_Surah, End_Ayah, End_Kalimah
+  FROM Page ORDER BY Page ASC`
 );
 
-const ISTILAM_JAMII_AS_SAFAHAT_KHAAM = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
+const SELECT_PAGES_BY_SURAH = CoreDB.prepare(
   `SELECT 
-    Al_Safhah AS "As-Safhah",
-    Start_Al_Surah AS "Bidayat-As-Surah",
-    Start_Al_Ayah AS "Bidayat-Al-Ayah",
-    Start_Al_Kalimah AS "Bidayat-Al-Kalimah",
-    End_Al_Surah AS "Nihayat-As-Surah",
-    End_Al_Ayah AS "Nihayat-Al-Ayah",
-    End_Al_Kalimah AS "Nihayat-Al-Kalimah"
-  FROM Al_Safhah ORDER BY Al_Safhah ASC`
+    Page, Start_Surah, Start_Ayah, Start_Kalimah,
+    End_Surah, End_Ayah, End_Kalimah
+  FROM Page 
+  WHERE Start_Surah <= ? AND End_Surah >= ?
+  ORDER BY Page ASC`
 );
 
-const ISTILAM_ADAD_AL_AYAT_LI_KULLI_SURAH = QAIDAT_AL_BAYANAT_AL_ASASIYYAH.prepare(
-  `SELECT Al_Surah AS "As-Surah", Al_Ayah_Count AS "Adad-Al-Ayat" FROM Al_Surah`
+const SELECT_AYAH_COUNTS_PER_SURAH = CoreDB.prepare(
+  `SELECT Surah, Ayah_Count FROM Surah`
 );
 
-const TansiIq_Mudkhal_As_Surah = (Mudkhal: any): As_Surah => {
+const Format_Surah = (entry: Record<string, any>): Surah => {
   return {
-    ...Mudkhal,
-    "Alamah-Indo-Pak": Mudkhal["Alamah-Indo-Pak"]
-      ? JSON.parse(Mudkhal["Alamah-Indo-Pak"])
+    ...entry,
+    Indo_Pak_Ayah_Ending: entry.Indo_Pak_Ayah_Ending
+      ? JSON.parse(entry.Indo_Pak_Ayah_Ending)
       : [],
-    "Tansiq-Al-Mushaf": Mudkhal["Tansiq-Al-Mushaf"]
-      ? JSON.parse(Mudkhal["Tansiq-Al-Mushaf"])
-      : null,
+    Layout: entry.Layout ? JSON.parse(entry.Layout) : null,
   };
 };
 
-export function Jalb_Matn_Al_Quran(): As_Surah[] {
-  const Al_Mudkhalat = ISTILAM_JAMII_AS_SUWAR.all();
-  return Al_Mudkhalat.map(TansiIq_Mudkhal_As_Surah);
-}
+// --- CORE EXPORT FUNCTIONS ---
 
 /**
- * Fetches Surah details along with verses, words, translations, and transliterations.
- * Automatically attaches word-level translation and transliteration directly onto each item in `Al-Kalimat`.
+ * Returns structural static data: Surah metadata, Ayaat, Kalimaat, and Pages.
  */
-export function Jalb_Bayanat_As_Surah(
-  Raqm_As_Surah: number,
-  Naw_Al_Khatt: string = "Standard",
-  Isdar_At_Tarjamah: string | string[] = [],
-  Isdar_An_Naqharah: string | string[] = []
-): Bayanat_As_Surah | null {
-  const Mudkhal_As_Surah = ISTILAM_AS_SURAH_BI_RAGHM.get(Raqm_As_Surah) as
-    | any
-    | undefined;
+export function Fetch_Surah(
+  Surah_Number: number,
+  Font_Type: string = "Standard"
+): Surah_Output | null {
+  const Surah_Entry = SELECT_SURAH_BY_NUMBER.get(Surah_Number) as Record<string, any> | undefined;
+  if (!Surah_Entry) return null;
 
-  if (!Mudkhal_As_Surah) return null;
+  let Ayaat_Local = SELECT_AYAAT_BY_SURAH.all(Surah_Number) as Ayah[];
+  let Kalimaat_Local = SELECT_KALIMAAT_BY_SURAH.all(Surah_Number) as Kalimah[];
+  const Pages_Local = SELECT_PAGES_BY_SURAH.all(Surah_Number, Surah_Number) as Page[];
 
-  let Al_Ayat = ISTILAM_AL_AYAT_BI_RAGHM_AS_SURAH.all(Raqm_As_Surah) as Al_Ayah[];
-  let Al_Kalimat = ISTILAM_AL_KALIMAT_BI_RAGHM_AS_SURAH.all(
-    Raqm_As_Surah
-  ) as Al_Kalimah[];
+  if (Font_Type === "V1" || Font_Type === "V2") {
+    const Field =
+      Font_Type === "V1"
+        ? "Presentation_Form_A_Ligature_Based"
+        : "Presentation_Form_A_Glyph_Based";
 
-  if (Naw_Al_Khatt === "V1" || Naw_Al_Khatt === "V2") {
-    const Al_Haql = Naw_Al_Khatt === "V1" ? "Al-Arabiyyah-A" : "Al-Arabiyyah-B";
-    Al_Ayat = Al_Ayat.map((A) => ({
-      ...A,
-      "Al-Arabiyyah": A[Al_Haql] || A["Al-Arabiyyah"],
-    }));
-    Al_Kalimat = Al_Kalimat.map((K) => ({
-      ...K,
-      "Al-Arabiyyah": K[Al_Haql] || K["Al-Arabiyyah"],
-    }));
+    Ayaat_Local = Ayaat_Local.map((A) => ({ ...A, Arabic: A[Field] || A.Arabic }));
+    Kalimaat_Local = Kalimaat_Local.map((K) => ({ ...K, Arabic: K[Field] || K.Arabic }));
   }
-
-  // --- FETCH TRANSLATIONS (VERSE & WORD-BY-WORD) ---
-  const tarajimTargets = Array.isArray(Isdar_At_Tarjamah)
-    ? Isdar_At_Tarjamah.filter(Boolean)
-    : Isdar_At_Tarjamah
-    ? [Isdar_At_Tarjamah]
-    : [];
-
-  const At_Tarjamaat: At_Tarjamah[] = [];
-  const At_Tarjamaat_Kalimah: At_Tarjamah_Kalimah[] = [];
-
-  for (const target of tarajimTargets) {
-    const relativeDbPath = target.endsWith(".db") ? target : `${target}.db`;
-    const fullDbPath = path.join(MASAR_USUL_AL_MUTUN, "Quran", "Translation", relativeDbPath);
-
-    if (!fs.existsSync(fullDbPath)) continue;
-
-    try {
-      const db = new Database(fullDbPath, { readonly: true });
-      const editionId = target.replace(/\.db$/, "");
-
-      const hasAyahTable = db
-        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Ayah'`)
-        .get();
-
-      if (hasAyahTable) {
-        const stmtAyah = db.prepare(
-          `SELECT Al_Surah AS "As-Surah", Al_Ayah AS "Al-Ayah", Text AS "At-Tarjamah" FROM Al_Ayah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC`
-        );
-        const rowsAyah = stmtAyah.all(Raqm_As_Surah) as At_Tarjamah[];
-        At_Tarjamaat.push(...rowsAyah.map((r) => ({ ...r, "Al-Mutarjim": editionId })));
-      }
-
-      const hasKalimahTable = db
-        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Kalimah'`)
-        .get();
-
-      if (hasKalimahTable) {
-        const stmtKalimah = db.prepare(
-          `SELECT Al_Surah AS "As-Surah", Al_Ayah AS "Al-Ayah", Al_Kalimah AS "Al-Kalimah", Text AS "An-Nass" FROM Al_Kalimah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC, Al_Kalimah ASC`
-        );
-        const rowsKalimah = stmtKalimah.all(Raqm_As_Surah) as any[];
-        At_Tarjamaat_Kalimah.push(
-          ...rowsKalimah.map((r) => ({ ...r, "Al-Mutarjim": editionId }))
-        );
-      }
-
-      db.close();
-    } catch (err) {
-      console.error(`[QURAN API ERROR] Failed to query translation DB at ${fullDbPath}:`, err);
-    }
-  }
-
-  // --- FETCH TRANSLITERATIONS (VERSE & WORD-BY-WORD) ---
-  const naqharatTargets = Array.isArray(Isdar_An_Naqharah)
-    ? Isdar_An_Naqharah.filter(Boolean)
-    : Isdar_An_Naqharah
-    ? [Isdar_An_Naqharah]
-    : [];
-
-  const An_Naqharat: An_Naqharah[] = [];
-  const An_Naqharat_Kalimah: An_Naqharah_Kalimah[] = [];
-
-  for (const target of naqharatTargets) {
-    const relativeDbPath = target.endsWith(".db") ? target : `${target}.db`;
-    const fullDbPath = path.join(MASAR_USUL_AL_MUTUN, "Quran", "Transliteration", relativeDbPath);
-
-    if (!fs.existsSync(fullDbPath)) continue;
-
-    try {
-      const db = new Database(fullDbPath, { readonly: true });
-      const editionId = target.replace(/\.db$/, "");
-
-      const hasAyahTable = db
-        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Ayah'`)
-        .get();
-
-      if (hasAyahTable) {
-        const stmtAyah = db.prepare(
-          `SELECT Al_Surah AS "As-Surah", Al_Ayah AS "Al-Ayah", Text AS "An-Nass" FROM Al_Ayah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC`
-        );
-        const rowsAyah = stmtAyah.all(Raqm_As_Surah) as any[];
-        An_Naqharat.push(...rowsAyah.map((r) => ({ ...r, "Al-Muraqqim": editionId })));
-      }
-
-      const hasKalimahTable = db
-        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Kalimah'`)
-        .get();
-
-      if (hasKalimahTable) {
-        const stmtKalimah = db.prepare(
-          `SELECT Al_Surah AS "As-Surah", Al_Ayah AS "Al-Ayah", Al_Kalimah AS "Al-Kalimah", Text AS "An-Nass" FROM Al_Kalimah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC, Al_Kalimah ASC`
-        );
-        const rowsKalimah = stmtKalimah.all(Raqm_As_Surah) as any[];
-        An_Naqharat_Kalimah.push(
-          ...rowsKalimah.map((r) => ({ ...r, "Al-Muraqqim": editionId }))
-        );
-      }
-
-      db.close();
-    } catch (err) {
-      console.error(`[QURAN API ERROR] Failed to query transliteration DB at ${fullDbPath}:`, err);
-    }
-  }
-
-  // Build maps for efficient merging into base words
-  const Kharitah_Tarjamah_Kalimah = new Map<string, string>();
-  for (const tk of At_Tarjamaat_Kalimah) {
-    const miftah = `${tk["Al-Ayah"]}:${tk["Al-Kalimah"]}`;
-    if (!Kharitah_Tarjamah_Kalimah.has(miftah)) {
-      Kharitah_Tarjamah_Kalimah.set(miftah, tk["An-Nass"]);
-    }
-  }
-
-  const Kharitah_Naqharah_Kalimah = new Map<string, string>();
-  for (const nk of An_Naqharat_Kalimah) {
-    const miftah = `${nk["Al-Ayah"]}:${nk["Al-Kalimah"]}`;
-    if (!Kharitah_Naqharah_Kalimah.has(miftah)) {
-      Kharitah_Naqharah_Kalimah.set(miftah, nk["An-Nass"]);
-    }
-  }
-
-  // Merge word translation and transliteration directly onto Al-Kalimat
-  Al_Kalimat = Al_Kalimat.map((kalimah) => {
-    const miftah = `${kalimah["Al-Ayah"]}:${kalimah["Al-Kalimah"]}`;
-    const translation = Kharitah_Tarjamah_Kalimah.get(miftah);
-    const transliteration = Kharitah_Naqharah_Kalimah.get(miftah);
-
-    return {
-      ...kalimah,
-      ...(translation ? { translation, "An-Nass": translation } : {}),
-      ...(transliteration ? { transliteration, "An-Naqharah": transliteration } : {}),
-    };
-  });
 
   return {
-    "As-Surah": TansiIq_Mudkhal_As_Surah(Mudkhal_As_Surah),
-    "Al-Ayat": Al_Ayat,
-    "Al-Kalimat": Al_Kalimat,
-    "At-Tarjamaat": At_Tarjamaat,
-    "At-Tarjamaat-Kalimah": At_Tarjamaat_Kalimah,
-    "An-Naqharat": An_Naqharat,
-    "An-Naqharat-Kalimah": An_Naqharat_Kalimah,
+    Surah: Format_Surah(Surah_Entry),
+    Ayaat: Ayaat_Local,
+    Kalimaat: Kalimaat_Local,
+    Pages: Pages_Local,
   };
 }
 
-export function Jalb_Aqsam_As_Safahat(): Aqsam_As_Safahat {
-  const As_Safahat = ISTILAM_JAMII_AS_SAFAHAT.all() as any[];
-  const Adad_Al_Ayat_Li_Kull_Surah = new Map<number, number>();
+/**
+ * Returns Translations, Footnotes, and optionally WBW_Translations.
+ */
+export function Fetch_Surah_Translation(
+  Surah_Number: number,
+  Translation_Editions: string | string[] = [],
+  Include_WBW: boolean = false
+): Translation_Output {
+  const Targets = Array.isArray(Translation_Editions)
+    ? Translation_Editions.filter(Boolean)
+    : Translation_Editions
+    ? [Translation_Editions]
+    : [];
 
-  (ISTILAM_ADAD_AL_AYAT_LI_KULLI_SURAH.all() as any[]).forEach((S) =>
-    Adad_Al_Ayat_Li_Kull_Surah.set(S["As-Surah"], S["Adad-Al-Ayat"])
+  const Translations_Local: Translation[] = [];
+  const WBW_Translations_Local: WBW_Translation[] = [];
+  const Footnotes_Local: Footnote[] = [];
+
+  for (const Target of Targets) {
+    const Clean_Target = Target.replace(/\.db$/, "");
+    const Normalized_Subpath = Clean_Target.replace(/[\/\.]/g, path.sep);
+
+    let Full_DB_Path = path.join(
+      ASSET_CORPUS_PATH,
+      "Quran",
+      "Translation",
+      `${Normalized_Subpath}.db`
+    );
+
+    if (!fs.existsSync(Full_DB_Path)) {
+      Full_DB_Path = path.join(
+        ASSET_CORPUS_PATH,
+        "Quran",
+        "Translation",
+        `${Clean_Target}.db`
+      );
+    }
+
+    if (!fs.existsSync(Full_DB_Path)) {
+      console.warn(`[QURAN API WARNING] Translation DB not found at ${Full_DB_Path}`);
+      continue;
+    }
+
+    try {
+      const DB = new Database(Full_DB_Path, { readonly: true });
+      const Edition_ID = Clean_Target;
+
+      const Has_Ayah_Table = DB
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Ayah'`)
+        .get();
+
+      if (Has_Ayah_Table) {
+        const Stmt_Ayah = DB.prepare(
+          `SELECT Surah, Ayah, Text FROM Ayah WHERE Surah = ? ORDER BY Ayah ASC`
+        );
+        const Rows_Ayah = Stmt_Ayah.all(Surah_Number) as any[];
+        Translations_Local.push(
+          ...Rows_Ayah.map((R) => ({
+            Surah: R.Surah,
+            Ayah: R.Ayah,
+            Text: R.Text,
+            Edition: Edition_ID,
+          }))
+        );
+      }
+
+      if (Include_WBW) {
+        const Has_Kalimah_Table = DB
+          .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Kalimah'`)
+          .get();
+
+        if (Has_Kalimah_Table) {
+          const Stmt_Kalimah = DB.prepare(
+            `SELECT Surah, Ayah, Kalimah, Text FROM Kalimah WHERE Surah = ? ORDER BY Ayah ASC, Kalimah ASC`
+          );
+          const Rows_Kalimah = Stmt_Kalimah.all(Surah_Number) as any[];
+
+          WBW_Translations_Local.push(
+            ...Rows_Kalimah.map((R) => ({
+              Surah: R.Surah,
+              Ayah: R.Ayah,
+              Kalimah: R.Kalimah,
+              Text: R.Text,
+              Edition: Edition_ID,
+            }))
+          );
+        }
+      }
+
+      const Has_Footnote_Table = DB
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Footnote'`)
+        .get();
+
+      if (Has_Footnote_Table) {
+        const Stmt_Footnote = DB.prepare(
+          `SELECT Surah, Footnote, Text FROM Footnote WHERE Surah = ? ORDER BY Footnote ASC`
+        );
+        const Rows_Footnote = Stmt_Footnote.all(Surah_Number) as any[];
+        Footnotes_Local.push(
+          ...Rows_Footnote.map((R) => ({
+            Surah: R.Surah,
+            Footnote: R.Footnote,
+            Text: R.Text,
+            Edition: Edition_ID,
+          }))
+        );
+      }
+
+      DB.close();
+    } catch (Err) {
+      console.error(
+        `[QURAN API ERROR] Failed to query translation DB at ${Full_DB_Path}:`,
+        Err
+      );
+    }
+  }
+
+  return {
+    Translations: Translations_Local,
+    ...(Include_WBW ? { WBW_Translations: WBW_Translations_Local } : {}),
+    Footnotes: Footnotes_Local,
+  };
+}
+
+/**
+ * Returns Transliterations, and optionally WBW_Transliterations.
+ */
+export function Fetch_Surah_Transliteration(
+  Surah_Number: number,
+  Transliteration_Editions: string | string[] = [],
+  Include_WBW: boolean = false
+): Transliteration_Output {
+  const Targets = Array.isArray(Transliteration_Editions)
+    ? Transliteration_Editions.filter(Boolean)
+    : Transliteration_Editions
+    ? [Transliteration_Editions]
+    : [];
+
+  const Transliterations_Local: Transliteration[] = [];
+  const WBW_Transliterations_Local: WBW_Transliteration[] = [];
+
+  for (const Target of Targets) {
+    const Relative_DB_Path = Target.endsWith(".db") ? Target : `${Target}.db`;
+    const Full_DB_Path = path.join(
+      ASSET_CORPUS_PATH,
+      "Quran",
+      "Transliteration",
+      Relative_DB_Path
+    );
+
+    if (!fs.existsSync(Full_DB_Path)) continue;
+
+    try {
+      const DB = new Database(Full_DB_Path, { readonly: true });
+      const Edition_ID = Target.replace(/\.db$/, "");
+
+      const Has_Ayah_Table = DB
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Ayah'`)
+        .get();
+
+      if (Has_Ayah_Table) {
+        const Stmt_Ayah = DB.prepare(
+          `SELECT Surah, Ayah, Text FROM Ayah WHERE Surah = ? ORDER BY Ayah ASC`
+        );
+        const Rows_Ayah = Stmt_Ayah.all(Surah_Number) as any[];
+        Transliterations_Local.push(
+          ...Rows_Ayah.map((R) => ({
+            Surah: R.Surah,
+            Ayah: R.Ayah,
+            Text: R.Text,
+            Edition: Edition_ID,
+          }))
+        );
+      }
+
+      if (Include_WBW) {
+        const Has_Kalimah_Table = DB
+          .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Kalimah'`)
+          .get();
+
+        if (Has_Kalimah_Table) {
+          const Stmt_Kalimah = DB.prepare(
+            `SELECT Surah, Ayah, Kalimah, Text FROM Kalimah WHERE Surah = ? ORDER BY Ayah ASC, Kalimah ASC`
+          );
+          const Rows_Kalimah = Stmt_Kalimah.all(Surah_Number) as any[];
+          WBW_Transliterations_Local.push(
+            ...Rows_Kalimah.map((R) => ({
+              Surah: R.Surah,
+              Ayah: R.Ayah,
+              Kalimah: R.Kalimah,
+              Text: R.Text,
+              Edition: Edition_ID,
+            }))
+          );
+        }
+      }
+
+      DB.close();
+    } catch (Err) {
+      console.error(
+        `[QURAN API ERROR] Failed to query transliteration DB at ${Full_DB_Path}:`,
+        Err
+      );
+    }
+  }
+
+  return {
+    Transliterations: Transliterations_Local,
+    ...(Include_WBW ? { WBW_Transliterations: WBW_Transliterations_Local } : {}),
+  };
+}
+
+// --- UTILITY & PAGE METADATA FUNCTIONS ---
+
+export function Fetch_Quran_Suwar(): Surah[] {
+  const Entries = SELECT_ALL_SUWAR.all() as Record<string, any>[];
+  return Entries.map(Format_Surah);
+}
+
+export function Fetch_Pages(): Page[] {
+  return SELECT_ALL_PAGES.all() as Page[];
+}
+
+export function Fetch_Page_Ranges(): Page_Range_Map {
+  const Pages_Local = SELECT_ALL_PAGES.all() as Page[];
+  const Surah_Ayah_Counts = new Map<number, number>();
+
+  (SELECT_AYAH_COUNTS_PER_SURAH.all() as any[]).forEach((S) =>
+    Surah_Ayah_Counts.set(S.Surah, S.Ayah_Count)
   );
 
-  const Aqsam_As_Safahat: Aqsam_As_Safahat = {};
+  const Page_Range_Map_Local: Page_Range_Map = {};
 
-  for (const Safhah of As_Safahat) {
-    const Al_Aqsam: QitAt_As_Safhah[] = [];
-    const Bidayat_As_Surah = Safhah["Bidayat-As-Surah"];
-    const Bidayat_Al_Ayah = Safhah["Bidayat-Al-Ayah"];
-    const Nihayat_As_Surah = Safhah["Nihayat-As-Surah"];
-    const Nihayat_Al_Ayah = Safhah["Nihayat-Al-Ayah"];
+  for (const Page_Entry of Pages_Local) {
+    const Ranges_Local: Page_Range[] = [];
+    const {
+      Start_Surah,
+      Start_Ayah,
+      Start_Kalimah,
+      End_Surah,
+      End_Ayah,
+      End_Kalimah,
+    } = Page_Entry;
 
-    if (Bidayat_As_Surah === Nihayat_As_Surah) {
-      Al_Aqsam.push({
-        "As-Surah": Bidayat_As_Surah,
-        "Bidayat-Al-Ayah": Bidayat_Al_Ayah,
-        "Nihayat-Al-Ayah": Nihayat_Al_Ayah,
+    if (Start_Surah === End_Surah) {
+      Ranges_Local.push({
+        Surah: Start_Surah,
+        Start_Ayah,
+        End_Ayah,
+        Start_Kalimah,
+        End_Kalimah,
       });
     } else {
-      Al_Aqsam.push({
-        "As-Surah": Bidayat_As_Surah,
-        "Bidayat-Al-Ayah": Bidayat_Al_Ayah,
-        "Nihayat-Al-Ayah":
-          Adad_Al_Ayat_Li_Kull_Surah.get(Bidayat_As_Surah) ?? Bidayat_Al_Ayah,
+      Ranges_Local.push({
+        Surah: Start_Surah,
+        Start_Ayah,
+        End_Ayah: Surah_Ayah_Counts.get(Start_Surah) ?? Start_Ayah,
+        Start_Kalimah,
+        End_Kalimah: 0,
       });
-      for (let S = Bidayat_As_Surah + 1; S < Nihayat_As_Surah; S++) {
-        Al_Aqsam.push({
-          "As-Surah": S,
-          "Bidayat-Al-Ayah": 1,
-          "Nihayat-Al-Ayah": Adad_Al_Ayat_Li_Kull_Surah.get(S) ?? 1,
+
+      for (let S = Start_Surah + 1; S < End_Surah; S++) {
+        Ranges_Local.push({
+          Surah: S,
+          Start_Ayah: 1,
+          End_Ayah: Surah_Ayah_Counts.get(S) ?? 1,
+          Start_Kalimah: 1,
+          End_Kalimah: 0,
         });
       }
-      Al_Aqsam.push({
-        "As-Surah": Nihayat_As_Surah,
-        "Bidayat-Al-Ayah": 1,
-        "Nihayat-Al-Ayah": Nihayat_Al_Ayah,
+
+      Ranges_Local.push({
+        Surah: End_Surah,
+        Start_Ayah: 1,
+        End_Ayah,
+        Start_Kalimah: 1,
+        End_Kalimah,
       });
     }
 
-    Aqsam_As_Safahat[Safhah["As-Safhah"]] = Al_Aqsam;
+    Page_Range_Map_Local[Page_Entry.Page] = Ranges_Local;
   }
 
-  return Aqsam_As_Safahat;
+  return Page_Range_Map_Local;
 }
 
-export function Jalb_Safahat_Khaam(): As_Safhah_Khaam[] {
-  return ISTILAM_JAMII_AS_SAFAHAT_KHAAM.all() as As_Safhah_Khaam[];
+// --- LISTING FUNCTIONS ---
+
+const Prettify_Name = (Raw: string): string =>
+  Raw.replace(/[-_]+/g, " ").trim();
+
+function Format_Editions(Rel_Path: string): Edition {
+  const ID = Rel_Path.replace(/\.db$/, "");
+  const Segments = ID.split("/");
+  const Language = Segments.length > 1 ? Segments[0] : ID;
+  const File_Name = Segments[Segments.length - 1];
+
+  return {
+    ID,
+    Name: Prettify_Name(File_Name),
+    Language,
+  };
 }
 
-/**
- * Returns all available regular translations recursively.
- */
-export function Jalb_Qaimat_At_Tarjamaat_Al_Mutaahah(
-  masarBase: string = MASAR_USUL_AL_MUTUN
-): Mudkhal_Qaimat_At_Tarjamah[] {
-  const masarTarjamah = path.join(masarBase, "Quran", "Translation");
-  const result: Mudkhal_Qaimat_At_Tarjamah[] = [];
+function Scan_Editions(
+  Root_Path: string,
+  Required_Table: "Ayah" | "Kalimah"
+): Edition[] {
+  const Result_Local: Edition[] = [];
+  if (!fs.existsSync(Root_Path)) return Result_Local;
 
-  if (!fs.existsSync(masarTarjamah)) return result;
+  function Traverse(Dir: string, Relative_Dir: string) {
+    const Entries = fs.readdirSync(Dir, { withFileTypes: true });
 
-  function traverse(dir: string, relativeDir: string) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const Entry of Entries) {
+      const Full_Path = path.join(Dir, Entry.name);
+      const Rel_Path = Relative_Dir ? `${Relative_Dir}/${Entry.name}` : Entry.name;
 
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-
-      if (entry.isDirectory()) {
-        traverse(fullPath, relPath);
-      } else if (entry.isFile() && entry.name.endsWith(".db")) {
-        const dbPath = fullPath;
+      if (Entry.isDirectory()) {
+        Traverse(Full_Path, Rel_Path);
+      } else if (Entry.isFile() && Entry.name.endsWith(".db")) {
         try {
-          const db = new Database(dbPath, { readonly: true });
-          const hasAyahTable = db
-            .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Ayah'`)
-            .get();
-          db.close();
+          const DB = new Database(Full_Path, { readonly: true });
+          const Has_Table = DB
+            .prepare(
+              `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
+            )
+            .get(Required_Table);
+          DB.close();
 
-          if (hasAyahTable) {
-            const editionId = relPath.replace(/\.db$/, "");
-            const parts = editionId.split("/");
-            const language = parts.length > 1 ? parts[0] : "Translation";
-            const edition = parts[parts.length - 1];
-
-            result.push({
-              id: editionId,
-              name: edition.replace(/[-_]/g, " "),
-              language,
-              edition,
-            });
+          if (Has_Table) {
+            Result_Local.push(Format_Editions(Rel_Path));
           }
-        } catch (err) {
-          console.error(`[QURAN API ERROR] Could not check DB schema at ${dbPath}:`, err);
+        } catch (Err) {
+          console.error(`[QURAN API ERROR] Could not check DB schema at ${Full_Path}:`, Err);
         }
       }
     }
   }
 
-  traverse(masarTarjamah, "");
-  return result;
+  Traverse(Root_Path, "");
+  return Result_Local;
 }
 
-/**
- * Dynamically checks databases recursively and returns ONLY those translations
- * that feature an "Al_Kalimah" table.
- */
-export function Jalb_Qaimat_At_Tarjamaat_Al_Kalimah_Al_Mutaahah(
-  masarBase: string = MASAR_USUL_AL_MUTUN
-): Mudkhal_Qaimat_At_Tarjamah[] {
-  const masarTarjamah = path.join(masarBase, "Quran", "Translation");
-  const result: Mudkhal_Qaimat_At_Tarjamah[] = [];
-
-  if (!fs.existsSync(masarTarjamah)) return result;
-
-  function traverse(dir: string, relativeDir: string) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-
-      if (entry.isDirectory()) {
-        traverse(fullPath, relPath);
-      } else if (entry.isFile() && entry.name.endsWith(".db")) {
-        const dbPath = fullPath;
-        try {
-          const db = new Database(dbPath, { readonly: true });
-          const hasKalimahTable = db
-            .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Kalimah'`)
-            .get();
-          db.close();
-
-          if (hasKalimahTable) {
-            const editionId = relPath.replace(/\.db$/, "");
-            const parts = editionId.split("/");
-            const language = parts.length > 1 ? parts[0] : "Translation";
-            const edition = parts[parts.length - 1];
-
-            result.push({
-              id: editionId,
-              name: edition.replace(/[-_]/g, " "),
-              language,
-              edition,
-            });
-          }
-        } catch (err) {
-          console.error(`[QURAN API ERROR] Could not check DB schema at ${dbPath}:`, err);
-        }
-      }
-    }
-  }
-
-  traverse(masarTarjamah, "");
-  return result;
+export function Get_Available_Translations(
+  Base_Path: string = ASSET_CORPUS_PATH
+): Edition[] {
+  return Scan_Editions(path.join(Base_Path, "Quran", "Translation"), "Ayah");
 }
 
-/**
- * Returns all available transliterations dynamically (verse-level, unfiltered).
- */
-export function Jalb_Qaimat_An_Naqharah_Al_Mutaahah(
-  masarBase: string = MASAR_USUL_AL_MUTUN
-): Mudkhal_Qaimat_An_Naqharah[] {
-  const masarNaqharah = path.join(masarBase, "Quran", "Transliteration");
-  const result: Mudkhal_Qaimat_An_Naqharah[] = [];
-
-  if (!fs.existsSync(masarNaqharah)) return result;
-
-  function traverse(dir: string, relativeDir: string) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-
-      if (entry.isDirectory()) {
-        traverse(fullPath, relPath);
-      } else if (entry.isFile() && entry.name.endsWith(".db")) {
-        const dbPath = fullPath;
-        try {
-          const db = new Database(dbPath, { readonly: true });
-          const hasAyahTable = db
-            .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Ayah'`)
-            .get();
-          db.close();
-
-          if (hasAyahTable) {
-            const editionId = relPath.replace(/\.db$/, "");
-            result.push({
-              id: editionId,
-              name: editionId.replace(/[-_]/g, " "),
-              language: "Transliteration",
-              edition: editionId,
-            });
-          }
-        } catch (err) {
-          console.error(`[QURAN API ERROR] Could not check DB schema at ${dbPath}:`, err);
-        }
-      }
-    }
-  }
-
-  traverse(masarNaqharah, "");
-  return result;
+export function Get_Available_WBW_Translations(
+  Base_Path: string = ASSET_CORPUS_PATH
+): Edition[] {
+  return Scan_Editions(path.join(Base_Path, "Quran", "Translation"), "Kalimah");
 }
 
-/**
- * Dynamically checks transliteration databases recursively and returns ONLY those
- * that feature an "Al_Kalimah" table (word-by-word transliteration).
- */
-export function Jalb_Qaimat_An_Naqharah_Al_Kalimah_Al_Mutaahah(
-  masarBase: string = MASAR_USUL_AL_MUTUN
-): Mudkhal_Qaimat_An_Naqharah[] {
-  const masarNaqharah = path.join(masarBase, "Quran", "Transliteration");
-  const result: Mudkhal_Qaimat_An_Naqharah[] = [];
+export function Get_Available_Transliterations(
+  Base_Path: string = ASSET_CORPUS_PATH
+): Edition[] {
+  return Scan_Editions(path.join(Base_Path, "Quran", "Transliteration"), "Ayah");
+}
 
-  if (!fs.existsSync(masarNaqharah)) return result;
-
-  function traverse(dir: string, relativeDir: string) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-
-      if (entry.isDirectory()) {
-        traverse(fullPath, relPath);
-      } else if (entry.isFile() && entry.name.endsWith(".db")) {
-        const dbPath = fullPath;
-        try {
-          const db = new Database(dbPath, { readonly: true });
-          const hasKalimahTable = db
-            .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='Al_Kalimah'`)
-            .get();
-          db.close();
-
-          if (hasKalimahTable) {
-            const editionId = relPath.replace(/\.db$/, "");
-            result.push({
-              id: editionId,
-              name: editionId.replace(/[-_]/g, " "),
-              language: "Transliteration",
-              edition: editionId,
-            });
-          }
-        } catch (err) {
-          console.error(`[QURAN API ERROR] Could not check DB schema at ${dbPath}:`, err);
-        }
-      }
-    }
-  }
-
-  traverse(masarNaqharah, "");
-  return result;
+export function Get_Available_WBW_Transliterations(
+  Base_Path: string = ASSET_CORPUS_PATH
+): Edition[] {
+  return Scan_Editions(path.join(Base_Path, "Quran", "Transliteration"), "Kalimah");
 }
 
 process.on("SIGINT", () => {
-  QAIDAT_AL_BAYANAT_AL_ASASIYYAH.close();
+  CoreDB.close();
   process.exit(0);
 });

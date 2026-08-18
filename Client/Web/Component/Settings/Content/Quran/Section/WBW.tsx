@@ -17,31 +17,78 @@ import { MobileNavigator } from "../Utility";
 import { useApp } from "@Web/Context/App";
 
 import {
-  Jalb_Qaimat_At_Tarjamaat_Kalimah,
-  Jalb_Qaimat_An_Naqharat_Kalimah,
+  Fetch_Word_Translation_List,
+  Fetch_Word_Transliteration_List,
+  Fetch_Surah_Translation,
+  Fetch_Surah_Transliteration,
+  type Translation_List_Entry,
+  type Transliteration_List_Entry,
 } from "@Web/../Source/Library/Quran-API";
 
-type DisplayMode = "hover" | "inline" | "both";
+import {
+  Get_Saved_Kalimaat,
+  Save_Kalimaat_Locally,
+  Delete_Saved_Kalimaat,
+} from "@Web/../Source/Library/Service-Worker-Cache-Store";
 
-interface WBWTranslationItem {
-  id: string;
-  name: string;
-  language: string;
-}
+type DisplayMode = "hover" | "inline" | "both";
+type WBWTranslationItem = Translation_List_Entry;
+
+const TOTAL_SURAH_COUNT = 114;
+
+const Build_WBW_Translation_Marker_Key = (Edition_ID: string) => `WBW-Translation-Download::${Edition_ID}`;
+const Build_WBW_Transliteration_Marker_Key = (Edition_ID: string) => `WBW-Transliteration-Download::${Edition_ID}`;
+
+const Is_WBW_Downloaded = async (Marker_Key: string): Promise<boolean> => {
+  const Marker = await Get_Saved_Kalimaat<boolean>(Marker_Key);
+  return Marker === true;
+};
+
+const Download_WBW_Translation = async (Edition_ID: string): Promise<void> => {
+  const Surah_Numbers = Array.from({ length: TOTAL_SURAH_COUNT }, (_, Idx) => Idx + 1);
+
+  const Results = await Promise.allSettled(
+    Surah_Numbers.map((Surah_Number) =>
+      Fetch_Surah_Translation(Surah_Number, Edition_ID, false, true)
+    )
+  );
+
+  const Failed = Results.filter((R) => R.status === "rejected");
+  if (Failed.length > 0) {
+    throw new Error(`Failed to cache ${Failed.length}/${TOTAL_SURAH_COUNT} Surahs for "${Edition_ID}".`);
+  }
+
+  await Save_Kalimaat_Locally(Build_WBW_Translation_Marker_Key(Edition_ID), true);
+};
+
+const Download_WBW_Transliteration = async (Edition_ID: string): Promise<void> => {
+  const Surah_Numbers = Array.from({ length: TOTAL_SURAH_COUNT }, (_, Idx) => Idx + 1);
+
+  const Results = await Promise.allSettled(
+    Surah_Numbers.map((Surah_Number) =>
+      Fetch_Surah_Transliteration(Surah_Number, Edition_ID, false, true)
+    )
+  );
+
+  const Failed = Results.filter((R) => R.status === "rejected");
+  if (Failed.length > 0) {
+    throw new Error(`Failed to cache ${Failed.length}/${TOTAL_SURAH_COUNT} Surahs for "${Edition_ID}".`);
+  }
+
+  await Save_Kalimaat_Locally(Build_WBW_Transliteration_Marker_Key(Edition_ID), true);
+};
 
 export function WBW() {
   const isMobile = useIsMobile();
 
   const {
-    // Transliteration
     hoverTransliteration,
     setHoverTransliteration,
     inlineTransliteration,
     setInlineTransliteration,
     inlineTransliterationSize,
     setInlineTransliterationSize,
-    
-    // Translation
+
     hoverTranslation,
     setHoverTranslation,
     inlineTranslation,
@@ -50,27 +97,22 @@ export function WBW() {
     setInlineTranslationSize,
   } = useApp();
 
-  // Dynamic state initialized to empty arrays
   const [wbwTranslations, setWbwTranslations] = useState<WBWTranslationItem[]>([]);
   const [availableTransliterations, setAvailableTransliterations] = useState<
-    { id: string; label: string }[]
-  >([{ id: "None", label: "None" }]);
+  { id: string; label: string }[]
+>([{ id: "None", label: "None" }]);
   const [isLoadingList, setIsLoadingList] = useState<boolean>(true);
 
-  // Search & Download states
   const [search, setSearch] = useState("");
-  const [downloadedIds, setDownloadedIds] = useState<string[]>(["en.sahih"]);
+  const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
 
-  // Accordion Expand States
   const [expandedActiveLangs, setExpandedActiveLangs] = useState<string[]>(["English"]);
   const [expandedInactiveLangs, setExpandedInactiveLangs] = useState<string[]>(["English"]);
 
-  // Transliteration navigation state
   const [showHoverTransliterationList, setShowHoverTransliterationList] = useState(false);
   const [showInlineTransliterationList, setShowInlineTransliterationList] = useState(false);
 
-  // --- Derived State for Active Translations ---
   const activeIds = Array.from(
     new Set(
       [hoverTranslation, inlineTranslation].filter(
@@ -89,10 +131,8 @@ export function WBW() {
     return "both";
   };
 
-  // Check if any active translation requires an inline font size setting
   const hasInlineTranslation = inlineTranslation && inlineTranslation !== "None";
 
-  // --- Handlers for Translation Mode Changes ---
   const handleSetMode = (id: string, mode: DisplayMode) => {
     if (mode === "hover") {
       setHoverTranslation(id);
@@ -112,17 +152,14 @@ export function WBW() {
 
   const toggleActive = (id: string) => {
     if (activeIds.includes(id)) {
-      // Deactivate: remove from both modes
       if (hoverTranslation === id) setHoverTranslation("None");
       if (inlineTranslation === id) setInlineTranslation("None");
     } else {
-      // Activate: default to "both" when selected from Inactive
       setHoverTranslation(id);
       setInlineTranslation(id);
     }
   };
 
-  // Fetch available translations and transliterations on mount
   useEffect(() => {
     let isMounted = true;
 
@@ -130,28 +167,22 @@ export function WBW() {
       setIsLoadingList(true);
       try {
         const [translations, transliterations] = await Promise.all([
-          Jalb_Qaimat_At_Tarjamaat_Kalimah(),
-          Jalb_Qaimat_An_Naqharat_Kalimah(),
+          Fetch_Word_Translation_List(),
+          Fetch_Word_Transliteration_List(),
         ]);
 
         if (isMounted) {
           if (translations && Array.isArray(translations) && translations.length > 0) {
-            setWbwTranslations(
-              translations.map((t: any) => ({
-                id: t.id || t.identifier || t.key || t["Al-Muraqqim"],
-                name: t.name || t.englishName || t.displayName || t["Al-Ism"],
-                language: t.language || t["Al-Lughah"] || "English",
-              }))
-            );
+            setWbwTranslations(translations);
           }
 
           if (transliterations && Array.isArray(transliterations) && transliterations.length > 0) {
-            const mappedTransliterations = transliterations
-              .map((n: any) => ({
-                id: n.id || n.identifier || n.key || n["Al-Muraqqim"] || n["An-Naqharah"],
-                label: n.name || n.englishName || n.displayName || n["Al-Ism"] || n.label,
-              }))
-              .filter((item) => !!(item.id && item.label));
+            const mappedTransliterations = transliterations.map(
+              (n: Transliteration_List_Entry) => ({
+                id: n.ID,
+                label: n.Name,
+              })
+            );
 
             setAvailableTransliterations([
               { id: "None", label: "None" },
@@ -160,7 +191,6 @@ export function WBW() {
           }
         }
       } catch (err) {
-        // Essential network error log left for safety
         console.error("Failed to fetch WBW metadata:", err);
       } finally {
         if (isMounted) setIsLoadingList(false);
@@ -172,6 +202,30 @@ export function WBW() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkExistingDownloads() {
+      if (wbwTranslations.length === 0) return;
+
+      const checks = await Promise.all(
+        wbwTranslations.map(async (item) => {
+          const downloaded = await Is_WBW_Downloaded(Build_WBW_Translation_Marker_Key(item.ID));
+          return downloaded ? item.ID : null;
+        })
+      );
+
+      if (!cancelled) {
+        setDownloadedIds((prev) => Array.from(new Set([...prev, ...checks.filter((id): id is string => id !== null)])));
+      }
+    }
+
+    checkExistingDownloads();
+    return () => {
+      cancelled = true;
+    };
+  }, [wbwTranslations]);
 
   const toggleActiveLang = (lang: string) => {
     setExpandedActiveLangs((prev) =>
@@ -185,36 +239,46 @@ export function WBW() {
     );
   };
 
-  const handleDownload = (id: string) => {
+  const handleDownload = async (id: string) => {
     setDownloadingIds((prev) => [...prev, id]);
-    setTimeout(() => {
-      setDownloadingIds((prev) => prev.filter((item) => item !== id));
+
+    try {
+      await Download_WBW_Translation(id);
       setDownloadedIds((prev) => [...prev, id]);
-    }, 1200);
+    } catch (err) {
+      console.error(`Failed to download WBW translation "${id}":`, err);
+    } finally {
+      setDownloadingIds((prev) => prev.filter((item) => item !== id));
+    }
   };
 
-  const handleDeleteDownload = (id: string) => {
-    setDownloadedIds((prev) => prev.filter((item) => item !== id));
+  const handleDeleteDownload = async (id: string) => {
+    try {
+      await Delete_Saved_Kalimaat(Build_WBW_Translation_Marker_Key(id));
+      setDownloadedIds((prev) => prev.filter((item) => item !== id));
+    } catch (err) {
+      console.error(`Failed to delete WBW translation "${id}":`, err);
+    }
   };
 
   const filteredItems = wbwTranslations.filter(
     (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.language.toLowerCase().includes(search.toLowerCase())
+      item.Name.toLowerCase().includes(search.toLowerCase()) ||
+      item.Language.toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeList = filteredItems.filter((item) => activeIds.includes(item.id));
-  const inactiveList = filteredItems.filter((item) => !activeIds.includes(item.id));
+  const activeList = filteredItems.filter((item) => activeIds.includes(item.ID));
+  const inactiveList = filteredItems.filter((item) => !activeIds.includes(item.ID));
 
   const activeByLanguage = activeList.reduce<Record<string, WBWTranslationItem[]>>((acc, item) => {
-    acc[item.language] = acc[item.language] || [];
-    acc[item.language].push(item);
+    acc[item.Language] = acc[item.Language] || [];
+    acc[item.Language].push(item);
     return acc;
   }, {});
 
   const inactiveByLanguage = inactiveList.reduce<Record<string, WBWTranslationItem[]>>((acc, item) => {
-    acc[item.language] = acc[item.language] || [];
-    acc[item.language].push(item);
+    acc[item.Language] = acc[item.Language] || [];
+    acc[item.Language].push(item);
     return acc;
   }, {});
 
@@ -304,13 +368,11 @@ export function WBW() {
 
   return (
     <div className="space-y-6">
-      {/* ----------------- SECTION 1: TRANSLATION ----------------- */}
       <div className="space-y-4">
         <div className="relative rounded-[40px] bg-card border-2 border-black dark:border-white transition-all duration-200 py-1 px-3 inline-flex">
           <p className="text-xs font-medium text-foreground">WBW Translation</p>
         </div>
 
-        {/* Inline Translation Font Size Slider */}
         {hasInlineTranslation && (
           <Card className="py-2.5 px-4 bg-card">
             <div className="flex items-center justify-between gap-4">
@@ -329,7 +391,6 @@ export function WBW() {
           </Card>
         )}
 
-        {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -340,7 +401,6 @@ export function WBW() {
           />
         </div>
 
-        {/* Active WBW Container */}
         {hasActive && (
           <Container className="p-4 space-y-3 bg-card">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -383,17 +443,17 @@ export function WBW() {
                       <div className="overflow-hidden">
                         <div className="px-3 pb-3 pt-1 space-y-2">
                           {items.map((item) => {
-                            const isDownloaded = downloadedIds.includes(item.id);
-                            const isDownloading = downloadingIds.includes(item.id);
-                            const currentMode = getDisplayMode(item.id);
+                            const isDownloaded = downloadedIds.includes(item.ID);
+                            const isDownloading = downloadingIds.includes(item.ID);
+                            const currentMode = getDisplayMode(item.ID);
 
                             return (
                               <div
-                                key={item.id}
-                                onClick={() => toggleActive(item.id)}
+                                key={item.ID}
+                                onClick={() => toggleActive(item.ID)}
                                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2.5 rounded-[20px] sm:rounded-full border-2 border-primary bg-card hover:bg-muted cursor-pointer transition-all"
                               >
-                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="text-sm font-medium">{item.Name}</span>
 
                                 <div
                                   className="flex items-center gap-2"
@@ -402,7 +462,7 @@ export function WBW() {
                                   <div className="flex items-center bg-muted p-1 rounded-full text-xs border border-border">
                                     <button
                                       type="button"
-                                      onClick={() => handleSetMode(item.id, "hover")}
+                                      onClick={() => handleSetMode(item.ID, "hover")}
                                       className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-all ${
                                         currentMode === "hover"
                                           ? "bg-card text-foreground font-semibold shadow-xs"
@@ -413,7 +473,7 @@ export function WBW() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleSetMode(item.id, "inline")}
+                                      onClick={() => handleSetMode(item.ID, "inline")}
                                       className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-all ${
                                         currentMode === "inline"
                                           ? "bg-card text-foreground font-semibold shadow-xs"
@@ -424,7 +484,7 @@ export function WBW() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleSetMode(item.id, "both")}
+                                      onClick={() => handleSetMode(item.ID, "both")}
                                       className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-all ${
                                         currentMode === "both"
                                           ? "bg-card text-foreground font-semibold shadow-xs"
@@ -450,7 +510,7 @@ export function WBW() {
                                       size="sm"
                                       variant="ghost"
                                       className="rounded-full gap-1.5 px-3 py-1 text-xs text-destructive bg-card hover:bg-destructive/10 hover:text-destructive"
-                                      onClick={() => handleDeleteDownload(item.id)}
+                                      onClick={() => handleDeleteDownload(item.ID)}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                       <span>Delete</span>
@@ -460,7 +520,7 @@ export function WBW() {
                                       size="sm"
                                       variant="outline"
                                       className="rounded-full gap-1.5 px-3 py-1 text-xs bg-card hover:bg-muted"
-                                      onClick={() => handleDownload(item.id)}
+                                      onClick={() => handleDownload(item.ID)}
                                     >
                                       <Download className="h-3.5 w-3.5" />
                                       <span>Download</span>
@@ -480,7 +540,6 @@ export function WBW() {
           </Container>
         )}
 
-        {/* Inactive WBW Container */}
         <Container className="p-4 space-y-3 bg-card">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Inactive
@@ -532,16 +591,16 @@ export function WBW() {
                       <div className="overflow-hidden">
                         <div className="px-3 pb-3 pt-1 space-y-2">
                           {items.map((item) => {
-                            const isDownloaded = downloadedIds.includes(item.id);
-                            const isDownloading = downloadingIds.includes(item.id);
+                            const isDownloaded = downloadedIds.includes(item.ID);
+                            const isDownloading = downloadingIds.includes(item.ID);
 
                             return (
                               <div
-                                key={item.id}
-                                onClick={() => toggleActive(item.id)}
+                                key={item.ID}
+                                onClick={() => toggleActive(item.ID)}
                                 className="flex items-center justify-between px-4 py-2 rounded-full border border-border bg-card hover:bg-muted cursor-pointer transition-all"
                               >
-                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="text-sm font-medium">{item.Name}</span>
 
                                 <div onClick={(e) => e.stopPropagation()}>
                                   {isDownloading ? (
@@ -559,7 +618,7 @@ export function WBW() {
                                       size="sm"
                                       variant="ghost"
                                       className="rounded-full gap-1.5 px-3 py-1 text-xs text-destructive bg-card hover:bg-destructive/10 hover:text-destructive"
-                                      onClick={() => handleDeleteDownload(item.id)}
+                                      onClick={() => handleDeleteDownload(item.ID)}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                       <span>Delete</span>
@@ -569,7 +628,7 @@ export function WBW() {
                                       size="sm"
                                       variant="outline"
                                       className="rounded-full gap-1.5 px-3 py-1 text-xs bg-card hover:bg-muted"
-                                      onClick={() => handleDownload(item.id)}
+                                      onClick={() => handleDownload(item.ID)}
                                     >
                                       <Download className="h-3.5 w-3.5" />
                                       <span>Download</span>
@@ -590,13 +649,11 @@ export function WBW() {
         </Container>
       </div>
 
-      {/* ----------------- SECTION 2: TRANSLITERATION ----------------- */}
       <div className="space-y-3">
         <div className="relative rounded-[40px] bg-card border-2 border-black dark:border-white transition-all duration-200 py-1 px-3 inline-flex">
           <p className="text-xs font-medium text-foreground">WBW Transliteration</p>
         </div>
 
-        {/* Hover Transliteration Dropdown */}
         {isMobile
           ? renderMobileButton(
               () => setShowHoverTransliterationList(true),
@@ -611,7 +668,6 @@ export function WBW() {
               "Hover Transliteration"
             )}
 
-        {/* Inline Transliteration Dropdown */}
         {isMobile
           ? renderMobileButton(
               () => setShowInlineTransliterationList(true),
@@ -626,7 +682,6 @@ export function WBW() {
               "Inline Transliteration"
             )}
 
-        {/* Transliteration Font Size Slider when enabled */}
         {inlineTransliteration !== "None" && (
           <Card className="py-2.5 px-4 bg-card">
             <div className="flex items-center justify-between gap-4">

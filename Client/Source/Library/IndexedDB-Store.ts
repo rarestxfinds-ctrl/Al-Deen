@@ -1,177 +1,167 @@
-// Client/Source/Library/IndexedDB-Store.ts
-import type { As_Surah } from "./Quran-Types";
+// Source/Library/IndexedDB-Store.ts
+import type { Surah, Surah_Metadata } from "./Quran-Types";
 
-const ISAM_QAIDAT_AL_BAYANAT = "Al-Quran";
+const DB_NAME = "Quran";
+const DB_VERSION = 5;
 
-const MAKHZAN_AS_SUWAR = "As-Suwar";
-const MAKHZAN_AL_AYAT = "Al-Ayat";
-const MAKHZAN_AL_KALIMAAT = "Al-Kalimaat";
-const MAKHZAN_MILAFFAT_AL_QAWAID = "Milaffat-Al-Qawaid";
+const SURAH_STORE = "Surah";
+const AYAH_STORE = "Ayah";
+const KALIMAH_STORE = "Kalimah";
 
-let Damaan_Qaidat_Al_Bayanat: Promise<IDBDatabase> | null = null;
+let DB_Instance_Promise: Promise<IDBDatabase> | null = null;
 
-const Fath_Qaidat_Al_Bayanat = (): Promise<IDBDatabase> => {
-  if (Damaan_Qaidat_Al_Bayanat) return Damaan_Qaidat_Al_Bayanat;
+const Open_Database = (): Promise<IDBDatabase> => {
+  if (DB_Instance_Promise) return DB_Instance_Promise;
 
-  Damaan_Qaidat_Al_Bayanat = new Promise((Resolve, Reject) => {
-    const Talab = indexedDB.open(ISAM_QAIDAT_AL_BAYANAT, 5);
+  DB_Instance_Promise = new Promise((Resolve, Reject) => {
+    const Request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    Talab.onupgradeneeded = (Hadath: IDBVersionChangeEvent) => {
-      const Qaidat = (Hadath.target as IDBOpenDBRequest).result;
+    Request.onupgradeneeded = (Event: IDBVersionChangeEvent) => {
+      const DB = (Event.target as IDBOpenDBRequest).result;
 
-      if (Qaidat.objectStoreNames.contains("Qaimat-As-Surah")) {
-        Qaidat.deleteObjectStore("Qaimat-As-Surah");
+      if (!DB.objectStoreNames.contains(SURAH_STORE)) {
+        DB.createObjectStore(SURAH_STORE);
       }
-      if (Qaidat.objectStoreNames.contains("As-Surah")) {
-        Qaidat.deleteObjectStore("As-Surah");
+      if (!DB.objectStoreNames.contains(AYAH_STORE)) {
+        DB.createObjectStore(AYAH_STORE);
       }
-
-      if (!Qaidat.objectStoreNames.contains(MAKHZAN_AS_SUWAR)) {
-        Qaidat.createObjectStore(MAKHZAN_AS_SUWAR);
-      }
-      if (!Qaidat.objectStoreNames.contains(MAKHZAN_AL_AYAT)) {
-        Qaidat.createObjectStore(MAKHZAN_AL_AYAT);
-      }
-      if (!Qaidat.objectStoreNames.contains(MAKHZAN_AL_KALIMAAT)) {
-        Qaidat.createObjectStore(MAKHZAN_AL_KALIMAAT);
-      }
-      if (!Qaidat.objectStoreNames.contains(MAKHZAN_MILAFFAT_AL_QAWAID)) {
-        Qaidat.createObjectStore(MAKHZAN_MILAFFAT_AL_QAWAID);
+      if (!DB.objectStoreNames.contains(KALIMAH_STORE)) {
+        DB.createObjectStore(KALIMAH_STORE);
       }
     };
 
-    Talab.onsuccess = (Hadath: Event) => Resolve((Hadath.target as IDBOpenDBRequest).result);
-    Talab.onerror = (Hadath: Event) => {
-      Damaan_Qaidat_Al_Bayanat = null;
-      Reject((Hadath.target as IDBOpenDBRequest).error);
+    Request.onsuccess = (Event: Event) =>
+      Resolve((Event.target as IDBOpenDBRequest).result);
+
+    Request.onerror = (Event: Event) => {
+      DB_Instance_Promise = null;
+      Reject((Event.target as IDBOpenDBRequest).error);
     };
   });
 
-  return Damaan_Qaidat_Al_Bayanat;
+  return DB_Instance_Promise;
 };
 
-export const Build_Miftah_As_Surah = (
-  Raqm_As_Surah: number,
-  Resource_Id?: string
+// --- Generic Helper Operations ---
+
+const Get_Record = async <T>(Store_Name: string, Key: string): Promise<T | null> => {
+  try {
+    const DB = await Open_Database();
+    return new Promise((Resolve) => {
+      const Tx = DB.transaction(Store_Name, "readonly");
+      const Request = Tx.objectStore(Store_Name).get(Key);
+      Request.onsuccess = () => Resolve(Request.result || null);
+      Request.onerror = () => Resolve(null);
+    });
+  } catch {
+    return null;
+  }
+};
+
+const Save_Record = async <T>(Store_Name: string, Key: string, Data: T): Promise<void> => {
+  try {
+    const DB = await Open_Database();
+    return new Promise((Resolve, Reject) => {
+      const Tx = DB.transaction(Store_Name, "readwrite");
+      const Request = Tx.objectStore(Store_Name).put(Data, Key);
+      
+      Tx.oncomplete = () => Resolve();
+      Tx.onerror = () => Reject(Tx.error);
+      Request.onerror = () => Reject(Request.error);
+    });
+  } catch (Err) {
+    console.error(`[INDEXEDDB ERROR] Failed to save in ${Store_Name}:`, Err);
+  }
+};
+
+const Delete_Record = async (Store_Name: string, Key: string): Promise<void> => {
+  try {
+    const DB = await Open_Database();
+    return new Promise((Resolve, Reject) => {
+      const Tx = DB.transaction(Store_Name, "readwrite");
+      const Request = Tx.objectStore(Store_Name).delete(Key);
+      
+      Tx.oncomplete = () => Resolve();
+      Tx.onerror = () => Reject(Tx.error);
+      Request.onerror = () => Reject(Request.error);
+    });
+  } catch (Err) {
+    console.error(`[INDEXEDDB ERROR] Failed to delete from ${Store_Name}:`, Err);
+  }
+};
+
+// --- Key Builders ---
+
+export const Build_Surah_Key = (
+  Surah_Number: number,
+  Resource_ID?: string
 ): string => {
-  if (!Resource_Id) {
-    return `${Raqm_As_Surah}`;
+  if (!Resource_ID) {
+    return `${Surah_Number}`;
   }
-  return `${Raqm_As_Surah}:${Resource_Id.trim()}`;
+  return `${Surah_Number}:${Resource_ID.trim()}`;
 };
 
-export const Build_Miftah_At_Tarjamah = Build_Miftah_As_Surah;
+// --- Surah Store Operations ---
 
-// As-Suwar Store
-export const Jalb_As_Surah_Al_Mahfudhah = async (
-  Raqm_As_Surah: number
-): Promise<As_Surah | null> => {
+// Single full Surah payload
+export const Get_Saved_Surah = <T = Surah>(Key: string | number): Promise<T | null> =>
+  Get_Record<T>(SURAH_STORE, String(Key));
+
+export const Save_Surah_Locally = <T = Surah>(Key: string | number, Data: T): Promise<void> =>
+  Save_Record<T>(SURAH_STORE, String(Key), Data);
+
+export const Delete_Saved_Surah = (Key: string | number): Promise<void> =>
+  Delete_Record(SURAH_STORE, String(Key));
+
+// Full list of Surah metadata entries
+export const Get_Saved_Suwar_Metadata = <T = Surah_Metadata[]>(Key: string | number = 0): Promise<T | null> =>
+  Get_Record<T>(SURAH_STORE, String(Key));
+
+export const Save_Suwar_Metadata_Locally = <T = Surah_Metadata[]>(Key: string | number = 0, Data: T): Promise<void> =>
+  Save_Record<T>(SURAH_STORE, String(Key), Data);
+
+// --- Ayah Store Operations ---
+
+export const Get_Saved_Ayah = <T = unknown>(Key: string): Promise<T | null> =>
+  Get_Record<T>(AYAH_STORE, Key);
+
+export const Get_Saved_Ayaat = <T = unknown>(Key: string): Promise<T | null> =>
+  Get_Record<T>(AYAH_STORE, Key);
+
+export const Save_Ayaat_Locally = <T = unknown>(Key: string, Data_List: T): Promise<void> =>
+  Save_Record<T>(AYAH_STORE, Key, Data_List);
+
+export const Delete_Saved_Ayaat = (Key: string): Promise<void> =>
+  Delete_Record(AYAH_STORE, Key);
+
+// --- Kalimah Store Operations ---
+
+export const Get_Saved_Kalimah = <T = unknown>(Key: string): Promise<T | null> =>
+  Get_Record<T>(KALIMAH_STORE, Key);
+
+export const Get_Saved_Kalimaat = <T = unknown>(Key: string): Promise<T | null> =>
+  Get_Record<T>(KALIMAH_STORE, Key);
+
+export const Save_Kalimaat_Locally = <T = unknown>(Key: string, Data_List: T): Promise<void> =>
+  Save_Record<T>(KALIMAH_STORE, Key, Data_List);
+
+export const Delete_Saved_Kalimaat = (Key: string): Promise<void> =>
+  Delete_Record(KALIMAH_STORE, Key);
+
+// --- Utility Operations ---
+
+export const Clear_All_Offline_Data = async (): Promise<void> => {
   try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    return new Promise((Resolve) => {
-      const Muamalah = Qaidat.transaction(MAKHZAN_AS_SUWAR, "readonly");
-      const Talab = Muamalah.objectStore(MAKHZAN_AS_SUWAR).get(String(Raqm_As_Surah));
-      Talab.onsuccess = () => Resolve(Talab.result || null);
-      Talab.onerror = () => Resolve(null);
+    const DB = await Open_Database();
+    const Stores = [SURAH_STORE, AYAH_STORE, KALIMAH_STORE];
+    return new Promise((Resolve, Reject) => {
+      const Tx = DB.transaction(Stores, "readwrite");
+      Stores.forEach((Store) => Tx.objectStore(Store).clear());
+      Tx.oncomplete = () => Resolve();
+      Tx.onerror = () => Reject(Tx.error);
     });
-  } catch {
-    return null;
+  } catch (Err) {
+    console.error("[INDEXEDDB ERROR] Failed to clear offline stores:", Err);
   }
-};
-
-export const Hifdh_As_Surah_Al_Mahfudhah = async (
-  Raqm_As_Surah: number,
-  Bayanat_As_Surah: As_Surah
-): Promise<void> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    const Muamalah = Qaidat.transaction(MAKHZAN_AS_SUWAR, "readwrite");
-    Muamalah.objectStore(MAKHZAN_AS_SUWAR).put(Bayanat_As_Surah, String(Raqm_As_Surah));
-  } catch {}
-};
-
-// Al-Ayat Store
-export const Jalb_Al_Ayat_Al_Mahfudhah = async <T = [string[], string[], string[]]>(
-  Miftah: string
-): Promise<T | null> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    return new Promise((Resolve) => {
-      const Muamalah = Qaidat.transaction(MAKHZAN_AL_AYAT, "readonly");
-      const Talab = Muamalah.objectStore(MAKHZAN_AL_AYAT).get(String(Miftah));
-      Talab.onsuccess = () => Resolve(Talab.result || null);
-      Talab.onerror = () => Resolve(null);
-    });
-  } catch {
-    return null;
-  }
-};
-
-export const Hifdh_Al_Ayat_Al_Mahfudhah = async (
-  Miftah: string,
-  Ayat_Arrays: [string[], string[], string[]] | string[]
-): Promise<void> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    const Muamalah = Qaidat.transaction(MAKHZAN_AL_AYAT, "readwrite");
-    Muamalah.objectStore(MAKHZAN_AL_AYAT).put(Ayat_Arrays, String(Miftah));
-  } catch {}
-};
-
-// Al-Kalimaat Store
-export const Jalb_Al_Kalimaat_Al_Mahfudhah = async <T = [string[][], string[][], string[][]]>(
-  Miftah: string
-): Promise<T | null> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    return new Promise((Resolve) => {
-      const Muamalah = Qaidat.transaction(MAKHZAN_AL_KALIMAAT, "readonly");
-      const Talab = Muamalah.objectStore(MAKHZAN_AL_KALIMAAT).get(String(Miftah));
-      Talab.onsuccess = () => Resolve(Talab.result || null);
-      Talab.onerror = () => Resolve(null);
-    });
-  } catch {
-    return null;
-  }
-};
-
-export const Hifdh_Al_Kalimaat_Al_Mahfudhah = async (
-  Miftah: string,
-  Kalimaat_Arrays: [string[][], string[][], string[][]] | string[][]
-): Promise<void> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    const Muamalah = Qaidat.transaction(MAKHZAN_AL_KALIMAAT, "readwrite");
-    Muamalah.objectStore(MAKHZAN_AL_KALIMAAT).put(Kalimaat_Arrays, String(Miftah));
-  } catch {}
-};
-
-// Binary DB File Storage
-export const Jalb_Milaff_Qaidat_Al_Bayanat = async (
-  Masar_Al_Milaff: string
-): Promise<ArrayBuffer | null> => {
-  try {
-    const Qaidat = await Fath_Qaidat_Al_Bayanat();
-    return new Promise((Resolve) => {
-      const Muamalah = Qaidat.transaction(MAKHZAN_MILAFFAT_AL_QAWAID, "readonly");
-      const Talab = Muamalah.objectStore(MAKHZAN_MILAFFAT_AL_QAWAID).get(Masar_Al_Milaff);
-      Talab.onsuccess = () => Resolve(Talab.result || null);
-      Talab.onerror = () => Resolve(null);
-    });
-  } catch {
-    return null;
-  }
-};
-
-export const Hifdh_Milaff_Qaidat_Al_Bayanat = async (
-  Masar_Al_Milaff: string,
-  Bayanat_Al_Milaff: ArrayBuffer
-): Promise<void> => {
-  const Qaidat = await Fath_Qaidat_Al_Bayanat();
-  return new Promise((Resolve, Reject) => {
-    const Muamalah = Qaidat.transaction(MAKHZAN_MILAFFAT_AL_QAWAID, "readwrite");
-    Muamalah.objectStore(MAKHZAN_MILAFFAT_AL_QAWAID).put(Bayanat_Al_Milaff, Masar_Al_Milaff);
-    Muamalah.oncomplete = () => Resolve();
-    Muamalah.onerror = () => Reject(Muamalah.error);
-  });
 };

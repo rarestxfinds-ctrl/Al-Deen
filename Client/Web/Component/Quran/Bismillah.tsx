@@ -1,6 +1,6 @@
 import { useApp } from "@Web/Context/App";
-import { WordTooltip, useAudioPlayback } from "@Web/Component/Quran/Takheet/Adawat";
-import type { BismillahWord } from "./Types";
+import { WordTooltip, useAudioPlayback } from "@Web/Component/Quran/Layout/Utils";
+import type { BismillahWord } from "./Layout/Types";
 
 interface BismillahProps {
   words: BismillahWord[];

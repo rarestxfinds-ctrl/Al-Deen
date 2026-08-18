@@ -1,14 +1,14 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bitaqah_Al_Ayah } from "@Web/Component/Quran/Takheet/Ayah/Bitaqah";
-import { Bitaqah as Bitaqat_As_Safhah } from "@Web/Component/Quran/Takheet/Safhah/Bitaqah";
+import { VerseCard } from "@Web/Component/Quran/Layout/Ayah/VerseCard";
+import { PageCard } from "@Web/Component/Quran/Layout/Page/PageCard";
 import { SurahHeader } from "@Web/Component/Quran/Surah/Header";
 import { SurahInfoDialog } from "@Web/Component/Dialog/Surah-Info";
 import { TafsirDialog } from "@Web/Component/Dialog/Tafsir";
 import { AudioPlayer } from "@Web/Component/Audio-Player/Index";
 import { useAudio } from "@Web/Context/Audio";
 import { useApp, type QuranFontFamily } from "@Web/Context/App";
-import type { Al_Kalimah_Al_Muhallalah } from "@Web/Component/Quran/Takheet/Anwaa";
+import type { ResolvedWord, SurahMeta, AssembledVerse, PageAyahs } from "@Web/Component/Quran/Layout/Types";
 
 interface SegmentRange {
   surah: number;
@@ -82,62 +82,71 @@ function getSegmentPageRange(
   return [start, end];
 }
 
-// ============= Adapters: legacy fetch shape -> new Bitaqah prop shape =============
+// ============= Adapters: legacy fetch shape -> real component prop shape =============
 
-/** Bitaqah_Al_Ayah/Bitaqat_As_Safhah read "Al-Ayah" / "As-Surah" style keys directly
- *  (with only partial fallback to camelCase). These helpers guarantee both are present
- *  so the components work regardless of which key path they use internally. */
-function toBitaqahAyah(verse: any) {
+/** VerseCard/PageCard read the real AssembledVerse / SurahMeta field names
+ *  (Surah, Ayah, Arabic, ...). This ad-hoc backend's verse/surah objects use
+ *  their own camelCase shape though (verseNumber, arabic, footnotes, ...),
+ *  so these helpers translate field-by-field rather than relying on the
+ *  loose fallback chains VerseCard/PageCard use internally. */
+function toResolvedVerse(verse: any): AssembledVerse {
   return {
-    ...verse,
-    "Al-Ayah": verse.verseNumber ?? verse["Al-Ayah"],
-    "Al-Arabiyyah": verse.arabic ?? verse["Al-Arabiyyah"],
-    Haashiyah: verse.footnotes ?? verse.Haashiyah,
+    Surah: verse.surah ?? verse.Surah,
+    Ayah: verse.verseNumber ?? verse.Ayah,
+    Arabic: verse.arabic ?? verse.Arabic ?? "",
+    Arabic_V1: verse.arabicV1 ?? null,
+    Arabic_V2: verse.arabicV2 ?? null,
+    IndoPakMarker: verse.indoPakMarker ?? null,
   };
 }
 
-function toBitaqahSurah(surah: any, adjustedSurah: any) {
+function toCardSurah(surah: any, adjustedSurah: any): SurahMeta {
   return {
-    ...adjustedSurah,
-    "As-Surah": surah.id,
-    "Bidayat-As-Safhah": adjustedSurah.pages?.[0],
-    "Nihayat-As-Safhah": adjustedSurah.pages?.[1],
-    "At-Tansiq": surah.arabicName ?? surah.englishName,
-    "At-Tarjamah": surah.englishName,
+    Surah: surah.id,
+    Arabic: surah.arabicName ?? "",
+    Translation: surah.englishName ?? "",
+    Transliteration: surah.transliteration ?? surah.englishName ?? "",
+    Revelation_Place: surah.revelationPlace ?? null,
+    Revelation_Order: surah.revelationOrder ?? null,
+    Ayah_Count: surah.numberOfAyahs,
+    Start_Page: adjustedSurah.pages?.[0],
+    End_Page: adjustedSurah.pages?.[1],
+    Indo_Pak_Ayah_Ending: [],
+    Layout: null,
   };
 }
 
 const WORDS_PER_SYNTHETIC_LINE = 12;
 
 /**
- * Groups the flat verse->word list into the line-based structure Sutoor_As_Safhah
- * expects (Sutoor_Muhallalah: Al_Kalimah_Al_Muhallalah[][]).
+ * Groups the flat verse->word list into the line-based structure PageCard
+ * expects (ResolvedLines: ResolvedWord[][]).
  *
  * If the backend ever starts returning real mushaf line numbers per word
  * (e.g. word.line), this will pick them up automatically. Until then it falls
  * back to a synthetic word-count-based wrap so the page layout still renders.
  */
-function buildSutoorMuhallalah(verses: any[]): Al_Kalimah_Al_Muhallalah[][] {
-  const flatWords: Array<Al_Kalimah_Al_Muhallalah & { __line?: number }> = [];
+function buildResolvedLines(verses: any[]): ResolvedWord[][] {
+  const flatWords: Array<ResolvedWord & { __line?: number }> = [];
 
   for (const verse of verses) {
-    const words: any[] = verse.words || verse.Al_Kalimat || [];
-    const bitaqahVerse = toBitaqahAyah(verse);
+    const words: any[] = verse.words || verse.Words || [];
+    const resolvedVerse = toResolvedVerse(verse);
 
     words.forEach((word: any, i: number) => {
       flatWords.push({
-        Ar_Rasm: word.text ?? word.arabic ?? word["Ar-Rasm"] ?? "",
-        Al_Ayah: bitaqahVerse,
-        Fahras_Al_Kalimah: i,
-        Nihayat_Al_Ayah: i === words.length - 1,
-        Raqm_Al_Ayah_Hal: false,
-        Raqm_Al_Ayah: verse.verseNumber,
+        Glyph: word.text ?? word.arabic ?? word.Arabic ?? "",
+        Ayah: resolvedVerse,
+        WordIndex: i,
+        IsVerseEnd: i === words.length - 1,
+        IsVerseMarker: false,
+        AyahNumber: verse.verseNumber,
         __line: word.line ?? word.lineNumber,
-      } as Al_Kalimah_Al_Muhallalah & { __line?: number });
+      } as ResolvedWord & { __line?: number });
     });
   }
 
-  const byLine = new Map<number, Al_Kalimah_Al_Muhallalah[]>();
+  const byLine = new Map<number, ResolvedWord[]>();
   let syntheticLine = 0;
   let cursorInLine = 0;
 
@@ -294,7 +303,12 @@ export function SegmentRenderer({ segments }: Props) {
             pageSegmentsMap
           );
           const adjustedSurah = { ...surah, pages: [startPage, endPage] };
-          const bitaqahSurah = toBitaqahSurah(surah, adjustedSurah);
+          const cardSurah = toCardSurah(surah, adjustedSurah);
+
+          const pageData: PageAyahs = {
+            pageNumber: startPage,
+            Ayah: trimmedVerses.map(toResolvedVerse),
+          };
 
           return (
             <div key={g.surahId} className="w-full">
@@ -310,52 +324,68 @@ export function SegmentRenderer({ segments }: Props) {
               />
 
               {isPageLayout ? (
-                <Bitaqat_As_Safhah
-                  Raqm_As_Surah={surah.id}
-                  Sutoor_Muhallalah={buildSutoorMuhallalah(trimmedVerses)}
-                  Fiat_Al_Khatt={fontClass}
-                  Hajm_Khatt_Ar_Rasm={arabicFontSize}
-                  Izhaar_An_Nass_Al_Arabi={showArabicText && !hideVerses}
-                  Izhaar_Al_Kitabah_As_Sawtiyyah={showTransliteration}
-                  As_Safhah={{ ...data, verses: trimmedVerses, pageNumber: startPage }}
-                  Maraji_Al_Ayaat={verseRefs}
-                  Al_Ayah_Al_Mumayyazah={highlightedVerse}
-                  Tain_Al_Ayah_Al_Mumayyazah={setHighlightedVerse}
-                  Hajm_Khatt_Al_Kitabah_As_Sawtiyyah={transliterationFontSizeValue}
-                  Tarjamah_Ind_Al_Tamreer={wbwTranslationHover}
-                  At_Tarjamah_Al_Mudmajah={wbwTranslationInline}
-                  Al_Kitabah_As_Sawtiyyah_Al_Mudmajah={wbwTransliterationInline}
-                  Ikhfaa_Al_Ayaat={false}
-                  Ikhfaa_Alamaat_Al_Ayaat={hideVerseMarkers}
-                  Hal_Huwa_Khatt_Indo_Pak={quranFont === "indopak"}
-                  Hal_Huwa_Khatt_Uthmani_V4={quranFont === "uthmani_v4"}
-                  Ailat_Khatt_Al_Safhah={undefined}
+                <PageCard
+                  // NOTE: several of the props below are required by
+                  // PageCardProps but have no source in this ad-hoc
+                  // corpus (no basmalah words, no mushaf Layout, no
+                  // per-page font-family resolution) - these are the same
+                  // safe defaults PageView.tsx falls back to when that
+                  // data is missing, not derived values. Worth revisiting
+                  // once this route has a real data source for them.
+                  PageIndex={0}
+                  SurahNumber={surah.id}
+                  ResolvedLines={buildResolvedLines(trimmedVerses)}
+                  ContainerClass="rounded-[48px] mb-2"
+                  FontClass={fontClass}
+                  ArabicFontSize={arabicFontSize}
+                  ShowArabicText={showArabicText && !hideVerses}
+                  ShowTransliteration={showTransliteration}
+                  PageData={pageData}
+                  RawPageData={null}
+                  ShowBasmalahOnPage={false}
+                  BasmalahWords={[]}
+                  PageFontFamily={fontClass}
+                  AyahRefs={verseRefs}
+                  HighlightedAyah={highlightedVerse}
+                  setHighlightedAyah={setHighlightedVerse}
+                  TransliterationFontSize={transliterationFontSizeValue}
+                  TranslationFontSize={translationFontSizeValue}
+                  HoverTranslation={wbwTranslationHover ?? false}
+                  InlineTranslation={wbwTranslationInline ?? ""}
+                  InlineTransliteration={wbwTransliterationInline ?? ""}
+                  HideVerses={false}
+                  HideVerseMarkers={hideVerseMarkers}
+                  IsIndoPakFont={quranFont === "indopak"}
+                  VerseMarkerOverrides={[]}
+                  IsUthmaniV4Font={quranFont === "uthmani_v4"}
+                  WordSpacing="1.8px"
+                  Layout={null}
                 />
               ) : (
                 <div className="space-y-4">
                   {trimmedVerses.map((verse) => (
-                    <Bitaqah_Al_Ayah
+                    <VerseCard
                       key={verse.verseNumber}
-                      Al_Ayah={toBitaqahAyah(verse)}
-                      Kalimaat={verse.words || verse.Al_Kalimat}
-                      At_Tarjamah={verse.translation}
-                      Surah={bitaqahSurah}
-                      Izhaar_An_Nass_Al_Arabi={showArabicText && !hideVerses}
-                      Tarjamat_Al_Ayah={verseTranslation}
-                      Hajm_Khatt_At_Tarjamah={translationFontSizeValue}
-                      Hajm_Khatt_Al_Kitabah_As_Sawtiyyah={transliterationFontSizeValue}
-                      Izhaar_Al_Kitabah_As_Sawtiyyah={showTransliteration}
-                      Tarjamah_Ind_Al_Tamreer={wbwTranslationHover}
-                      At_Tarjamah_Al_Mudmajah={wbwTranslationInline}
-                      Al_Kitabah_As_Sawtiyyah_Al_Mudmajah={wbwTransliterationInline}
-                      Marji_Al_Ayah={(el: HTMLDivElement | null) => {
+                      Ayah={toResolvedVerse(verse)}
+                      Words={verse.words || verse.Words}
+                      Translation={verse.translation}
+                      Surah={cardSurah}
+                      ShowArabicText={showArabicText && !hideVerses}
+                      ShowTranslation={verseTranslation}
+                      TranslationFontSize={translationFontSizeValue}
+                      TransliterationFontSize={transliterationFontSizeValue}
+                      ShowTransliteration={showTransliteration}
+                      HoverTranslation={wbwTranslationHover}
+                      InlineTranslation={wbwTranslationInline}
+                      InlineTransliteration={wbwTransliterationInline}
+                      AyahRef={(el: HTMLDivElement | null) => {
                         if (el) verseRefs.current.set(verse.verseNumber, el);
                       }}
-                      An_Naqr_Ala_At_Tafseer={() =>
+                      onTafsirClick={() =>
                         setTafsirDialog({ open: true, surahId: surah.id, verseNumber: verse.verseNumber })
                       }
-                      An_Naqr_Ala_Al_Mulahazaat={() => {}}
-                      An_Naqr_Ala_Al_Musharakah={() => {}}
+                      onNotesClick={() => {}}
+                      onShareClick={() => {}}
                     />
                   ))}
                 </div>

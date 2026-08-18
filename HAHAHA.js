@@ -2,9 +2,9 @@ import fs from "fs";
 import path from "path";
 import https from "https";
 
-const OUTPUT_DIR_V1 = "./Server/Al-Bayanat/Al-Quran/As-Suwar/Ashkal-Al-Ard/B";
-const OUTPUT_DIR_V2 = "./Server/Al-Bayanat/Al-Quran/As-Suwar/Ashkal-Al-Ard/A";
-const OUTPUT_DIR_UTHMANI = "./Server/Al-Bayanat/Al-Quran/As-Suwar";
+const OUTPUT_DIR_V1 = "./Server/Al-Bayanat/Quran/As-Suwar/Ashkal-Al-Ard/B";
+const OUTPUT_DIR_V2 = "./Server/Al-Bayanat/Quran/As-Suwar/Ashkal-Al-Ard/A";
+const OUTPUT_DIR_UTHMANI = "./Server/Al-Bayanat/Quran/As-Suwar";
 
 function clearDirectory(dirPath, onlyJson = false) {
   if (fs.existsSync(dirPath)) {

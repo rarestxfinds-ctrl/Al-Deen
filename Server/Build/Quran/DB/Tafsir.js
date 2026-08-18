@@ -10,7 +10,11 @@ export function buildTafsirDatabases() {
 
   function traverse(dir, relativePath) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
-    const isEditionFolder = entries.some((e) => !isNaN(parseInt(e.name.replace(".json", ""))));
+    
+    // Check if the directory contains surah JSON files directly
+    const isEditionFolder = entries.some(
+      (e) => e.isFile() && e.name.endsWith(".json") && !isNaN(parseInt(e.name.replace(".json", "")))
+    );
 
     if (isEditionFolder) {
       const targetDbPath = path.join(CORPUS_QURAN_OUTPUT_DIR, "Tafsir", `${relativePath}.db`);
@@ -32,8 +36,9 @@ export function buildTafsirDatabases() {
       db.pragma("journal_mode = WAL");
       db.pragma("synchronous = NORMAL");
 
+      // Standardized table name to Al_Ayah for consistency across corpus DBs
       db.exec(`
-        CREATE TABLE IF NOT EXISTS Al_Surah (
+        CREATE TABLE IF NOT EXISTS Al_Ayah (
           Al_Surah INTEGER NOT NULL,
           Al_Ayah INTEGER NOT NULL,
           Text TEXT NOT NULL,
@@ -41,30 +46,38 @@ export function buildTafsirDatabases() {
         );
       `);
 
-      const insertAlTafsir = db.prepare(`INSERT INTO Al_Surah (Al_Surah, Al_Ayah, Text) VALUES (?, ?, ?)`);
+      const insertAlTafsir = db.prepare(`INSERT INTO Al_Ayah (Al_Surah, Al_Ayah, Text) VALUES (?, ?, ?)`);
 
       const transaction = db.transaction(() => {
         for (let sId = 1; sId <= 114; sId++) {
-          let surahData = readJsonFile(path.join(dir, `${sId}.json`));
+          const jsonPath = path.join(dir, `${sId}.json`);
+          const surahFolder = path.join(dir, `${sId}`);
+          let surahData = null;
 
-          if (!surahData && fs.existsSync(path.join(dir, `${sId}`))) {
-            const subEntries = fs.readdirSync(path.join(dir, `${sId}`));
+          if (fs.existsSync(jsonPath)) {
+            surahData = readJsonFile(jsonPath);
+          } else if (fs.existsSync(surahFolder) && fs.statSync(surahFolder).isDirectory()) {
+            // Handle subfolder directory structure (e.g. /1/1.json, /1/2.json)
+            const subEntries = fs.readdirSync(surahFolder);
             surahData = [];
             subEntries
+              .filter((file) => file.endsWith(".json"))
               .sort((a, b) => parseInt(a) - parseInt(b))
               .forEach((file) => {
-                if (file.endsWith(".json")) {
-                  const item = readJsonFile(path.join(dir, `${sId}`, file));
-                  if (item) surahData.push(item);
+                const item = readJsonFile(path.join(surahFolder, file));
+                if (item !== null && item !== undefined) {
+                  surahData.push(item);
                 }
               });
           }
 
+          if (!surahData) continue;
+
           const itemsArray = extractVersesArray(surahData);
           itemsArray.forEach((item, vIdx) => {
             const text = extractVerseString(item);
-            if (text) {
-              insertAlTafsir.run(sId, vIdx + 1, text);
+            if (text && text.trim()) {
+              insertAlTafsir.run(sId, vIdx + 1, text.trim());
             }
           });
         }

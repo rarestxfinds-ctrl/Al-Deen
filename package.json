@@ -1,6 +1,7 @@
 {
   "name": "my-monorepo-root",
   "private": true,
+  "type": "module",
   "workspaces": [
     "Client",
     "Server"
@@ -27,6 +28,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "sql": "^0.78.0",
     "sql.js": "^1.14.2"
+    
   }
 }

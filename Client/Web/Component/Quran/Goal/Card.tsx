@@ -43,7 +43,7 @@ export const GoalCard = ({ surahList, totalVersesCount }: GoalCardProps) => {
               Daily Goal
             </p>
             <p className="text-xs font-semibold">
-              {completedAyahs} / {dailyTarget} Ayahs
+              {completedAyahs} / {dailyTarget} Ayah
             </p>
           </div>
         </div>

@@ -2,8 +2,8 @@ import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Layout } from "@Web/Component/Layout/Index";
 import { AudioPlayer } from "@Web/Component/Audio-Player/Index";
 import { SurahHeader } from "@Web/Component/Quran/Surah/Header";
-import { Qaimat_As_Safahat } from "@Web/Component/Quran/Takheet/Safhah/Qaimah";
-import { Qaimat_Al_Ayaat } from "@Web/Component/Quran/Takheet/Ayah/Qaimah";
+import { PageView } from "@Web/Component/Quran/Layout/Page/PageView";
+import { AyahList } from "@Web/Component/Quran/Layout/Ayah/AyahList";
 import { NotesDialog } from "@Web/Component/Dialog/Notes";
 import { ShareDialog } from "@Web/Component/Dialog/Share";
 import { SurahInfoDialog } from "@Web/Component/Dialog/Surah-Info";
@@ -22,14 +22,18 @@ import { Alert, AlertDescription } from "@Web/Component/UI/Alert";
 import { AudioControls } from "@Web/Component/Quran/Record";
 import { useDeepgram } from "@/Hook/Use-STT";
 import { useQuery } from "@tanstack/react-query";
-import { Jalb_Aqsam_As_Safahat_Corpus } from "@/Library/Quran-API";
-import type { Aqsam_As_Safahat, As_Surah } from "@/Library/Quran-Types";
+import { Fetch_Page_Sections_Corpus } from "@/Library/Quran-API";
+import type { Page_Sections } from "@/Library/Quran-API";
+import type { SurahMeta, AssembledVerse } from "@Web/Component/Quran/Layout/Types";
 
 // ============================================================================
 // Network Fetch Client Handler (still the only source for the flat surah
 // list, per-surah verses and juz data used for navigation - none of the
 // Takheet components fetch or expose those)
 // ============================================================================
+// TODO: this is a GitHub Codespaces forwarding URL (*.app.github.dev), which
+// looks like a leftover local-dev address rather than a real backend host.
+// Confirm the actual corpus endpoint before shipping.
 async function fetchQuranCorpusFromBackend() {
   const response = await fetch("https://humble-lamp-v6xj65jprx7xc6pqv-8081.app.github.dev/api/quran-corpus");
   if (!response.ok) throw new Error("Failed to stream Quran corpus database over the network");
@@ -37,46 +41,38 @@ async function fetchQuranCorpusFromBackend() {
 }
 
 // Resolves which mushaf page a given surah:verse falls on, using the same
-// Aqsam_As_Safahat corpus map the Takheet components read internally.
+// page-sections corpus map PageView/AyahList read internally.
+// Page_Sections[page] is an array of { Surah, Start_Ayah, End_Ayah } objects
+// (see Page_Sections in Quran-API.ts) — Snake_Case fields, not the
+// hyphenated "Start-Ayah"/"End-Ayah" keys used previously, which never
+// matched anything and silently fell back to the surah's first page.
 function findPageForVerse(
   surahPages: [number, number] | undefined,
   surahId: number,
   verseNum: number,
-  pageSegmentsMap: Aqsam_As_Safahat | undefined
+  pageSectionsMap: Page_Sections | undefined
 ): number {
   if (!surahPages) return 1;
-  if (!pageSegmentsMap) return surahPages[0];
+  if (!pageSectionsMap) return surahPages[0];
 
   for (let p = surahPages[0]; p <= surahPages[1]; p++) {
-    const raw = (pageSegmentsMap as Record<string, any>)[String(p)];
-    if (!raw) continue;
+    const segments = pageSectionsMap[p];
+    if (!segments) continue;
 
-    const segmentsStr = Array.isArray(raw) ? raw.join("|") : raw;
-    if (typeof segmentsStr !== "string") continue;
+    const match = segments.find(
+      (segment) =>
+        segment.Surah === surahId &&
+        verseNum >= segment.Start_Ayah &&
+        verseNum <= segment.End_Ayah
+    );
 
-    for (const seg of segmentsStr.split("|")) {
-      const [start, end] = seg.split("-");
-      if (!start || !end) continue;
-
-      const [startSurahVerse] = start.split(".");
-      const [startSurahStr, startVerseStr] = startSurahVerse.split(":");
-      const [endSurahVerse] = end.split(".");
-      const [, endVerseStr] = endSurahVerse.split(":");
-
-      const segSurah = parseInt(startSurahStr, 10);
-      const segStartVerse = parseInt(startVerseStr, 10);
-      const segEndVerse = parseInt(endVerseStr, 10);
-
-      if (segSurah === surahId && verseNum >= segStartVerse && verseNum <= segEndVerse) {
-        return p;
-      }
-    }
+    if (match) return p;
   }
 
   return surahPages[0];
 }
 
-const AyahIndex = () => {
+const Ayah = () => {
   const { id, verseId } = useParams<{ id: string; verseId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -112,9 +108,9 @@ const AyahIndex = () => {
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: pageSegmentsMap } = useQuery<Aqsam_As_Safahat>({
-    queryKey: ["aqsamAsSafahat"],
-    queryFn: Jalb_Aqsam_As_Safahat_Corpus,
+  const { data: pageSectionsMap } = useQuery<Page_Sections>({
+    queryKey: ["pageSectionsCorpus"],
+    queryFn: Fetch_Page_Sections_Corpus,
     staleTime: 1000 * 60 * 60,
   });
 
@@ -155,20 +151,37 @@ const AyahIndex = () => {
   const verses = surah?.verses;
   const verse = useMemo(() => verses?.find((v: any) => v.verseNumber === verseNum), [verses, verseNum]);
 
-  // Qaimat_Al_Ayaat / Bitaqah_Al_Ayah read "Al-Ayah" / "As-Surah" style keys
-  // (with only partial camelCase fallback), so stamp them on before handing
-  // the raw corpus verse/surah objects down.
-  const bitaqahSurah = surah
-    ? ({
-        ...surah,
-        "As-Surah": surah.id,
-        "Bidayat-As-Safhah": surah.pages?.[0],
-        "Nihayat-As-Safhah": surah.pages?.[1],
-        "At-Tansiq": surah.englishName,
-      } as As_Surah)
+  // NOTE: the field names on `SurahMeta` / `AssembledVerse` (imported from
+  // @Web/Component/Quran/Layout/Types, not Quran-Types.ts) haven't been
+  // cross-checked against that file the way Quran-API.ts was. `verse.arabic`
+  // / `verse.text` below are still a best-effort guess at what the ad-hoc
+  // backend actually returns.
+  const ayahSurahMeta: SurahMeta | null = surah
+    ? {
+        Surah: surah.id,
+        Arabic: surah.arabicName ?? "",
+        Translation: surah.englishName ?? "",
+        Transliteration: surah.transliteration ?? surah.englishName ?? "",
+        Revelation_Place: surah.revelationPlace ?? null,
+        Revelation_Order: surah.revelationOrder ?? null,
+        Ayah_Count: surah.numberOfAyahs,
+        Start_Page: surah.pages?.[0],
+        End_Page: surah.pages?.[1],
+        Indo_Pak_Ayah_Ending: [],
+        Layout: null,
+      }
     : null;
 
-  const bitaqahAyah = verse ? { ...verse, "Al-Ayah": verse.verseNumber } : null;
+  const ayahVerse: AssembledVerse | null = verse
+    ? {
+        Surah: surahId,
+        Ayah: verse.verseNumber,
+        Arabic: verse.arabic ?? verse.text ?? "",
+        Arabic_V1: null,
+        Arabic_V2: null,
+        IndoPakMarker: null,
+      }
+    : null;
 
   // Deepgram voice integration hook configuration
   const { toggleRecording, isRecording: isDeepgramRecording, transcript } = useDeepgram({
@@ -204,8 +217,8 @@ const AyahIndex = () => {
   const transliterationFontSizeValue = `${(1 * transliterationSize) / 3}rem`;
 
   const pageNumber = useMemo(
-    () => findPageForVerse(surah?.pages as [number, number] | undefined, surahId, verseNum, pageSegmentsMap),
-    [surah, surahId, verseNum, pageSegmentsMap]
+    () => findPageForVerse(surah?.pages as [number, number] | undefined, surahId, verseNum, pageSectionsMap),
+    [surah, surahId, verseNum, pageSectionsMap]
   );
 
   const sendTestAudio = useCallback(() => {
@@ -259,7 +272,7 @@ const AyahIndex = () => {
     );
   }
 
-  if (error || !verse || !bitaqahAyah || !bitaqahSurah) {
+  if (error || !verse || !ayahVerse || !ayahSurahMeta) {
     return (
       <Layout hideFooter>
         <div className="w-full max-w-[17em] mx-auto px-4 pt-8" style={{ fontSize: arabicFontSize }}>
@@ -297,27 +310,27 @@ const AyahIndex = () => {
             <Container className={`w-full ${showHeader ? "!rounded-t-none !rounded-b-[48px]" : "!rounded-[48px]"} mb-12`}>
               <div>
                 {/*
-                  NOTE: same caveat as the page-number route - Qaimat_As_Safahat
-                  resolves its own page range from the surah data it fetches
-                  internally, so this renders every page of the surah that has
-                  verses, not just the page containing `verseNum`. There's no
-                  prop on Qaimat_As_Safahat today to scope it to one page/verse;
-                  that would need a change inside Qaimah.tsx itself.
+                  NOTE: same caveat as before - PageView resolves its own
+                  page range from the surah data it fetches internally, so
+                  this renders every page of the surah that has verses, not
+                  just the page containing `verseNum`. There's no prop on
+                  PageView today to scope it to one page/verse; that would
+                  need a change inside PageView.tsx itself.
                 */}
-                <Qaimat_As_Safahat
-                  surah={{ "As-Surah": surahId } as As_Surah}
-                  showArabicText={showArabicText && !hideVerses}
-                  hoverTranslation={hoverTranslation}
-                  inlineTranslation={inlineTranslation}
-                  inlineTransliteration={inlineTransliteration}
-                  fontClass={getFontClass()}
-                  arabicFontSize={arabicFontSize}
-                  translationFontSize={translationFontSizeValue}
-                  transliterationFontSize={transliterationFontSizeValue}
-                  showTransliteration={showTransliteration}
-                  verseRefs={verseRefs}
-                  hideVerses={hideVerses}
-                  hideVerseMarkers={hideVerseMarkers}
+                <PageView
+                  Surah={ayahSurahMeta}
+                  Show_Arabic_Text={showArabicText && !hideVerses}
+                  Hover_Translation={hoverTranslation}
+                  Inline_Translation={inlineTranslation}
+                  Inline_Transliteration={inlineTransliteration}
+                  FontClass={getFontClass()}
+                  ArabicFontSize={arabicFontSize}
+                  Translation_Font_Size={translationFontSizeValue}
+                  Transliteration_Font_Size={transliterationFontSizeValue}
+                  Show_Transliteration={showTransliteration}
+                  Ayah_Refs={verseRefs}
+                  HideVerses={hideVerses}
+                  HideVerseMarkers={hideVerseMarkers}
                 />
               </div>
               <div className="flex items-center justify-center pb-1">
@@ -327,30 +340,30 @@ const AyahIndex = () => {
               </div>
             </Container>
           ) : (
-            <Qaimat_Al_Ayaat
-              Surah={bitaqahSurah}
-              Ayaat={[bitaqahAyah]}
-              Kalimaat={[]}
-              Izhaar_An_Nass_Al_Arabi={showArabicText && !hideVerses}
-              Tarjamat_Al_Ayah={verseTranslation}
-              Hajm_Khatt_At_Tarjamah={translationFontSizeValue}
-              Hajm_Khatt_Al_Kitabah_As_Sawtiyyah={transliterationFontSizeValue}
-              Mukhtar_Al_Kitabah_As_Sawtiyyah={selectedAyahTransliterator}
-              Tarjamah_Ind_Al_Tamreer={hoverTranslation !== "None" ? hoverTranslation : undefined}
-              At_Tarjamah_Al_Mudmajah={inlineTranslation !== "None" ? inlineTranslation : undefined}
-              Al_Kitabah_As_Sawtiyyah_Al_Mudmajah={inlineTransliteration !== "None" ? inlineTransliteration : undefined}
-              Al_Ayah_Al_Mustahdafah={verseNum}
-              Maraji_Al_Ayaat={verseRefs}
-              An_Naqr_Ala_Al_Mulahazaat={(ayahId: number) => {
+            <AyahList
+              Surah={ayahSurahMeta}
+              Ayah={[ayahVerse]}
+              Kalimah={[]}
+              Show_Arabic_Text={showArabicText && !hideVerses}
+              Show_Translation={verseTranslation}
+              Show_Transliteration={showTransliteration}
+              Translation_Font_Size={translationFontSizeValue}
+              Transliteration_Font_Size={transliterationFontSizeValue}
+              Hover_Translation={hoverTranslation !== "None" ? hoverTranslation : undefined}
+              Inline_Translation={inlineTranslation !== "None" ? inlineTranslation : undefined}
+              Inline_Transliteration={inlineTransliteration !== "None" ? inlineTransliteration : undefined}
+              Target_Ayah={String(verseNum)}
+              Ayah_Refs={verseRefs}
+              On_Notes_Click={(ayahId: number) => {
                 const v = verses?.find((v: any) => v.verseNumber === ayahId);
                 setNotesDialog({ open: true, ayahId, verse: v });
               }}
-              An_Naqr_Ala_Al_Musharakah={(ayahId: number, verseText: string, translation?: string) =>
+              On_Share_Click={(ayahId: number, verseText?: string, translation?: string) =>
                 setShareDialog({ open: true, ayahId, verseText, translation })
               }
-              An_Naqr_Ala_At_Tafseer={(ayahId: number) => setTafsirDialog({ open: true, verseNumber: ayahId })}
-              An_Naqr_Ala_Al_Muayanah={(ayahId: number) => setRenderDialog({ open: true, mode: "render", ayah: ayahId })}
-              An_Naqr_Ala_At_Tadmeen={(ayahId: number) => setRenderDialog({ open: true, mode: "embed", ayah: ayahId })}
+              On_Tafsir_Click={(ayahId: number) => setTafsirDialog({ open: true, verseNumber: ayahId })}
+              On_Render_Click={(ayahId: number) => setRenderDialog({ open: true, mode: "render", ayah: ayahId })}
+              On_Embed_Click={(ayahId: number) => setRenderDialog({ open: true, mode: "embed", ayah: ayahId })}
             />
           )}
 
@@ -441,4 +454,4 @@ const AyahIndex = () => {
   );
 };
 
-export default AyahIndex;
+export default Ayah;

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Layout } from "@Web/Component/Layout/Index";
 import { Filter } from "@Web/Component/Quran/Filter";
 import { SurahGrid } from "@Web/Component/Quran/Surah-Grid";
@@ -8,32 +8,41 @@ import { Card } from "@Web/Component/UI/Card";
 import { Button } from "@Web/Component/UI/Button";
 import { ContinueReading } from "@Web/Component/Quran/Continue-Reading";
 import { GoalCard } from "@Web/Component/Quran/Goal/Card";
-import type { As_Surah } from "@/Library/Quran-Types";
+import type { Quran as QuranType } from "@/Library/Quran-Types";
 
 type SurahSortOrder = "ascending" | "descending" | "revelation";
 
-const Al_Quran = () => {
+const Quran = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [filterType, setFilterType] = useState<"surah" | "juz" | "hizb" | "page" | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
   const [selectedAyah, setSelectedAyah] = useState<number | null>(null);
   const [surahSortOrder, setSurahSortOrder] = useState<SurahSortOrder>("ascending");
 
-  const [surahList, setSurahList] = useState<As_Surah[]>([]);
+  const [surahList, setSurahList] = useState<QuranType[]>([]);
   const [totalVersesCount, setTotalVersesCount] = useState<number>(6236);
 
   const navigate = useNavigate();
 
-  const handleListLoaded = (list: As_Surah[]) => {
+  const handleListLoaded = (list: QuranType[]) => {
     setSurahList(list);
     const totalSum = list.reduce(
-      (acc: number, s: As_Surah) => acc + (s["Adad-Al-Ayat"] ?? 0),
+      (acc: number, s: QuranType) => acc + (s.Ayah_Count ?? 0),
       0
     );
     if (totalSum > 0) setTotalVersesCount(totalSum);
   };
 
-  const handleApplyFilter = () => setShowFilter(false);
+  const handleApplyFilter = () => {
+    setShowFilter(false);
+    if (selectedSurah) {
+      if (selectedAyah) {
+        navigate(`/Quran/Surah/${selectedSurah}?ayah=${selectedAyah}`);
+      } else {
+        navigate(`/Quran/Surah/${selectedSurah}`);
+      }
+    }
+  };
 
   const handleReset = () => {
     setFilterType(null);
@@ -46,7 +55,7 @@ const Al_Quran = () => {
     if (filterType === "juz") return "Juz";
     if (filterType === "hizb") return "Hizb";
     if (filterType === "page") return "Page";
-    if (selectedSurah) return `As-Surah ${selectedSurah}`;
+    if (selectedSurah) return `Surah ${selectedSurah}`;
     return "Filter";
   };
 
@@ -87,7 +96,7 @@ const Al_Quran = () => {
       {filterType === "juz" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {Array.from({ length: 30 }, (_, i) => i + 1).map((juzNum) => (
-            <Link key={juzNum} to={`/Al-Quran/Juz/${juzNum}`} className="w-full block">
+            <Link key={juzNum} to={`/Quran/Juz/${juzNum}`} className="w-full block">
               <Card className="p-4 text-center transition-all group">
                 <p className="font-semibold text-lg">{juzNum}</p>
               </Card>
@@ -99,7 +108,7 @@ const Al_Quran = () => {
       {filterType === "hizb" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {Array.from({ length: 60 }, (_, i) => i + 1).map((hizbNum) => (
-            <Link key={hizbNum} to={`/Al-Quran/Hizb/${hizbNum}`} className="w-full block">
+            <Link key={hizbNum} to={`/Quran/Hizb/${hizbNum}`} className="w-full block">
               <Card className="p-4 text-center transition-all group">
                 <p className="font-semibold text-lg">{hizbNum}</p>
               </Card>
@@ -111,7 +120,7 @@ const Al_Quran = () => {
       {filterType === "page" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {Array.from({ length: 604 }, (_, i) => i + 1).map((pageNum) => (
-            <Link key={pageNum} to={`/Al-Quran/Page/${pageNum}`} className="w-full block">
+            <Link key={pageNum} to={`/Quran/Page/${pageNum}`} className="w-full block">
               <Card className="p-4 text-center transition-all group">
                 <p className="font-semibold text-lg">{pageNum}</p>
               </Card>
@@ -132,4 +141,4 @@ const Al_Quran = () => {
   );
 };
 
-export default Al_Quran;
+export default Quran;

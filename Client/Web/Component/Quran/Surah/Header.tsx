@@ -1,3 +1,4 @@
+// @Web/Component/Quran/Surah/Header
 import { Info, Play, Pause, BookOpen, Video } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@Web/Component/UI/tooltip";
 import { useAudio } from "@Web/Context/Audio";
@@ -6,8 +7,12 @@ import { Container } from "@Web/Component/UI/Container";
 import { Button } from "@Web/Component/UI/Button";
 import type { SurahMeta } from "Server/API/Quran";
 
+interface ExtendedSurahMeta extends SurahMeta {
+  transliteration?: string;
+}
+
 interface SurahHeaderProps {
-  surah?: SurahMeta;
+  surah?: ExtendedSurahMeta;
   fontClass: string;          // for the surah name
   arabicFontSize: string;
   onInfoClick: () => void;
@@ -56,23 +61,32 @@ export function SurahHeader({
   return (
     <Container className="!px-6 !py-4 rounded-t-[40px] rounded-b-none">
       <div className="space-y-3">
-        {/* Title row: surah number, Arabic name, English translation, actions */}
+        {/* Title row: surah number, Arabic name, transliteration, English translation, actions */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-wrap">
             {/* Surah number */}
             <span className="text-sm font-medium text-muted-foreground">
               {surah.id}
             </span>
+
             {/* Arabic surah name (via special font) */}
             <div
-              className="font-surah leading-tight"
+              className={`font-surah leading-tight ${fontClass}`.trim()}
               style={{ fontSize: `calc(${arabicFontSize} * 1.2)` }}
             >
               {surah.surahFontName}
             </div>
-            {/* English translation */}
+
+            {/* Transliteration (e.g., Al-Fatihah) */}
+            {surah.transliteration && (
+              <div className="text-sm font-semibold text-foreground">
+                {surah.transliteration}
+              </div>
+            )}
+
+            {/* English translation (e.g., The Opener) */}
             <div className="text-sm text-muted-foreground">
-              {surah.englishNameTranslation}
+              ({surah.englishNameTranslation})
             </div>
           </div>
 

@@ -300,7 +300,7 @@ export function Hifz() {
                   {surah.surahFontName}
                 </p>
                 <p className="text-xs text-muted-foreground [.high-contrast_&]:group-hover:text-white/70 transition-colors">
-                  {surah.numberOfAyahs} Ayahs
+                  {surah.numberOfAyahs} Ayah
                 </p>
               </div>
             </div>
@@ -328,7 +328,7 @@ export function Hifz() {
             <p className="font-surah text-xl text-foreground transition-colors" dir="rtl">
               {surah?.surahFontName}
             </p>
-            <p className="text-xs text-muted-foreground">{surah?.numberOfAyahs} Ayahs</p>
+            <p className="text-xs text-muted-foreground">{surah?.numberOfAyahs} Ayah</p>
           </div>
         </div>
         <div className="space-y-3">

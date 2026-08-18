@@ -13,7 +13,7 @@ import { Button } from "@Web/Component/UI/Button";
 import { useApp } from "@Web/Context/App";
 import { useAudio } from "@Web/Context/Audio";
 import { useBackHandler } from "@/Hook/Use-Back-Handler";
-import { WordTooltip, useAudioPlayback } from "../Quran/Takheet/Adawat";
+import { WordTooltip, useAudioPlayback } from "../Quran/Layout/Utils";
 
 const BACKEND_BASE_URL = "https://humble-lamp-v6xj65jprx7xc6pqv-8081.app.github.dev";
 

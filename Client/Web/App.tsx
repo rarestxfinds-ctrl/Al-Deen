@@ -21,12 +21,12 @@ import { VisitTracker } from "./Component/Admin/Visit-Tracker";
 import Index from "./Page/Index";
 
 // 5. Pages - Quran (Relative Paths)
-import Al_Quran        from "./Page/Quran/Index";
+import Quran        from "./Page/Quran/Index";
 import Surah        from "./Page/Quran/Surah/Index";
 import JuzIndex     from "./Page/Quran/Juz";
 import HizbIndex    from "./Page/Quran/Hizb";
-import AyahIndex    from "./Page/Quran/Surah/Ayah/Index";
-import KalimaIndex  from "./Page/Quran/Surah/Ayah/Kalima/Index";
+import Ayah    from "./Page/Quran/Surah/Ayah/Index";
+import Kalima  from "./Page/Quran/Surah/Ayah/Kalima/Index";
 import QuranGoals   from "./Page/Quran/Goal";
 import QuranPage    from "./Page/Quran/Safhah";
 
@@ -92,6 +92,7 @@ import Not_Found      from "./Page/404";
 
 import AdminLogin     from "./Page/Admin/Login";
 import AdminDashboard from "./Page/Admin/Dashboard";
+import Kalimah from "./Page/Quran/Surah/Ayah/Kalima/Index";
 
 
 const queryClient = new QueryClient({
@@ -122,15 +123,15 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
 
-                  {/* Quran -> Al-Quran with As-Surah */}
-                  <Route path="/Al-Quran" element={<Al_Quran />} />
-                  <Route path="/Al-Quran/As-Surah/:id" element={<Surah />} />
-                  <Route path="/Al-Quran/As-Surah/:id/Ayah/:verseId" element={<AyahIndex />} />
-                  <Route path="/Al-Quran/As-Surah/:id/Ayah/:verseId/Kalima/:kalimaId" element={<KalimaIndex />} />
-                  <Route path="/Al-Quran/Juz/:id" element={<JuzIndex />} />
-                  <Route path="/Al-Quran/Hizb/:id" element={<HizbIndex />} />
-                  <Route path="/Al-Quran/Page/:id" element={<QuranPage />} />
-                  <Route path="/Al-Quran/Goal" element={<QuranGoals />} />
+                  {/* Quran -> Quran with Surah */}
+                  <Route path="/Quran" element={<Quran />} />
+                  <Route path="/Quran/Surah/:id" element={<Surah />} />
+                  <Route path="/Quran/Surah/:id/Ayah/:verseId" element={<Ayah />} />
+                  <Route path="/Quran/Surah/:id/Ayah/:verseId/Kalima/:kalimaId" element={<Kalimah />} />
+                  <Route path="/Quran/Juz/:id" element={<JuzIndex />} />
+                  <Route path="/Quran/Hizb/:id" element={<HizbIndex />} />
+                  <Route path="/Quran/Page/:id" element={<QuranPage />} />
+                  <Route path="/Quran/Goal" element={<QuranGoals />} />
 
                   {/* Hadith */}
                   <Route path="/Hadith" element={<Collection />} />

@@ -1,9 +1,10 @@
+// Surah/Index.tsx
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Layout } from "@Web/Component/Layout/Index";
 import { AudioPlayer } from "@Web/Component/Audio-Player/Index";
 import { SurahHeader } from "@Web/Component/Quran/Surah/Header";
-import { Qaimat_As_Safahat } from "@Web/Component/Quran/Takheet/Safhah/Qaimah";
-import { Qaimat_Al_Ayaat } from "@Web/Component/Quran/Takheet/Ayah/Qaimah";
+import { PageView } from "@Web/Component/Quran/Layout/Page/PageView";
+import { AyahList } from "@Web/Component/Quran/Layout/Ayah/AyahList";
 import { NotesDialog } from "@Web/Component/Dialog/Notes";
 import { ShareDialog } from "@Web/Component/Dialog/Share";
 import { SurahInfoDialog } from "@Web/Component/Dialog/Surah-Info";
@@ -21,10 +22,11 @@ import { Alert, AlertDescription } from "@Web/Component/UI/Alert";
 import { AudioControls } from "@Web/Component/Quran/Record";
 import { useDeepgram } from "@/Hook/Use-STT";
 
-import { Jalb_Qaimat_As_Suwar, Jalb_Bayanat_As_Surah } from "@/Library/Quran-API";
-import type { As_Surah as As_Surah_Type, Bayanat_As_Surah, Al_Ayah } from "@/Library/Quran-Types";
+import { Fetch_Suwar, Fetch_Surah_Details } from "@/Library/Quran-API";
+import type { Surah_Details } from "@/Library/Quran-API";
+import type { Surah_Metadata, Ayah } from "@/Library/Quran-Types";
 
-const As_Surah = () => {
+const Surah = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const surahId = parseInt(id || "1", 10);
@@ -51,8 +53,8 @@ const As_Surah = () => {
     hifz,
   } = useApp();
 
-  const [surahList, setSurahList] = useState<As_Surah_Type[]>([]);
-  const [surahDetail, setSurahDetail] = useState<Bayanat_As_Surah | null>(null);
+  const [surahList, setSurahList] = useState<Surah_Metadata[]>([]);
+  const [surahDetail, setSurahDetail] = useState<Surah_Details | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -66,10 +68,23 @@ const As_Surah = () => {
       : [];
   }, [selectedAyahTransliterator]);
 
-  // Load overall surah list for prev/next navigation & juz context
+  const wbwTranslationIds = useMemo(() => {
+    const wbwEnabled =
+      (hoverTranslation && hoverTranslation !== "None") ||
+      (inlineTranslation && inlineTranslation !== "None");
+    return wbwEnabled ? activeTranslations : [];
+  }, [activeTranslations, hoverTranslation, inlineTranslation]);
+
+  const wbwTransliterationIds = useMemo(() => {
+    const wbwEnabled =
+      (hoverTransliteration && hoverTransliteration !== "None") ||
+      (inlineTransliteration && inlineTransliteration !== "None");
+    return wbwEnabled ? activeNaqharat : [];
+  }, [activeNaqharat, hoverTransliteration, inlineTransliteration]);
+
   useEffect(() => {
     let cancelled = false;
-    Jalb_Qaimat_As_Suwar()
+    Fetch_Suwar()
       .then((list) => {
         if (!cancelled) setSurahList(list);
       })
@@ -82,13 +97,18 @@ const As_Surah = () => {
     };
   }, []);
 
-  // Fetch full detail for the current active surah, active translations, and active transliterator.
   useEffect(() => {
     let cancelled = false;
     setLoadError(null);
     setIsLoadingDetail(true);
 
-    Jalb_Bayanat_As_Surah(surahId, activeTranslations, activeNaqharat)
+    Fetch_Surah_Details(
+      surahId,
+      activeTranslations,
+      activeNaqharat,
+      wbwTranslationIds,
+      wbwTransliterationIds
+    )
       .then((detail) => {
         if (cancelled) return;
         setSurahDetail(detail);
@@ -98,7 +118,7 @@ const As_Surah = () => {
         console.error(`Error loading surah ${surahId}:`, err);
         setSurahDetail((current) => {
           if (!current) {
-            setLoadError(err.message || `Failed to load As-Surah ${surahId}`);
+            setLoadError(err.message || `Failed to load Surah ${surahId}`);
           }
           return current;
         });
@@ -110,13 +130,27 @@ const As_Surah = () => {
     return () => {
       cancelled = true;
     };
-  }, [surahId, JSON.stringify(activeTranslations), JSON.stringify(activeNaqharat)]);
+  }, [
+    surahId,
+    JSON.stringify(activeTranslations),
+    JSON.stringify(activeNaqharat),
+    JSON.stringify(wbwTranslationIds),
+    JSON.stringify(wbwTransliterationIds),
+  ]);
 
   const showTransliteration = selectedAyahTransliterator !== "None";
   const { stop: stopAudio, playFullSurah } = useAudio();
 
-  const sur = surahDetail?.["As-Surah"];
-  const verses = surahDetail?.["Al-Ayat"];
+  // Surah_Details already carries the real field names — no more
+  // fallback-key guessing / "as any" needed.
+  const sur = surahDetail?.Surah;
+  const verses = surahDetail?.Ayah;
+  const words = surahDetail?.Words;
+  const translations = surahDetail?.Translations;
+  const transliterations = surahDetail?.Transliterations;
+  const wordTranslations = surahDetail?.Word_Translations;
+  const wordTransliterations = surahDetail?.Word_Transliterations;
+  const footnotes = surahDetail?.Footnotes;
 
   const { updateProgress } = useReadingProgress();
   const { startSession, stopSession, saveSecondsToGoal, isTrackingEnabled } = useReadingSession();
@@ -163,21 +197,19 @@ const As_Surah = () => {
   const isTimeGoal = activeGoal?.goal_type === "time_based";
   const shouldTrack = isTrackingEnabled && isTimeGoal;
 
-  // Previous and Next surah calculations from local list
   const prevSurah = useMemo(() => {
     if (!surahList.length) return null;
-    return surahList.find((s) => s["As-Surah"] === surahId - 1) || null;
+    return surahList.find((s) => s.Surah === surahId - 1) || null;
   }, [surahList, surahId]);
 
   const nextSurah = useMemo(() => {
     if (!surahList.length) return null;
-    return surahList.find((s) => s["As-Surah"] === surahId + 1) || null;
+    return surahList.find((s) => s.Surah === surahId + 1) || null;
   }, [surahList, surahId]);
 
-  // Juz and Hizb information computed dynamically from surah detail/list
   const { currentJuz, currentHizb } = useMemo(() => {
     if (!sur) return { currentJuz: 1, currentHizb: 1 };
-    const pageNum = sur["Bidayat-As-Safhah"] || 1;
+    const pageNum = sur.Start_Page || 1;
     const juzNumber = Math.ceil(pageNum / 20);
     return {
       currentJuz: juzNumber,
@@ -260,10 +292,14 @@ const As_Surah = () => {
 
   const handleNotesClick = useCallback(
     (ayahId: number, arabicText?: string) => {
-      const targetVerseObj = verses?.find((v: Al_Ayah) => v["Al-Ayah"] === ayahId);
-      setNotesDialog({ open: true, ayahId, verse: targetVerseObj ?? { "Al-Ayah": ayahId, "Al-Arabiyyah": arabicText } });
+      const targetVerseObj = verses?.find((v: Ayah) => v.Ayah === ayahId);
+      setNotesDialog({
+        open: true,
+        ayahId,
+        verse: targetVerseObj ?? { Surah: surahId, Ayah: ayahId, Arabic: arabicText },
+      });
     },
-    [verses]
+    [verses, surahId]
   );
 
   const handleShareClick = useCallback(
@@ -305,7 +341,7 @@ const As_Surah = () => {
     return null;
   }
 
-  if (!verses) {
+  if (!verses || !Array.isArray(verses) || verses.length === 0) {
     return (
       <Layout hideFooter>
         <div className="w-full max-w-[19em] mx-auto px-4 pt-28" style={{ fontSize: arabicFontSize }}>
@@ -321,11 +357,11 @@ const As_Surah = () => {
     );
   }
 
-  // Construct surah object matching SurahMeta interface
   const surahMeta = {
-    id: sur["As-Surah"] ?? surahId,
-    surahFontName: sur["At-Tansiq"] || "",
-    englishNameTranslation: sur["At-Tarjamah"] || "",
+    id: sur.Surah ?? surahId,
+    surahFontName: sur.Arabic || "",
+    englishNameTranslation: sur.Translation || "",
+    transliteration: sur.Transliteration || "",
   };
 
   return (
@@ -343,51 +379,53 @@ const As_Surah = () => {
 
         <div ref={containerRef} className="w-full">
           {isPageLayout ? (
-            <Qaimat_As_Safahat
-              surah={sur}
-              showArabicText={showArabicText}
-              hoverTranslation={hoverTranslation}
-              inlineTranslation={inlineTranslation}
-              inlineTransliteration={inlineTransliteration}
-              fontClass={getFontClass()}
-              arabicFontSize={arabicFontSize}
-              translationFontSize={translationFontSizeValue}
-              transliterationFontSize={transliterationFontSizeValue}
-              showTransliteration={showTransliteration}
-              verseRefs={verseRefs}
-              hideVerses={hideVerses}
-              hideVerseMarkers={hideVerseMarkers}
-              pageFooter={pageFooter}
+            <PageView
+              Surah={sur}
+              Show_Arabic_Text={showArabicText}
+              Hover_Translation={hoverTranslation}
+              Inline_Translation={inlineTranslation}
+              Inline_Transliteration={inlineTransliteration}
+              FontClass={getFontClass()}
+              ArabicFontSize={arabicFontSize}
+              Translation_Font_Size={translationFontSizeValue}
+              Transliteration_Font_Size={transliterationFontSizeValue}
+              Show_Transliteration={showTransliteration}
+              Ayah_Refs={verseRefs}
+              HideVerses={hideVerses}
+              HideVerseMarkers={hideVerseMarkers}
+              PageFooter={pageFooter}
             />
           ) : (
-            <Qaimat_Al_Ayaat
+            <AyahList
               Surah={sur}
-              Ayaat={verses}
-              Kalimaat={surahDetail["Al-Kalimat"]}
-              Tarajim={surahDetail["At-Tarjamaat"]}
-              Naqharat={surahDetail["An-Naqharat"]}
-              Izhaar_An_Nass_Al_Arabi={showArabicText && !hideVerses}
-              Tarjamat_Al_Ayah={verseTranslation}
-              Hajm_Khatt_At_Tarjamah={translationFontSizeValue}
-              Hajm_Khatt_Al_Kitabah_As_Sawtiyyah={transliterationFontSizeValue}
-              Mukhtar_At_Tarjamah={activeTranslations[0]}
-              Mukhtar_Al_Kitabah_As_Sawtiyyah={selectedAyahTransliterator}
-              Tarjamah_Ind_Al_Tamreer={hoverTranslation}
-              At_Tarjamah_Al_Mudmajah={inlineTranslation}
-              Al_Kitabah_As_Sawtiyyah_Al_Mudmajah={inlineTransliteration}
-              Al_Ayah_Al_Mustahdafah={targetVerse}
-              Maraji_Al_Ayaat={verseRefs}
-              An_Naqr_Ala_Al_Mulahazaat={handleNotesClick}
-              An_Naqr_Ala_Al_Musharakah={handleShareClick}
-              An_Naqr_Ala_At_Tafseer={handleTafsirClick}
-              An_Naqr_Ala_At_Tadmeen={handleEmbedClick}
-              An_Naqr_Ala_Al_Muayanah={handleRenderClick}
+              Ayah={verses}
+              Kalimah={words}
+              Translation={translations}
+              Transliteration={transliterations}
+              WBW_Translation={wordTranslations}
+              WBW_Transliteration={wordTransliterations}
+              Footnote={footnotes}
+              Show_Arabic_Text={showArabicText && !hideVerses}
+              Show_Translation={verseTranslation}
+              Show_Transliteration={showTransliteration}
+              Translation_Font_Size={translationFontSizeValue}
+              Transliteration_Font_Size={transliterationFontSizeValue}
+              Hover_Translation={hoverTranslation}
+              Inline_Translation={inlineTranslation}
+              Inline_Transliteration={inlineTransliteration}
+              Target_Ayah={targetVerse}
+              Ayah_Refs={verseRefs}
+              On_Notes_Click={handleNotesClick}
+              On_Share_Click={handleShareClick}
+              On_Tafsir_Click={handleTafsirClick}
+              On_Embed_Click={handleEmbedClick}
+              On_Render_Click={handleRenderClick}
             />
           )}
 
           <div className="flex items-center justify-center gap-2 py-2">
             {prevSurah && (
-              <Link to={`/Al-Quran/As-Surah/${prevSurah["As-Surah"]}`}>
+              <Link to={`/Quran/Surah/${prevSurah.Surah}`}>
                 <Button size="icon" className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -397,7 +435,7 @@ const As_Surah = () => {
               <ChevronUp className="h-4 w-4" />
             </Button>
             {nextSurah && (
-              <Link to={`/Al-Quran/As-Surah/${nextSurah["As-Surah"]}`}>
+              <Link to={`/Quran/Surah/${nextSurah.Surah}`}>
                 <Button size="icon" className="h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -421,12 +459,12 @@ const As_Surah = () => {
         isVisible={showAudioPlayer}
         onClose={() => { stopAudio(); setShowAudioPlayer(false); }}
         surahId={surahId}
-        surahName={sur["At-Tansiq"]}
+        surahName={sur.Transliteration}
       />
       <NotesDialog open={notesDialog.open} onOpenChange={(open) => setNotesDialog({ ...notesDialog, open })}
         surahId={surahId} ayahId={notesDialog.ayahId} verse={notesDialog.verse} />
       <ShareDialog open={shareDialog.open} onOpenChange={(open) => setShareDialog({ ...shareDialog, open })}
-        surahId={surahId} surahName={sur["At-Tansiq"]} ayahId={shareDialog.ayahId}
+        surahId={surahId} surahName={sur.Transliteration} ayahId={shareDialog.ayahId}
         verseText={shareDialog.verseText} translation={shareDialog.translation} />
       <SurahInfoDialog open={surahInfoDialog} onOpenChange={setSurahInfoDialog} surahId={surahId} />
       <TafsirDialog open={tafsirDialog.open} onOpenChange={(open) => setTafsirDialog(prev => ({ ...prev, open }))}
@@ -442,4 +480,4 @@ const As_Surah = () => {
   );
 };
 
-export default As_Surah;
+export default Surah;

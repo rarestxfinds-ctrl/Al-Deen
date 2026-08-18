@@ -1,954 +1,900 @@
 // Source/Library/Quran-API.ts
 import type {
-  As_Surah,
-  Al_Ayah,
-  Al_Kalimah,
-  At_Tarjamah,
-  At_Tarjamah_Kalimah,
-  An_Naqharah,
-  An_Naqharah_Kalimah,
-  Bayanat_As_Surah,
-  Aqsam_As_Safahat,
-  As_Safhah,
-  Mudkhal_Qaimat_At_Tarjamah,
-  Mudkhal_Qaimat_An_Naqharah,
+  Surah_Metadata,
+  Surah,
+  Ayah,
+  Kalimah,
+  Translation,
+  WBW_Translation,
+  Transliteration,
+  WBW_Transliteration,
+  Footnote,
+  Page,
+  Page_Range,
 } from "./Quran-Types";
 
 import {
-  Jalb_As_Surah_Al_Mahfudhah,
-  Hifdh_As_Surah_Al_Mahfudhah,
-  Jalb_Al_Ayat_Al_Mahfudhah,
-  Hifdh_Al_Ayat_Al_Mahfudhah,
-  Jalb_Al_Kalimaat_Al_Mahfudhah,
-  Hifdh_Al_Kalimaat_Al_Mahfudhah,
-  Build_Miftah_As_Surah,
-} from "./IndexedDB-Store";
+  Get_Saved_Surah,
+  Get_Saved_Suwar_Metadata,
+  Save_Surah_Locally,
+  Save_Suwar_Metadata_Locally,
+  Get_Saved_Ayaat,
+  Save_Ayaat_Locally,
+  Get_Saved_Kalimaat,
+  Save_Kalimaat_Locally,
+  Delete_Saved_Kalimaat,
+  Build_Surah_Key,
+} from "./Service-Worker-Cache-Store";
 
-import {
-  Hal_Mawjud_Dun_Ittisal,
-  Istilam_Qaidat_Al_Bayanat_Dun_Ittisal,
-  Bina_Masar_Tarjamah,
-  Bina_Masar_Naqharah,
-} from "./Offline-DB";
+const API_BASE_PATH = "/API/Quran";
+const DEBUG_QURAN_API = true;
 
-const MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH = "Al-Quran/Core.db";
+const Debug_Log = (...Args: unknown[]) => {
+  if (DEBUG_QURAN_API) {
+    console.log(...Args);
+  }
+};
 
-// --- Offline SQL fragments -------------------------------------------------
-// NOTE: The on-disk databases use underscored identifiers (Al_Surah, Al_Ayah,
-// Al_Kalimah, Text, ...) as built by Corpus-Loader.ts and the translation /
-// transliteration builders. These queries select the real columns and alias
-// them to the hyphenated keys ("As-Surah", "Al-Ayah", "An-Nass", ...) that the
-// rest of this module (Istikhraj_An_Nass, TansiIq_Mudkhal_As_Surah, etc.)
-// expects. Do not swap these back to `SELECT * FROM "As-Surah"` style
-// hyphenated-quoted-identifier queries — those identifiers do not exist in
-// the actual schema and will silently fail (caught by the surrounding
-// try/catch), causing the offline fallback to return empty results.
+const Debug_Warn = (...Args: unknown[]) => {
+  if (DEBUG_QURAN_API) {
+    console.warn(...Args);
+  }
+};
 
-const SQL_JAMII_AS_SUWAR = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Arabic AS "Al-Arabiyyah",
-    Translation AS "At-Tarjamah",
-    Transliteration AS "At-Tansiq",
-    Revelation_Place AS "Makan-Al-Wahy",
-    Revelation_Order AS "Tartib-Al-Wahy",
-    Al_Ayah_Count AS "Adad-Al-Ayat",
-    Start_Al_Safhah AS "Bidayat-As-Safhah",
-    End_Al_Safhah AS "Nihayat-As-Safhah",
-    IndoPak_Marker AS "Alamah-Indo-Pak",
-    Layout AS "Tansiq-Al-Mushaf"
-  FROM Al_Surah ORDER BY Al_Surah ASC
-`;
+// --- Type Extensions ---
 
-const SQL_AS_SURAH_BI_RAGHM = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Arabic AS "Al-Arabiyyah",
-    Translation AS "At-Tarjamah",
-    Transliteration AS "At-Tansiq",
-    Revelation_Place AS "Makan-Al-Wahy",
-    Revelation_Order AS "Tartib-Al-Wahy",
-    Al_Ayah_Count AS "Adad-Al-Ayat",
-    Start_Al_Safhah AS "Bidayat-As-Safhah",
-    End_Al_Safhah AS "Nihayat-As-Safhah",
-    IndoPak_Marker AS "Alamah-Indo-Pak",
-    Layout AS "Tansiq-Al-Mushaf"
-  FROM Al_Surah WHERE Al_Surah = ?
-`;
+export type Page_Sections = Record<number, { Surah: number; Start_Ayah: number; End_Ayah: number }[]>;
+export type Translations = Translation[];
+export type Transliterations = Transliteration[];
 
-const SQL_AL_AYAT_BI_RAGHM_AS_SURAH = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Arabic AS "Al-Arabiyyah",
-    Arabic_V1 AS "Al-Arabiyyah-A",
-    Arabic_V2 AS "Al-Arabiyyah-B"
-  FROM Al_Ayah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC
-`;
-
-const SQL_AL_KALIMAT_BI_RAGHM_AS_SURAH = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Al_Kalimah AS "Al-Kalimah",
-    Arabic AS "Al-Arabiyyah",
-    Arabic_V1 AS "Al-Arabiyyah-A",
-    Arabic_V2 AS "Al-Arabiyyah-B"
-  FROM Al_Kalimah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC, Al_Kalimah ASC
-`;
-
-const SQL_JAMII_AS_SAFAHAT = `
-  SELECT 
-    Al_Safhah AS "As-Safhah",
-    Start_Al_Surah AS "Bidayat-As-Surah",
-    Start_Al_Ayah AS "Bidayat-Al-Ayah",
-    Start_Al_Kalimah AS "Bidayat-Al-Kalimah",
-    End_Al_Surah AS "Nihayat-As-Surah",
-    End_Al_Ayah AS "Nihayat-Al-Ayah",
-    End_Al_Kalimah AS "Nihayat-Al-Kalimah"
-  FROM Al_Safhah ORDER BY Al_Safhah ASC
-`;
-
-const SQL_ADAD_AL_AYAT_LI_KULLI_SURAH = `
-  SELECT Al_Surah AS "As-Surah", Al_Ayah_Count AS "Adad-Al-Ayat" FROM Al_Surah
-`;
-
-// Translation / transliteration edition DBs (Al_Ayah / Al_Kalimah with a
-// plain "Text" column — same shape for both Tarjamah and Naqharah editions).
-const SQL_EDITION_AL_AYAH_BI_RAGHM_AS_SURAH = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Text AS "An-Nass"
-  FROM Al_Ayah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC
-`;
-
-const SQL_EDITION_AL_KALIMAH_BI_RAGHM_AS_SURAH = `
-  SELECT 
-    Al_Surah AS "As-Surah",
-    Al_Ayah AS "Al-Ayah",
-    Al_Kalimah AS "Al-Kalimah",
-    Text AS "An-Nass"
-  FROM Al_Kalimah WHERE Al_Surah = ? ORDER BY Al_Ayah ASC, Al_Kalimah ASC
-`;
-// ---------------------------------------------------------------------------
-
-let Damaan_Qaimat_As_Suwar: Promise<As_Surah[]> | null = null;
-let Damaan_Qaimat_As_Safahat: Promise<As_Safhah[]> | null = null;
-const Makhzan_Bayanat_As_Surah = new Map<string, Promise<Bayanat_As_Surah>>();
-let Damaan_Aqsam_As_Safahat: Promise<Aqsam_As_Safahat> | null = null;
-
-let Damaan_Qaimat_At_Tarjamaat: Promise<Mudkhal_Qaimat_At_Tarjamah[]> | null = null;
-let Damaan_Qaimat_At_Tarjamaat_Kalimah: Promise<Mudkhal_Qaimat_At_Tarjamah[]> | null = null;
-let Damaan_Qaimat_An_Naqharat: Promise<Mudkhal_Qaimat_An_Naqharah[]> | null = null;
-let Damaan_Qaimat_An_Naqharat_Kalimah: Promise<Mudkhal_Qaimat_An_Naqharah[]> | null = null;
-
-export interface TarjamahResourceResult {
-  "Al-Ayah"?: At_Tarjamah[];
-  "Al-Kalimah"?: At_Tarjamah_Kalimah[];
+export interface Word_Entry {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Arabic: string;
+  Presentation_Form_A_Ligature_Based: string;
+  Presentation_Form_A_Glyph_Based: string;
 }
 
-export interface NaqharahResourceResult {
-  "Al-Ayah"?: An_Naqharah[];
-  "Al-Kalimah"?: An_Naqharah_Kalimah[];
+export interface Word_Translation {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Text: string;
+  Translator: string;
 }
 
-const Istikhraj_An_Nass = (item: any, keyPreference?: string): string => {
-  if (item === null || item === undefined) return "";
-  if (typeof item === "string") return item;
-  if (typeof item === "object") {
-    if (keyPreference && item[keyPreference] !== undefined) {
-      return item[keyPreference];
+export interface Word_Transliteration {
+  Surah: number;
+  Ayah: number;
+  Kalimah: number;
+  Text: string;
+  Provider: string;
+}
+
+export interface Translation_List_Entry {
+  ID: string;
+  Name: string;
+  Language: string;
+}
+
+export interface Transliteration_List_Entry {
+  ID: string;
+  Name: string;
+  Language: string;
+}
+
+export interface Surah_Details {
+  Surah: Surah_Metadata;
+  Ayah: Ayah[];
+  Words: Word_Entry[];
+  Translations: Translation[];
+  Word_Translations: Word_Translation[];
+  Transliterations: Transliteration[];
+  Word_Transliterations: Word_Transliteration[];
+  Footnotes: Footnote[];
+}
+
+// --- Generic Memoization Helper ---
+
+function Memoize<T>(Producer: () => Promise<T>): () => Promise<T> {
+  let Promise_Instance: Promise<T> | null = null;
+  return () => {
+    if (!Promise_Instance) {
+      Promise_Instance = Producer();
+      Promise_Instance.catch(() => {
+        Promise_Instance = null;
+      });
+    }
+    return Promise_Instance;
+  };
+}
+
+// --- Resource Result Types ---
+
+export interface Translation_Resource_Result {
+  Ayah?: Translation[];
+  Word?: Word_Translation[];
+  Footnote?: Footnote[];
+}
+
+export interface Transliteration_Resource_Result {
+  Ayah?: Transliteration[];
+  Word?: Word_Transliteration[];
+}
+
+// --- Text Processing Utilities ---
+
+const Extract_Text = (Item: any, Key_Preference?: string): string => {
+  if (Item === null || Item === undefined) return "";
+  if (typeof Item === "string") return Item;
+  if (typeof Item === "object") {
+    if (Key_Preference && Item[Key_Preference] !== undefined) {
+      return Item[Key_Preference];
     }
     return (
-      item["Al-Arabiyyah"] ||
-      item["Al-Arabiyyah-A"] ||
-      item["Al-Arabiyyah-B"] ||
-      item["An-Nass"] ||
-      item["nass"] ||
-      item["text"] ||
+      Item["Arabic"] ||
+      Item["Presentation_Form_A_Ligature_Based"] ||
+      Item["Presentation_Form_A_Glyph_Based"] ||
+      Item["Text"] ||
+      Item["Translation"] ||
+      Item["Transliteration"] ||
       ""
     );
   }
-  return String(item);
+  return String(Item);
 };
 
-const Extract_Pure_Ayat_Array = (rawAyat: any[], key: string): string[] => {
-  return rawAyat.map((item) => Istikhraj_An_Nass(item, key));
-};
+export const Extract_Pure_Ayaat_Array = (Raw_Ayaat: any[], Key: string): string[] =>
+  Raw_Ayaat.map((Item) => Extract_Text(Item, Key));
 
-const Extract_Pure_Kalimaat_Arrays = (rawKalimaat: any[], key: string): string[][] => {
-  const grouped: Record<number, string[]> = {};
-
-  for (const item of rawKalimaat) {
-    const verseNum = typeof item === "object" && item !== null ? item["Al-Ayah"] || 1 : 1;
-    if (!grouped[verseNum]) grouped[verseNum] = [];
-    grouped[verseNum].push(Istikhraj_An_Nass(item, key));
+export const Group_By_Ayah = (Rows: any[], Key?: string): Record<number, string[]> => {
+  const Grouped: Record<number, string[]> = {};
+  for (const Item of Rows) {
+    const Ayah_Num = typeof Item === "object" && Item !== null ? Item["Ayah"] || 1 : 1;
+    (Grouped[Ayah_Num] ||= []).push(Extract_Text(Item, Key));
   }
-
-  return Object.keys(grouped)
-    .sort((a, b) => Number(a) - Number(b))
-    .map((k) => grouped[Number(k)]);
+  return Grouped;
 };
 
-const Group_Kalimaat_By_Verse = (flatKalimaat: any[]): string[][] => {
-  const grouped: Record<number, string[]> = {};
-  for (const item of flatKalimaat) {
-    const verseNum = typeof item === "object" && item !== null ? item["Al-Ayah"] || 1 : 1;
-    if (!grouped[verseNum]) grouped[verseNum] = [];
-    grouped[verseNum].push(Istikhraj_An_Nass(item));
+// Groups raw row objects by their Ayah number, preserving each row's full
+// shape (not just a single extracted text field). Used where we need to
+// derive a per-ayah word index (Kalimah) from row order because the source
+// data doesn't carry an explicit Kalimah number.
+const Group_Rows_By_Ayah = (Rows: any[]): any[][] => {
+  const Grouped: any[][] = [];
+  for (const Item of Rows) {
+    const Ayah_Idx = ((typeof Item === "object" && Item !== null ? Item["Ayah"] : 1) || 1) - 1;
+    (Grouped[Ayah_Idx] ||= []).push(Item);
   }
-  return Object.keys(grouped)
-    .sort((a, b) => Number(a) - Number(b))
-    .map((k) => grouped[Number(k)]);
+  return Grouped;
 };
 
-const Flatten_Kalimaat_With_Verse = (
-  nested: string[][],
-  Raqm_As_Surah: number,
-  metaKey: "Al-Mutarjim" | "Al-Muraqqim",
-  metaVal: string
-): any[] => {
-  const flat: any[] = [];
-  let globalWordCounter = 1;
+export const Group_By_Ayah_Nested = (Rows: any[], Key?: string): string[][] => {
+  const Grouped: string[][] = [];
+  for (const Item of Rows) {
+    const Ayah_Idx = ((typeof Item === "object" && Item !== null ? Item["Ayah"] : 1) || 1) - 1;
+    (Grouped[Ayah_Idx] ||= []).push(Extract_Text(Item, Key));
+  }
+  return Grouped;
+};
 
-  nested.forEach((verseWords, vIdx) => {
-    const verseNum = vIdx + 1;
-    verseWords.forEach((wordText) => {
-      flat.push({
-        "As-Surah": Raqm_As_Surah,
-        "Al-Ayah": verseNum,
-        "Al-Kalimah": globalWordCounter++,
-        "An-Nass": wordText,
-        [metaKey]: metaVal,
-      });
-    });
+export const Flatten_Kalimaat_With_Ayah = (
+  Kalimaat_By_Ayah: Record<number, string[]>,
+  Surah_Number: number,
+  Meta_Key: "Translator" | "Provider",
+  Meta_Val: string
+): any[] =>
+  Object.entries(Kalimaat_By_Ayah).flatMap(([Ayah_Num_Str, Ayah_Words]) => {
+    const Ayah_Num = Number(Ayah_Num_Str);
+    return Ayah_Words.map((Word_Text, W_Idx) => ({
+      Surah: Surah_Number,
+      Ayah: Ayah_Num,
+      Kalimah: W_Idx + 1,
+      Text: Word_Text,
+      [Meta_Key]: Meta_Val,
+    }));
   });
 
-  return flat;
+const Safe_JSON_Parse = <T = any>(Input: unknown, Fallback: T): T => {
+  if (typeof Input !== "string") return (Input as T) ?? Fallback;
+  try {
+    return JSON.parse(Input);
+  } catch {
+    return Fallback;
+  }
 };
 
-const TansiIq_Mudkhal_As_Surah = (Mudkhal: any): As_Surah | null => {
-  if (!Mudkhal) return null;
+const Format_Surah_Entry = (Entry: any): Surah_Metadata | null => {
+  if (!Entry) return null;
 
   return {
-    "As-Surah": Mudkhal["As-Surah"],
-    "Al-Arabiyyah": Mudkhal["Al-Arabiyyah"],
-    "At-Tarjamah": Mudkhal["At-Tarjamah"],
-    "At-Tansiq": Mudkhal["At-Tansiq"],
-    "Makan-Al-Wahy": Mudkhal["Makan-Al-Wahy"],
-    "Tartib-Al-Wahy": Mudkhal["Tartib-Al-Wahy"],
-    "Adad-Al-Ayat": Mudkhal["Adad-Al-Ayat"],
-    "Bidayat-As-Safhah": Mudkhal["Bidayat-As-Safhah"],
-    "Nihayat-As-Safhah": Mudkhal["Nihayat-As-Safhah"],
-    "Alamah-Indo-Pak": Array.isArray(Mudkhal["Alamah-Indo-Pak"])
-      ? Mudkhal["Alamah-Indo-Pak"]
-      : typeof Mudkhal["Alamah-Indo-Pak"] === "string"
-      ? JSON.parse(Mudkhal["Alamah-Indo-Pak"])
-      : [],
-    "Tansiq-Al-Mushaf":
-      typeof Mudkhal["Tansiq-Al-Mushaf"] === "string"
-        ? JSON.parse(Mudkhal["Tansiq-Al-Mushaf"])
-        : Mudkhal["Tansiq-Al-Mushaf"] || null,
+    Surah: Entry["Surah"],
+    Arabic: Entry["Arabic"],
+    Translation: Entry["Translation"],
+    Transliteration: Entry["Transliteration"],
+    Revelation_Place: Entry["Revelation_Place"] ?? null,
+    Revelation_Order: Entry["Revelation_Order"] ?? null,
+    Ayah_Count: Entry["Ayah_Count"],
+    Start_Page: Entry["Start_Page"],
+    End_Page: Entry["End_Page"],
+    Indo_Pak_Ayah_Ending: Safe_JSON_Parse(Entry["Indo_Pak_Ayah_Ending"], []),
+    Layout: Safe_JSON_Parse(Entry["Layout"], null),
   };
 };
 
-export const Jalb_Qaimat_As_Suwar = (): Promise<As_Surah[]> => {
-  if (Damaan_Qaimat_As_Suwar) return Damaan_Qaimat_As_Suwar;
+// --- Suwar Metadata List ---
 
-  Damaan_Qaimat_As_Suwar = (async () => {
-    try {
-      const Istijabah = await fetch("/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran");
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Sufuf = await Istijabah.json();
-      const Al_Maftuhah = Al_Sufuf.map(TansiIq_Mudkhal_As_Surah).filter(
-        Boolean
-      ) as As_Surah[];
+export const Fetch_Suwar: () => Promise<Surah_Metadata[]> = Memoize(async () => {
+  const SUWAR_KEY = 0;
 
-      for (const Surah of Al_Maftuhah) {
-        await Hifdh_As_Surah_Al_Mahfudhah(Surah["As-Surah"], Surah);
-      }
-      return Al_Maftuhah;
-    } catch {
-      if (await Hal_Mawjud_Dun_Ittisal(MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH)) {
-        const Al_Sufuf = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-          SQL_JAMII_AS_SUWAR
-        );
-        const Al_Maftuhah = Al_Sufuf.map(TansiIq_Mudkhal_As_Surah).filter(
-          Boolean
-        ) as As_Surah[];
+  try {
+    const Response = await fetch(API_BASE_PATH);
+    if (!Response.ok) throw new Error(`HTTP ${Response.status}`);
+    const Rows = await Response.json();
+    const Formatted_List = Rows.map(Format_Surah_Entry).filter(Boolean) as Surah_Metadata[];
 
-        for (const Surah of Al_Maftuhah) {
-          await Hifdh_As_Surah_Al_Mahfudhah(Surah["As-Surah"], Surah);
+    await Save_Suwar_Metadata_Locally(SUWAR_KEY, Formatted_List);
+
+    Promise.all(
+      Formatted_List.map((Surah_Item) => Save_Surah_Locally(Surah_Item.Surah, Surah_Item))
+    ).catch(() => {});
+
+    return Formatted_List;
+  } catch (Err) {
+    Debug_Warn("[Quran-API] Network request failed for Suwar, checking Service Worker Cache...", Err);
+
+    const Cached = await Get_Saved_Suwar_Metadata<Surah_Metadata[]>(SUWAR_KEY);
+    if (Cached) return Cached;
+
+    throw new Error("No network connection available and no cached Suwar metadata found.");
+  }
+});
+
+// --- Single Surah (metadata only) ---
+
+export const Get_Surah = async (Surah_Number: number): Promise<Surah | null> => {
+  const Cached = await Get_Saved_Surah<Surah>(Surah_Number);
+  if (Cached) return Cached;
+
+  try {
+    const Response = await fetch(`${API_BASE_PATH}?Surah=${Surah_Number}`);
+    if (!Response.ok) return null;
+    const Data: Surah = await Response.json();
+
+    await Save_Surah_Locally(Surah_Number, Data);
+    return Data;
+  } catch (Err) {
+    Debug_Warn(`[Quran-API] Failed to fetch Surah ${Surah_Number}:`, Err);
+    return null;
+  }
+};
+
+// --- Pages ---
+
+export const Fetch_Pages: () => Promise<Page[]> = Memoize(async () => {
+  try {
+    const Response = await fetch(`${API_BASE_PATH}?Page=true`);
+    if (!Response.ok) throw new Error(`HTTP ${Response.status}`);
+    const Rows = await Response.json();
+    return (Rows["Page"] || Rows) as Page[];
+  } catch (Err) {
+    Debug_Warn("[Quran-API] Failed to fetch Pages:", Err);
+    throw new Error("No network connection available and no cached data could be retrieved for Pages.");
+  }
+});
+
+// --- Translation / Transliteration Resource Definitions ---
+
+interface Resource_Definition {
+  Meta_Key: "Translator" | "Provider";
+  Text_Field: "Translation" | "Transliteration";
+  Verse_Param: string;
+  Verse_JSON_Key: string;
+  Word_JSON_Key: string;
+  // Only translations carry footnotes.
+  Footnote_JSON_Key?: string;
+  Build_DB_Path: (Edition: string) => string;
+}
+
+const Build_Translation_Path = (Edition: string) => `/API/Translation/${Edition}`;
+const Build_Transliteration_Path = (Edition: string) => `/API/Transliteration/${Edition}`;
+
+// NOTE: these JSON keys must match the API's actual response wrapper keys,
+// which are plural (Translations / WBW_Translations / Footnotes /
+// Transliterations / WBW_Transliterations) — not the singular field names
+// used inside Resource_Definition's own naming. Using the singular form
+// here silently breaks caching: the lookup into `Data[...]` returns
+// `undefined`, the fetch is treated as never having succeeded, and
+// Save_Ayaat_Locally/Save_Kalimaat_Locally never run.
+const TRANSLATION_RESOURCE: Resource_Definition = {
+  Meta_Key: "Translator",
+  Text_Field: "Translation",
+  Verse_Param: "Translation",
+  Verse_JSON_Key: "Translations",
+  Word_JSON_Key: "WBW_Translations",
+  Footnote_JSON_Key: "Footnotes",
+  Build_DB_Path: Build_Translation_Path,
+};
+
+const TRANSLITERATION_RESOURCE: Resource_Definition = {
+  Meta_Key: "Provider",
+  Text_Field: "Transliteration",
+  Verse_Param: "Transliteration",
+  Verse_JSON_Key: "Transliterations",
+  Word_JSON_Key: "WBW_Transliterations",
+  Build_DB_Path: Build_Transliteration_Path,
+};
+
+// --- Unified Per-Edition Resource Fetcher ---
+// Handles: verse text, word-by-word text, and (for translations) footnotes.
+// Reads/writes through the Service Worker Cache and falls back to the
+// bundled offline SQLite database when the network is unavailable.
+//
+// Ayaat/Kalimaat are cached as arrays of row objects (matching the API's
+// own row shape: {Surah, Ayah[, Kalimah], Text/Translation/Transliteration,
+// Translator/Provider}), not bare arrays of strings. The API already
+// returns explicit Surah/Ayah/Kalimah numbers on every row, so we trust
+// those instead of re-deriving position from array index.
+const Fetch_Single_Resource = async (
+  Resource: Resource_Definition,
+  Surah_Number: number,
+  Edition: string,
+  Need_Ayah: boolean,
+  Need_Word: boolean
+): Promise<{ Ayah?: any[]; Word?: any[]; Footnote?: Footnote[] }> => {
+  // Footnotes ride along with the verse-level translation response, so we
+  // only ever want them when pulling ayah-level data for a resource that
+  // actually carries footnotes (translations, not transliterations).
+  const Need_Footnote = Need_Ayah && Boolean(Resource.Footnote_JSON_Key);
+
+  Debug_Log(`[${Resource.Meta_Key}] Fetch_Single_Resource IN →`, {
+    Surah_Number,
+    Edition,
+    Need_Ayah,
+    Need_Word,
+    Need_Footnote,
+  });
+
+  const Surah_Key = Build_Surah_Key(Surah_Number, Edition);
+  const Footnote_Store_Key = `${Surah_Key}::Footnotes`;
+
+  let Cached_Ayaat = Need_Ayah ? await Get_Saved_Ayaat<any[]>(Surah_Key) : null;
+  let Cached_Kalimaat = Need_Word ? await Get_Saved_Kalimaat<any[]>(Surah_Key) : null;
+  let Cached_Footnotes = Need_Footnote
+    ? await Get_Saved_Kalimaat<Footnote[]>(Footnote_Store_Key)
+    : null;
+
+  const Satisfies_Ayah = !Need_Ayah || (Cached_Ayaat !== null && Cached_Ayaat.length > 0);
+  const Satisfies_Word = !Need_Word || (Cached_Kalimaat !== null && Cached_Kalimaat.length > 0);
+  const Satisfies_Footnote =
+    !Need_Footnote || (Cached_Footnotes !== null && Cached_Footnotes.length > 0);
+
+  if (Satisfies_Ayah && Satisfies_Word && Satisfies_Footnote) {
+    const Cached_Result = {
+      Ayah: Need_Ayah && Cached_Ayaat ? Cached_Ayaat : undefined,
+      Word: Need_Word && Cached_Kalimaat ? Cached_Kalimaat : undefined,
+      Footnote: Need_Footnote && Cached_Footnotes ? Cached_Footnotes : undefined,
+    };
+
+    Debug_Log(`[${Resource.Meta_Key}] Fetch_Single_Resource OUT (cache hit) →`, {
+      Surah_Number,
+      Edition,
+      Ayah_Count: Cached_Result.Ayah?.length ?? 0,
+      Word_Count: Cached_Result.Word?.length ?? 0,
+      Footnote_Count: Cached_Result.Footnote?.length ?? 0,
+    });
+
+    return Cached_Result;
+  }
+
+  const Fetch_Ayah = Need_Ayah && !Satisfies_Ayah;
+  const Fetch_Word = Need_Word && !Satisfies_Word;
+  const Fetch_Footnote = Need_Footnote && !Satisfies_Footnote;
+
+  let Fresh_Ayaat: any[] = Cached_Ayaat || [];
+  let Fresh_Kalimaat: any[] = Cached_Kalimaat || [];
+  let Fresh_Footnotes: Footnote[] = Cached_Footnotes || [];
+
+  let Ayah_Fetched_OK = !Fetch_Ayah;
+  let Word_Fetched_OK = !Fetch_Word;
+  let Footnote_Fetched_OK = !Fetch_Footnote;
+
+  const To_Ayah_Row = (Raw_Item: any) => ({
+    Surah: Surah_Number,
+    Ayah: Raw_Item["Ayah"],
+    [Resource.Text_Field]: Extract_Text(Raw_Item, "Text"),
+    [Resource.Meta_Key]: Edition,
+  });
+
+  const To_Word_Row = (Raw_Item: any) => ({
+    Surah: Surah_Number,
+    Ayah: Raw_Item["Ayah"],
+    Kalimah: Raw_Item["Kalimah"],
+    Text: Extract_Text(Raw_Item, "Text"),
+    [Resource.Meta_Key]: Edition,
+  });
+
+  const Run_Fetch = async (Include_Word_Flag: boolean) => {
+    const Params = new URLSearchParams();
+    Params.append("Surah", String(Surah_Number));
+    Params.append(Resource.Verse_Param, Edition);
+    if (Include_Word_Flag) Params.append("WBW", "true");
+
+    const URL_To_Fetch = `${API_BASE_PATH}?${Params.toString()}`;
+    Debug_Log(`[${Resource.Meta_Key}] network request →`, URL_To_Fetch);
+
+    const Response = await fetch(URL_To_Fetch);
+    if (!Response.ok) throw new Error(`HTTP ${Response.status}`);
+    return Response.json();
+  };
+
+  const Capture_Footnotes = async (Data: any) => {
+    if (!Fetch_Footnote || Footnote_Fetched_OK || !Resource.Footnote_JSON_Key) return;
+    const Rows = Data[Resource.Footnote_JSON_Key];
+    if (Array.isArray(Rows)) {
+      Fresh_Footnotes = Rows;
+      await Save_Kalimaat_Locally(Footnote_Store_Key, Fresh_Footnotes as any);
+      Footnote_Fetched_OK = true;
+    }
+  };
+
+  try {
+    // Footnotes arrive on the same response as verse translations, so this
+    // call also fetches them when Fetch_Footnote is true even if Fetch_Ayah
+    // itself is false (already cached).
+    const Data = await Run_Fetch(Fetch_Word);
+
+    const Verse_Rows = Data[Resource.Verse_JSON_Key];
+    if (Fetch_Ayah && Array.isArray(Verse_Rows)) {
+      Fresh_Ayaat = Verse_Rows.map(To_Ayah_Row);
+      await Save_Ayaat_Locally(Surah_Key, Fresh_Ayaat);
+      Ayah_Fetched_OK = true;
+    }
+
+    const Word_Rows = Data[Resource.Word_JSON_Key];
+    if (Fetch_Word && Array.isArray(Word_Rows)) {
+      Fresh_Kalimaat = Word_Rows.map(To_Word_Row);
+      await Save_Kalimaat_Locally(Surah_Key, Fresh_Kalimaat);
+      Word_Fetched_OK = true;
+    }
+
+    await Capture_Footnotes(Data);
+  } catch (Err) {
+    Debug_Warn(`[${Resource.Meta_Key}] network fetch failed →`, {
+      Surah_Number,
+      Edition,
+      Error: Err,
+    });
+
+    if ((Fetch_Ayah && !Ayah_Fetched_OK) || (Fetch_Footnote && !Footnote_Fetched_OK)) {
+      try {
+        const Data = await Run_Fetch(false);
+        const Verse_Rows = Data[Resource.Verse_JSON_Key];
+        if (Array.isArray(Verse_Rows)) {
+          Fresh_Ayaat = Verse_Rows.map(To_Ayah_Row);
+          await Save_Ayaat_Locally(Surah_Key, Fresh_Ayaat);
+          Ayah_Fetched_OK = true;
         }
-        return Al_Maftuhah;
-      }
-
-      throw new Error("La yujad ittisal shabakah wa la nuskhah dun ittisal.");
-    }
-  })();
-
-  Damaan_Qaimat_As_Suwar.catch(() => {
-    Damaan_Qaimat_As_Suwar = null;
-  });
-
-  return Damaan_Qaimat_As_Suwar;
-};
-
-export const Jalb_Qaimat_As_Safahat = (): Promise<As_Safhah[]> => {
-  if (Damaan_Qaimat_As_Safahat) return Damaan_Qaimat_As_Safahat;
-
-  Damaan_Qaimat_As_Safahat = (async () => {
-    try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?as-safhah=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Sufuf = await Istijabah.json();
-      return (Al_Sufuf["As-Safhah"] || Al_Sufuf) as As_Safhah[];
-    } catch {
-      if (await Hal_Mawjud_Dun_Ittisal(MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH)) {
-        const Al_Sufuf = (await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-          SQL_JAMII_AS_SAFAHAT
-        )) as As_Safhah[];
-
-        return Al_Sufuf;
-      }
-
-      throw new Error(
-        "La yujad ittisal shabakah wa la nuskhah dun ittisal li-as-safhah."
-      );
-    }
-  })();
-
-  Damaan_Qaimat_As_Safahat.catch(() => {
-    Damaan_Qaimat_As_Safahat = null;
-  });
-
-  return Damaan_Qaimat_As_Safahat;
-};
-
-const Jalb_At_Tarjamah_Wahidah = async (
-  Raqm_As_Surah: number,
-  Isdar: string,
-  needAyah: boolean,
-  needKalimah: boolean
-): Promise<TarjamahResourceResult> => {
-  const Miftah = Build_Miftah_As_Surah(Raqm_As_Surah, Isdar);
-
-  let CachedAyat = needAyah ? await Jalb_Al_Ayat_Al_Mahfudhah<string[]>(Miftah) : null;
-  let CachedKalimaat = needKalimah ? await Jalb_Al_Kalimaat_Al_Mahfudhah<string[][]>(Miftah) : null;
-
-  const satisfiesAyah = !needAyah || (CachedAyat !== null && CachedAyat.length > 0);
-  const satisfiesKalimah = !needKalimah || (CachedKalimaat !== null && CachedKalimaat.length > 0);
-
-  if (satisfiesAyah && satisfiesKalimah) {
-    return {
-      "Al-Ayah": needAyah && CachedAyat ? CachedAyat.map((text, idx) => ({
-        "As-Surah": Raqm_As_Surah,
-        "Al-Ayah": idx + 1,
-        "An-Nass": text,
-        "Al-Mutarjim": Isdar,
-      })) : undefined,
-      "Al-Kalimah": needKalimah && CachedKalimaat
-        ? Flatten_Kalimaat_With_Verse(CachedKalimaat, Raqm_As_Surah, "Al-Mutarjim", Isdar)
-        : undefined,
-    };
-  }
-
-  const fetchAyah = needAyah && !satisfiesAyah;
-  const fetchKalimah = needKalimah && !satisfiesKalimah;
-
-  let freshAyat: string[] = CachedAyat || [];
-  let freshKalimahNested: string[][] = CachedKalimaat || [];
-
-  try {
-    const params = new URLSearchParams();
-    params.append("as-surah", String(Raqm_As_Surah));
-    params.append("at-tarjamah", Isdar);
-    if (fetchKalimah) params.append("kalimah-bi-kalimah", "true");
-
-    const Istijabah = await fetch(`/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?${params.toString()}`);
-    if (Istijabah.ok) {
-      const Bayanat = await Istijabah.json();
-
-      if (fetchAyah && Array.isArray(Bayanat["At-Tarjamaat"])) {
-        freshAyat = Extract_Pure_Ayat_Array(Bayanat["At-Tarjamaat"], "An-Nass");
-        await Hifdh_Al_Ayat_Al_Mahfudhah(Miftah, freshAyat);
-      }
-      if (fetchKalimah && Array.isArray(Bayanat["At-Tarjamaat-Kalimah"])) {
-        freshKalimahNested = Group_Kalimaat_By_Verse(Bayanat["At-Tarjamaat-Kalimah"]);
-        await Hifdh_Al_Kalimaat_Al_Mahfudhah(Miftah, freshKalimahNested);
-      }
-
-      return {
-        "Al-Ayah": needAyah ? freshAyat.map((text, idx) => ({
-          "As-Surah": Raqm_As_Surah,
-          "Al-Ayah": idx + 1,
-          "An-Nass": text,
-          "Al-Mutarjim": Isdar,
-        })) : undefined,
-        "Al-Kalimah": needKalimah
-          ? Flatten_Kalimaat_With_Verse(freshKalimahNested, Raqm_As_Surah, "Al-Mutarjim", Isdar)
-          : undefined,
-      };
-    }
-  } catch {}
-
-  const dbPath = Bina_Masar_Tarjamah(Isdar);
-  if (await Hal_Mawjud_Dun_Ittisal(dbPath)) {
-    try {
-      if (fetchAyah) {
-        const rows = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          dbPath,
-          SQL_EDITION_AL_AYAH_BI_RAGHM_AS_SURAH,
-          [Raqm_As_Surah]
-        );
-        freshAyat = Extract_Pure_Ayat_Array(rows, "An-Nass");
-        await Hifdh_Al_Ayat_Al_Mahfudhah(Miftah, freshAyat);
-      }
-
-      if (fetchKalimah) {
-        const kalimahRows = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          dbPath,
-          SQL_EDITION_AL_KALIMAH_BI_RAGHM_AS_SURAH,
-          [Raqm_As_Surah]
-        );
-        freshKalimahNested = Group_Kalimaat_By_Verse(kalimahRows);
-        await Hifdh_Al_Kalimaat_Al_Mahfudhah(Miftah, freshKalimahNested);
-      }
-
-      return {
-        "Al-Ayah": needAyah ? freshAyat.map((text, idx) => ({
-          "As-Surah": Raqm_As_Surah,
-          "Al-Ayah": idx + 1,
-          "An-Nass": text,
-          "Al-Mutarjim": Isdar,
-        })) : undefined,
-        "Al-Kalimah": needKalimah
-          ? Flatten_Kalimaat_With_Verse(freshKalimahNested, Raqm_As_Surah, "Al-Mutarjim", Isdar)
-          : undefined,
-      };
-    } catch {}
-  }
-
-  return {};
-};
-
-const Jalb_An_Naqharah_Wahidah = async (
-  Raqm_As_Surah: number,
-  Isdar: string,
-  needAyah: boolean,
-  needKalimah: boolean
-): Promise<NaqharahResourceResult> => {
-  const Miftah = Build_Miftah_As_Surah(Raqm_As_Surah, Isdar);
-
-  let CachedAyat = needAyah ? await Jalb_Al_Ayat_Al_Mahfudhah<string[]>(Miftah) : null;
-  let CachedKalimaat = needKalimah ? await Jalb_Al_Kalimaat_Al_Mahfudhah<string[][]>(Miftah) : null;
-
-  const satisfiesAyah = !needAyah || (CachedAyat !== null && CachedAyat.length > 0);
-  const satisfiesKalimah = !needKalimah || (CachedKalimaat !== null && CachedKalimaat.length > 0);
-
-  if (satisfiesAyah && satisfiesKalimah) {
-    return {
-      "Al-Ayah": needAyah && CachedAyat ? CachedAyat.map((text, idx) => ({
-        "As-Surah": Raqm_As_Surah,
-        "Al-Ayah": idx + 1,
-        "An-Nass": text,
-        "Al-Muraqqim": Isdar,
-      })) : undefined,
-      "Al-Kalimah": needKalimah && CachedKalimaat
-        ? Flatten_Kalimaat_With_Verse(CachedKalimaat, Raqm_As_Surah, "Al-Muraqqim", Isdar)
-        : undefined,
-    };
-  }
-
-  const fetchAyah = needAyah && !satisfiesAyah;
-  const fetchKalimah = needKalimah && !satisfiesKalimah;
-
-  let freshAyat: string[] = CachedAyat || [];
-  let freshKalimahNested: string[][] = CachedKalimaat || [];
-
-  try {
-    const params = new URLSearchParams();
-    params.append("as-surah", String(Raqm_As_Surah));
-    params.append("an-naqharah", Isdar);
-    if (fetchKalimah) params.append("kalimah-bi-kalimah", "true");
-
-    const Istijabah = await fetch(`/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?${params.toString()}`);
-    if (Istijabah.ok) {
-      const Bayanat = await Istijabah.json();
-
-      if (fetchAyah && Array.isArray(Bayanat["An-Naqharat"])) {
-        freshAyat = Extract_Pure_Ayat_Array(Bayanat["An-Naqharat"], "An-Nass");
-        await Hifdh_Al_Ayat_Al_Mahfudhah(Miftah, freshAyat);
-      }
-      if (fetchKalimah && Array.isArray(Bayanat["An-Naqharat-Kalimah"])) {
-        freshKalimahNested = Group_Kalimaat_By_Verse(Bayanat["An-Naqharat-Kalimah"]);
-        await Hifdh_Al_Kalimaat_Al_Mahfudhah(Miftah, freshKalimahNested);
-      }
-
-      return {
-        "Al-Ayah": needAyah ? freshAyat.map((text, idx) => ({
-          "As-Surah": Raqm_As_Surah,
-          "Al-Ayah": idx + 1,
-          "An-Nass": text,
-          "Al-Muraqqim": Isdar,
-        })) : undefined,
-        "Al-Kalimah": needKalimah
-          ? Flatten_Kalimaat_With_Verse(freshKalimahNested, Raqm_As_Surah, "Al-Muraqqim", Isdar)
-          : undefined,
-      };
-    }
-  } catch {}
-
-  const dbPath = Bina_Masar_Naqharah(Isdar);
-  if (await Hal_Mawjud_Dun_Ittisal(dbPath)) {
-    try {
-      if (fetchAyah) {
-        const rows = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          dbPath,
-          SQL_EDITION_AL_AYAH_BI_RAGHM_AS_SURAH,
-          [Raqm_As_Surah]
-        );
-        freshAyat = Extract_Pure_Ayat_Array(rows, "An-Nass");
-        await Hifdh_Al_Ayat_Al_Mahfudhah(Miftah, freshAyat);
-      }
-
-      if (fetchKalimah) {
-        const kalimahRows = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          dbPath,
-          SQL_EDITION_AL_KALIMAH_BI_RAGHM_AS_SURAH,
-          [Raqm_As_Surah]
-        );
-        freshKalimahNested = Group_Kalimaat_By_Verse(kalimahRows);
-        await Hifdh_Al_Kalimaat_Al_Mahfudhah(Miftah, freshKalimahNested);
-      }
-
-      return {
-        "Al-Ayah": needAyah ? freshAyat.map((text, idx) => ({
-          "As-Surah": Raqm_As_Surah,
-          "Al-Ayah": idx + 1,
-          "An-Nass": text,
-          "Al-Muraqqim": Isdar,
-        })) : undefined,
-        "Al-Kalimah": needKalimah
-          ? Flatten_Kalimaat_With_Verse(freshKalimahNested, Raqm_As_Surah, "Al-Muraqqim", Isdar)
-          : undefined,
-      };
-    } catch {}
-  }
-
-  return {};
-};
-
-const Jalb_As_Surah_Al_Asasiyyah = async (
-  Raqm_As_Surah: number
-): Promise<Bayanat_As_Surah> => {
-  const MiftahBase = `${Raqm_As_Surah}`;
-
-  const CachedSurah = await Jalb_As_Surah_Al_Mahfudhah(Raqm_As_Surah);
-  const CachedAyatArrays = await Jalb_Al_Ayat_Al_Mahfudhah<[string[], string[], string[]]>(MiftahBase);
-  const CachedKalimaatArrays = await Jalb_Al_Kalimaat_Al_Mahfudhah<[string[][], string[][], string[][]]>(MiftahBase);
-
-  if (CachedSurah && CachedAyatArrays && CachedKalimaatArrays) {
-    const [arrMain, arrA, arrB] = CachedAyatArrays;
-    const [kalimatMain, kalimatA, kalimatB] = CachedKalimaatArrays;
-
-    const formattedAyat: Al_Ayah[] = arrMain.map((text, idx) => ({
-      "As-Surah": Raqm_As_Surah,
-      "Al-Ayah": idx + 1,
-      "An-Nass": text,
-      "Al-Arabiyyah": text,
-      "Al-Arabiyyah-A": arrA[idx] || "",
-      "Al-Arabiyyah-B": arrB[idx] || "",
-    }));
-
-    const flatKalimat: Al_Kalimah[] = [];
-    let wordCounter = 1;
-
-    kalimatMain.forEach((verseWords, vIdx) => {
-      verseWords.forEach((wordText, wIdx) => {
-        flatKalimat.push({
-          "As-Surah": Raqm_As_Surah,
-          "Al-Ayah": vIdx + 1,
-          "Al-Kalimah": wordCounter++,
-          "An-Nass": wordText,
-          "Al-Arabiyyah": wordText,
-          "Al-Arabiyyah-A": kalimatA[vIdx]?.[wIdx] || "",
-          "Al-Arabiyyah-B": kalimatB[vIdx]?.[wIdx] || "",
+        await Capture_Footnotes(Data);
+      } catch (Fallback_Err) {
+        Debug_Warn(`[${Resource.Meta_Key}] ayah-only fallback fetch failed →`, {
+          Surah_Number,
+          Edition,
+          Error: Fallback_Err,
         });
-      });
-    });
-
-    return {
-      "As-Surah": CachedSurah,
-      "Al-Ayat": formattedAyat,
-      "Al-Kalimat": flatKalimat,
-      "At-Tarjamaat": [],
-      "At-Tarjamaat-Kalimah": [],
-      "An-Naqharat": [],
-      "An-Naqharat-Kalimah": [],
-    };
+      }
+    }
   }
 
-  let rawAyat: any[] = [];
-  let rawKalimaat: any[] = [];
-  let As_Surah_Mufassar: As_Surah | null = null;
+  const Result = {
+    Ayah: Need_Ayah && Ayah_Fetched_OK ? Fresh_Ayaat : undefined,
+    Word: Need_Word && Word_Fetched_OK ? Fresh_Kalimaat : undefined,
+    Footnote: Need_Footnote && Footnote_Fetched_OK ? Fresh_Footnotes : undefined,
+  };
+
+  Debug_Log(`[${Resource.Meta_Key}] Fetch_Single_Resource OUT →`, {
+    Surah_Number,
+    Edition,
+    Ayah_Fetched_OK,
+    Word_Fetched_OK,
+    Footnote_Fetched_OK,
+    Ayah_Count: Result.Ayah?.length ?? 0,
+    Word_Count: Result.Word?.length ?? 0,
+    Footnote_Count: Result.Footnote?.length ?? 0,
+  });
+
+  return Result;
+};
+
+export const Fetch_Surah_Translation = (
+  Surah_Number: number,
+  Translator: string,
+  Need_Ayah: boolean = true,
+  Need_Word: boolean = false
+): Promise<Translation_Resource_Result> =>
+  Fetch_Single_Resource(TRANSLATION_RESOURCE, Surah_Number, Translator, Need_Ayah, Need_Word);
+
+export const Fetch_Surah_Transliteration = (
+  Surah_Number: number,
+  Provider: string,
+  Need_Ayah: boolean = true,
+  Need_Word: boolean = false
+): Promise<Transliteration_Resource_Result> =>
+  Fetch_Single_Resource(TRANSLITERATION_RESOURCE, Surah_Number, Provider, Need_Ayah, Need_Word);
+
+// --- Ayaat / Kalimaat Raw Fetchers (generic, edition-agnostic passthrough) ---
+
+export const Get_Ayaat_By_Surah = async <T = Ayah[]>(
+  Surah_Number: number,
+  Resource_ID?: string
+): Promise<T | null> => {
+  const Key = Build_Surah_Key(Surah_Number, Resource_ID);
+  const Cached = await Get_Saved_Ayaat<T>(Key);
+  if (Cached) return Cached;
 
   try {
-    const Istijabah = await fetch(
-      `/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?as-surah=${Raqm_As_Surah}`
-    );
-    if (Istijabah.ok) {
-      const Bayanat_Al_Kham = await Istijabah.json();
-      As_Surah_Mufassar = TansiIq_Mudkhal_As_Surah(
-        Bayanat_Al_Kham["As-Surah"] || Bayanat_Al_Kham
-      );
-      rawAyat = Bayanat_Al_Kham["Al-Ayat"] || [];
-      rawKalimaat = Bayanat_Al_Kham["Al-Kalimat"] || Bayanat_Al_Kham["Al-Kalimaat"] || [];
-    }
-  } catch {}
+    const Endpoint = Resource_ID
+      ? `${API_BASE_PATH}?Surah=${Surah_Number}&Translation=${Resource_ID}`
+      : `${API_BASE_PATH}?Surah=${Surah_Number}`;
 
-  if (!As_Surah_Mufassar && (await Hal_Mawjud_Dun_Ittisal(MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH))) {
-    const Sufuf_As_Surah = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-      MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-      SQL_AS_SURAH_BI_RAGHM,
-      [Raqm_As_Surah]
-    );
+    const Response = await fetch(Endpoint);
+    if (!Response.ok) return null;
+    const Data: T = await Response.json();
 
-    As_Surah_Mufassar = TansiIq_Mudkhal_As_Surah(Sufuf_As_Surah[0]);
-    if (As_Surah_Mufassar) {
-      rawAyat = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-        MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-        SQL_AL_AYAT_BI_RAGHM_AS_SURAH,
-        [Raqm_As_Surah]
-      );
-
-      rawKalimaat = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-        MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-        SQL_AL_KALIMAT_BI_RAGHM_AS_SURAH,
-        [Raqm_As_Surah]
-      );
-    }
+    await Save_Ayaat_Locally(Key, Data);
+    return Data;
+  } catch (Err) {
+    Debug_Warn(`[Quran-API] Failed to fetch Ayaat data for ${Key}:`, Err);
+    return null;
   }
-
-  if (As_Surah_Mufassar) {
-    const pureAyat: [string[], string[], string[]] = [
-      Extract_Pure_Ayat_Array(rawAyat, "Al-Arabiyyah"),
-      Extract_Pure_Ayat_Array(rawAyat, "Al-Arabiyyah-A"),
-      Extract_Pure_Ayat_Array(rawAyat, "Al-Arabiyyah-B"),
-    ];
-
-    const pureKalimaat: [string[][], string[][], string[][]] = [
-      Extract_Pure_Kalimaat_Arrays(rawKalimaat, "Al-Arabiyyah"),
-      Extract_Pure_Kalimaat_Arrays(rawKalimaat, "Al-Arabiyyah-A"),
-      Extract_Pure_Kalimaat_Arrays(rawKalimaat, "Al-Arabiyyah-B"),
-    ];
-
-    await Hifdh_As_Surah_Al_Mahfudhah(Raqm_As_Surah, As_Surah_Mufassar);
-    await Hifdh_Al_Ayat_Al_Mahfudhah(MiftahBase, pureAyat);
-    await Hifdh_Al_Kalimaat_Al_Mahfudhah(MiftahBase, pureKalimaat);
-
-    return Jalb_As_Surah_Al_Asasiyyah(Raqm_As_Surah);
-  }
-
-  throw new Error(`Lam yatim al-futhur 'ala as-surah ${Raqm_As_Surah}.`);
 };
-export const Jalb_Bayanat_As_Surah = (
-  Raqm_As_Surah: number,
-  Isdar_At_Tarjamah: string | string[] = "",
-  Isdar_An_Naqharah: string | string[] = "",
-  Wbw_At_Tarjamah: string | string[] = "",
-  Wbw_An_Naqharah: string | string[] = ""
-): Promise<Bayanat_As_Surah> => {
-  const verseTarajimSet = new Set(
-    Array.isArray(Isdar_At_Tarjamah)
-      ? Isdar_At_Tarjamah.filter(Boolean)
-      : Isdar_At_Tarjamah ? [Isdar_At_Tarjamah] : []
-  );
 
-  const wbwTarajimSet = new Set(
-    Array.isArray(Wbw_At_Tarjamah)
-      ? Wbw_At_Tarjamah.filter(Boolean)
-      : Wbw_At_Tarjamah ? [Wbw_At_Tarjamah] : []
-  );
+export const Get_Kalimaat_By_Surah = async <T = Kalimah[]>(
+  Surah_Number: number,
+  Resource_ID?: string
+): Promise<T | null> => {
+  const Key = Build_Surah_Key(Surah_Number, Resource_ID);
+  const Cached = await Get_Saved_Kalimaat<T>(Key);
+  if (Cached) return Cached;
 
-  const verseNaqharatSet = new Set(
-    Array.isArray(Isdar_An_Naqharah)
-      ? Isdar_An_Naqharah.filter(Boolean)
-      : Isdar_An_Naqharah ? [Isdar_An_Naqharah] : []
-  );
+  try {
+    const Endpoint = Resource_ID
+      ? `${API_BASE_PATH}?Surah=${Surah_Number}&Translation=${Resource_ID}&WBW=true`
+      : `${API_BASE_PATH}?Surah=${Surah_Number}`;
 
-  const wbwNaqharatSet = new Set(
-    Array.isArray(Wbw_An_Naqharah)
-      ? Wbw_An_Naqharah.filter(Boolean)
-      : Wbw_An_Naqharah ? [Wbw_An_Naqharah] : []
-  );
+    const Response = await fetch(Endpoint);
+    if (!Response.ok) return null;
+    const Data: T = await Response.json();
 
-  const verseTarajimArray = Array.from(verseTarajimSet).sort();
-  const wbwTarajimArray = Array.from(wbwTarajimSet).sort();
-  const verseNaqharatArray = Array.from(verseNaqharatSet).sort();
-  const wbwNaqharatArray = Array.from(wbwNaqharatSet).sort();
-
-  const allTarjamahIds = Array.from(new Set([...verseTarajimArray, ...wbwTarajimArray])).sort();
-  const allNaqharahIds = Array.from(new Set([...verseNaqharatArray, ...wbwNaqharatArray])).sort();
-
-  const RequestKey = `${Raqm_As_Surah}:T_Verse[${verseTarajimArray.join(",")}]` +
-    `:T_WBW[${wbwTarajimArray.join(",")}]` +
-    `:N_Verse[${verseNaqharatArray.join(",")}]` +
-    `:N_WBW[${wbwNaqharatArray.join(",")}]`;
-
-  if (Makhzan_Bayanat_As_Surah.has(RequestKey)) {
-    return Makhzan_Bayanat_As_Surah.get(RequestKey)!;
+    await Save_Kalimaat_Locally(Key, Data);
+    return Data;
+  } catch (Err) {
+    Debug_Warn(`[Quran-API] Failed to fetch Kalimaat data for ${Key}:`, Err);
+    return null;
   }
+};
 
-  const Damaan = (async () => {
-    const BaseSurah = await Jalb_As_Surah_Al_Asasiyyah(Raqm_As_Surah);
+// --- Core Surah (Arabic text + word-by-word Arabic, all script variants) ---
+// Ayaat/Words are cached as arrays of row objects (Ayah[] / Word_Entry[])
+// rather than parallel tuples of plain-string arrays, so a cache hit can be
+// returned directly with no reconstruction step.
+const Fetch_Core_Surah = async (Surah_Number: number): Promise<Surah_Details> => {
+  const Base_Key = `${Surah_Number}`;
 
-    const TarjamaatPromises = allTarjamahIds.map(async (id) => {
-      const needAyah = verseTarajimSet.has(id);
-      const needKalimah = wbwTarajimSet.has(id);
-      const res = await Jalb_At_Tarjamah_Wahidah(Raqm_As_Surah, id, needAyah, needKalimah);
-      return { id, res, needAyah, needKalimah };
-    });
+  const Cached_Surah = await Get_Saved_Surah<Surah_Metadata>(Surah_Number);
+  const Cached_Ayaat = await Get_Saved_Ayaat<Ayah[]>(Base_Key);
+  const Cached_Words = await Get_Saved_Kalimaat<Word_Entry[]>(Base_Key);
 
-    const NaqharatPromises = allNaqharahIds.map(async (id) => {
-      const needAyah = verseNaqharatSet.has(id);
-      const needKalimah = wbwNaqharatSet.has(id);
-      const res = await Jalb_An_Naqharah_Wahidah(Raqm_As_Surah, id, needAyah, needKalimah);
-      return { id, res, needAyah, needKalimah };
-    });
-
-    const [TarjamaatResults, NaqharatResults] = await Promise.all([
-      Promise.all(TarjamaatPromises),
-      Promise.all(NaqharatPromises),
-    ]);
-
-    const At_Tarjamaat: At_Tarjamah[] = [];
-    const At_Tarjamaat_Kalimah: At_Tarjamah_Kalimah[] = [];
-
-    for (const { res, needAyah, needKalimah } of TarjamaatResults) {
-      if (needAyah && res["Al-Ayah"]) {
-        At_Tarjamaat.push(...res["Al-Ayah"]);
-      }
-      if (needKalimah && res["Al-Kalimah"]) {
-        At_Tarjamaat_Kalimah.push(...res["Al-Kalimah"]);
-      }
-    }
-
-    const An_Naqharat: An_Naqharah[] = [];
-    const An_Naqharat_Kalimah: An_Naqharah_Kalimah[] = [];
-
-    for (const { res, needAyah, needKalimah } of NaqharatResults) {
-      if (needAyah && res["Al-Ayah"]) {
-        An_Naqharat.push(...res["Al-Ayah"]);
-      }
-      if (needKalimah && res["Al-Kalimah"]) {
-        An_Naqharat_Kalimah.push(...res["Al-Kalimah"]);
-      }
-    }
-
+  if (Cached_Surah && Cached_Ayaat && Cached_Words) {
     return {
-      "As-Surah": BaseSurah["As-Surah"],
-      "Al-Ayat": BaseSurah["Al-Ayat"],
-      "Al-Kalimat": BaseSurah["Al-Kalimat"],
-      "At-Tarjamaat": At_Tarjamaat,
-      "At-Tarjamaat-Kalimah": At_Tarjamaat_Kalimah,
-      "An-Naqharat": An_Naqharat,
-      "An-Naqharat-Kalimah": An_Naqharat_Kalimah,
+      Surah: Cached_Surah,
+      Ayah: Cached_Ayaat,
+      Words: Cached_Words,
+      Translations: [],
+      Word_Translations: [],
+      Transliterations: [],
+      Word_Transliterations: [],
+      Footnotes: [],
     };
-  })();
+  }
 
-  Makhzan_Bayanat_As_Surah.set(RequestKey, Damaan);
-  Damaan.catch(() => Makhzan_Bayanat_As_Surah.delete(RequestKey));
+  let Raw_Ayaat: any[] = [];
+  let Raw_Words: any[] = [];
+  let Formatted_Surah: Surah_Metadata | null = null;
 
-  return Damaan;
+  try {
+    const Response = await fetch(`${API_BASE_PATH}?Surah=${Surah_Number}`);
+    if (Response.ok) {
+      const Raw_Data = await Response.json();
+      Formatted_Surah = Format_Surah_Entry(Raw_Data["Surah"] || Raw_Data);
+      Raw_Ayaat = Raw_Data["Ayaat"] || [];
+      Raw_Words = Raw_Data["Kalimaat"] || [];
+    }
+  } catch (Err) {
+    Debug_Warn(`Fetch_Core_Surah network fetch failed →`, { Surah_Number, Error: Err });
+  }
+
+  if (!Formatted_Surah) {
+    throw new Error(`Surah ${Surah_Number} could not be found.`);
+  }
+
+  const Formatted_Ayaat: Ayah[] = Raw_Ayaat.map((Item: any, Idx: number) => ({
+    Surah: Surah_Number,
+    Ayah: Item["Ayah"] ?? Idx + 1,
+    Arabic: Extract_Text(Item, "Arabic"),
+    Presentation_Form_A_Ligature_Based: Extract_Text(Item, "Presentation_Form_A_Ligature_Based"),
+    Presentation_Form_A_Glyph_Based: Extract_Text(Item, "Presentation_Form_A_Glyph_Based"),
+  })) as unknown as Ayah[];
+
+  // Core word data isn't confirmed to carry an explicit Kalimah number the
+  // way the translation/transliteration WBW rows do, so we still derive it
+  // from position within its ayah group.
+  const Formatted_Words: Word_Entry[] = [];
+  Group_Rows_By_Ayah(Raw_Words).forEach((Verse_Words, V_Idx) => {
+    Verse_Words.forEach((Item, W_Idx) => {
+      Formatted_Words.push({
+        Surah: Surah_Number,
+        Ayah: V_Idx + 1,
+        Kalimah: W_Idx + 1,
+        Arabic: Extract_Text(Item, "Arabic"),
+        Presentation_Form_A_Ligature_Based: Extract_Text(Item, "Presentation_Form_A_Ligature_Based"),
+        Presentation_Form_A_Glyph_Based: Extract_Text(Item, "Presentation_Form_A_Glyph_Based"),
+      });
+    });
+  });
+
+  await Save_Surah_Locally(Surah_Number, Formatted_Surah);
+  await Save_Ayaat_Locally(Base_Key, Formatted_Ayaat);
+  await Save_Kalimaat_Locally(Base_Key, Formatted_Words);
+
+  return {
+    Surah: Formatted_Surah,
+    Ayah: Formatted_Ayaat,
+    Words: Formatted_Words,
+    Translations: [],
+    Word_Translations: [],
+    Transliterations: [],
+    Word_Transliterations: [],
+    Footnotes: [],
+  };
 };
 
-// Expands flat Al_Safhah range rows into a per-surah Aqsam_As_Safahat map,
-// mirroring the transformation done server-side by Jalb_Aqsam_As_Safahat
-// (Corpus-Loader.ts) so the offline fallback returns the same shape.
-const Bina_Aqsam_As_Safahat_Min_Safahat = (
-  As_Safahat: any[],
-  Adad_Al_Ayat_Li_Kull_Surah: Map<number, number>
-): Aqsam_As_Safahat => {
-  const Natijah: Aqsam_As_Safahat = {};
+// --- Aggregate Surah Details (Arabic + every requested translation/transliteration) ---
 
-  for (const Safhah of As_Safahat) {
-    const Al_Aqsam: { "As-Surah": number; "Bidayat-Al-Ayah": number; "Nihayat-Al-Ayah": number }[] = [];
-    const Bidayat_As_Surah = Safhah["Bidayat-As-Surah"];
-    const Bidayat_Al_Ayah = Safhah["Bidayat-Al-Ayah"];
-    const Nihayat_As_Surah = Safhah["Nihayat-As-Surah"];
-    const Nihayat_Al_Ayah = Safhah["Nihayat-Al-Ayah"];
+const Surah_Data_Store = new Map<string, Promise<Surah_Details>>();
 
-    if (Bidayat_As_Surah === Nihayat_As_Surah) {
-      Al_Aqsam.push({
-        "As-Surah": Bidayat_As_Surah,
-        "Bidayat-Al-Ayah": Bidayat_Al_Ayah,
-        "Nihayat-Al-Ayah": Nihayat_Al_Ayah,
+export const Fetch_Surah_Details = (
+  Surah_Number: number,
+  Translation_Editions: string | string[] = "",
+  Transliteration_Editions: string | string[] = "",
+  Word_Translation_Editions: string | string[] = "",
+  Word_Transliteration_Editions: string | string[] = ""
+): Promise<Surah_Details> => {
+  Debug_Log("[Fetch_Surah_Details] raw args IN →", {
+    Surah_Number,
+    Translation_Editions,
+    Transliteration_Editions,
+    Word_Translation_Editions,
+    Word_Transliteration_Editions,
+  });
+
+  const As_Set = (V: string | string[]) =>
+    new Set(Array.isArray(V) ? V.filter(Boolean) : V ? [V] : []);
+
+  const Verse_Translations_Set = As_Set(Translation_Editions);
+  const Word_Translations_Set = As_Set(Word_Translation_Editions);
+  const Verse_Transliterations_Set = As_Set(Transliteration_Editions);
+  const Word_Transliterations_Set = As_Set(Word_Transliteration_Editions);
+
+  const All_Translation_IDs = Array.from(
+    new Set([...Verse_Translations_Set, ...Word_Translations_Set])
+  ).sort();
+  const All_Transliteration_IDs = Array.from(
+    new Set([...Verse_Transliterations_Set, ...Word_Transliterations_Set])
+  ).sort();
+
+  const Request_Key =
+    `${Surah_Number}` +
+    `:T_Verse[${Array.from(Verse_Translations_Set).sort().join(",")}]` +
+    `:T_WBW[${Array.from(Word_Translations_Set).sort().join(",")}]` +
+    `:N_Verse[${Array.from(Verse_Transliterations_Set).sort().join(",")}]` +
+    `:N_WBW[${Array.from(Word_Transliterations_Set).sort().join(",")}]`;
+
+  if (!Surah_Data_Store.has(Request_Key)) {
+    Debug_Log("[Fetch_Surah_Details] cache miss, starting fetch →", { Request_Key });
+
+    const Promise_Instance = (async () => {
+      const Base_Surah = await Fetch_Core_Surah(Surah_Number);
+
+      const [Translation_Results, Transliteration_Results] = await Promise.all([
+        Promise.allSettled(
+          All_Translation_IDs.map(async (ID) => {
+            const Need_Ayah = Verse_Translations_Set.has(ID);
+            const Need_Word = Word_Translations_Set.has(ID);
+            const Res = await Fetch_Single_Resource(TRANSLATION_RESOURCE, Surah_Number, ID, Need_Ayah, Need_Word);
+            return { Res, Need_Ayah, Need_Word };
+          })
+        ),
+        Promise.allSettled(
+          All_Transliteration_IDs.map(async (ID) => {
+            const Need_Ayah = Verse_Transliterations_Set.has(ID);
+            const Need_Word = Word_Transliterations_Set.has(ID);
+            const Res = await Fetch_Single_Resource(TRANSLITERATION_RESOURCE, Surah_Number, ID, Need_Ayah, Need_Word);
+            return { Res, Need_Ayah, Need_Word };
+          })
+        ),
+      ]);
+
+      const Translations: Translation[] = [];
+      const Word_Translations: Word_Translation[] = [];
+      const Footnotes: Footnote[] = [];
+      for (const Result of Translation_Results) {
+        if (Result.status === "fulfilled") {
+          const { Res, Need_Ayah, Need_Word } = Result.value;
+          if (Need_Ayah && Res.Ayah) Translations.push(...Res.Ayah);
+          if (Need_Word && Res.Word) Word_Translations.push(...Res.Word);
+          if (Need_Ayah && Res.Footnote) Footnotes.push(...Res.Footnote);
+        } else {
+          Debug_Warn("[Translation] a per-edition fetch was rejected →", Result.reason);
+        }
+      }
+
+      const Transliterations: Transliteration[] = [];
+      const Word_Transliterations: Word_Transliteration[] = [];
+      for (const Result of Transliteration_Results) {
+        if (Result.status === "fulfilled") {
+          const { Res, Need_Ayah, Need_Word } = Result.value;
+          if (Need_Ayah && Res.Ayah) Transliterations.push(...Res.Ayah);
+          if (Need_Word && Res.Word) Word_Transliterations.push(...Res.Word);
+        } else {
+          Debug_Warn("[Transliteration] a per-edition fetch was rejected →", Result.reason);
+        }
+      }
+
+      Debug_Log("[Fetch_Surah_Details] Translation aggregate OUT →", {
+        Surah_Number,
+        Requested_Translation_IDs: All_Translation_IDs,
+        Translations_Count: Translations.length,
+        Word_Translations_Count: Word_Translations.length,
       });
+
+      Debug_Log("[Fetch_Surah_Details] Transliteration aggregate OUT →", {
+        Surah_Number,
+        Requested_Transliteration_IDs: All_Transliteration_IDs,
+        Transliterations_Count: Transliterations.length,
+        Word_Transliterations_Count: Word_Transliterations.length,
+      });
+
+      Debug_Log("[Fetch_Surah_Details] Footnote aggregate OUT →", {
+        Surah_Number,
+        Footnotes_Count: Footnotes.length,
+      });
+
+      return {
+        Surah: Base_Surah.Surah,
+        Ayah: Base_Surah.Ayah,
+        Words: Base_Surah.Words,
+        Translations,
+        Word_Translations,
+        Transliterations,
+        Word_Transliterations,
+        Footnotes,
+      };
+    })();
+
+    Surah_Data_Store.set(Request_Key, Promise_Instance);
+    Promise_Instance.catch((Err) => {
+      Debug_Warn("[Fetch_Surah_Details] request failed, evicting cache entry →", {
+        Request_Key,
+        Error: Err,
+      });
+      Surah_Data_Store.delete(Request_Key);
+    });
+  } else {
+    Debug_Log("[Fetch_Surah_Details] cache hit, reusing in-flight/resolved promise →", { Request_Key });
+  }
+
+  return Surah_Data_Store.get(Request_Key)!;
+};
+
+// --- Page Sections ---
+
+const Build_Page_Sections_From_Pages = (
+  Pages: any[],
+  Ayah_Count_Per_Surah: Map<number, number>
+): Page_Sections => {
+  const Result: Page_Sections = {};
+
+  for (const Page_Item of Pages) {
+    const Sections: { Surah: number; Start_Ayah: number; End_Ayah: number }[] = [];
+    const Start_Surah = Page_Item["Start_Surah"];
+    const Start_Ayah = Page_Item["Start_Ayah"];
+    const End_Surah = Page_Item["End_Surah"];
+    const End_Ayah = Page_Item["End_Ayah"];
+
+    if (Start_Surah === End_Surah) {
+      Sections.push({ Surah: Start_Surah, Start_Ayah, End_Ayah });
     } else {
-      Al_Aqsam.push({
-        "As-Surah": Bidayat_As_Surah,
-        "Bidayat-Al-Ayah": Bidayat_Al_Ayah,
-        "Nihayat-Al-Ayah":
-          Adad_Al_Ayat_Li_Kull_Surah.get(Bidayat_As_Surah) ?? Bidayat_Al_Ayah,
+      Sections.push({
+        Surah: Start_Surah,
+        Start_Ayah,
+        End_Ayah: Ayah_Count_Per_Surah.get(Start_Surah) ?? Start_Ayah,
       });
-      for (let S = Bidayat_As_Surah + 1; S < Nihayat_As_Surah; S++) {
-        Al_Aqsam.push({
-          "As-Surah": S,
-          "Bidayat-Al-Ayah": 1,
-          "Nihayat-Al-Ayah": Adad_Al_Ayat_Li_Kull_Surah.get(S) ?? 1,
-        });
+      for (let S = Start_Surah + 1; S < End_Surah; S++) {
+        Sections.push({ Surah: S, Start_Ayah: 1, End_Ayah: Ayah_Count_Per_Surah.get(S) ?? 1 });
       }
-      Al_Aqsam.push({
-        "As-Surah": Nihayat_As_Surah,
-        "Bidayat-Al-Ayah": 1,
-        "Nihayat-Al-Ayah": Nihayat_Al_Ayah,
-      });
+      Sections.push({ Surah: End_Surah, Start_Ayah: 1, End_Ayah });
     }
 
-    Natijah[Safhah["As-Safhah"]] = Al_Aqsam as any;
+    Result[Page_Item["Page"]] = Sections;
   }
 
-  return Natijah;
+  return Result;
 };
-
-export const Jalb_Aqsam_As_Safahat_Corpus = (): Promise<Aqsam_As_Safahat> => {
-  if (Damaan_Aqsam_As_Safahat) return Damaan_Aqsam_As_Safahat;
-
-  Damaan_Aqsam_As_Safahat = (async () => {
-    try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?aqsam-as-safahat=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Bayanat = await Istijabah.json();
-      return (Al_Bayanat["Aqsam-As-Safahat"] || Al_Bayanat) as Aqsam_As_Safahat;
-    } catch {
-      if (await Hal_Mawjud_Dun_Ittisal(MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH)) {
-        const As_Safahat = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-          SQL_JAMII_AS_SAFAHAT
-        );
-
-        const Sufuf_Adad_Al_Ayat = await Istilam_Qaidat_Al_Bayanat_Dun_Ittisal(
-          MASAR_QAIDAT_AL_BAYANAT_AL_ASASIYYAH,
-          SQL_ADAD_AL_AYAT_LI_KULLI_SURAH
-        );
-
-        const Adad_Al_Ayat_Li_Kull_Surah = new Map<number, number>();
-        for (const S of Sufuf_Adad_Al_Ayat as any[]) {
-          Adad_Al_Ayat_Li_Kull_Surah.set(S["As-Surah"], S["Adad-Al-Ayat"]);
-        }
-
-        if (As_Safahat && (As_Safahat as any[]).length > 0) {
-          return Bina_Aqsam_As_Safahat_Min_Safahat(As_Safahat as any[], Adad_Al_Ayat_Li_Kull_Surah);
-        }
-      }
-
-      throw new Error("La yujad ittisal shabakah wa la nuskhah dun ittisal li-aqsam as-safahat.");
+export const Fetch_Page_Sections_Corpus: () => Promise<Page_Sections> = Memoize(async () => {
+  const Normalize_Server_Segments = (Raw: Record<string, any>): Page_Sections => {
+    const Result: Page_Sections = {};
+    for (const Page_Key of Object.keys(Raw)) {
+      const Segments = Raw[Page_Key];
+      if (!Array.isArray(Segments)) continue;
+      Result[Number(Page_Key)] = Segments.map((Seg: any) => ({
+        Surah: Seg["Surah"],
+        Start_Ayah: Seg["Start-Ayah"] ?? Seg["Start_Ayah"],
+        End_Ayah: Seg["End-Ayah"] ?? Seg["End_Ayah"],
+      }));
     }
-  })();
+    return Result;
+  };
 
-  Damaan_Aqsam_As_Safahat.catch(() => {
-    Damaan_Aqsam_As_Safahat = null;
-  });
+  try {
+    const Response = await fetch(`${API_BASE_PATH}?Segments=true`);
+    if (!Response.ok) throw new Error(`HTTP ${Response.status}`);
+    const Data = await Response.json();
+    const Raw = Data["Page_Segments"] || Data["Page-Sections"] || Data;
+    return Normalize_Server_Segments(Raw);
+  } catch (Err) {
+    Debug_Warn(`Fetch_Page_Sections_Corpus network fetch failed →`, { Error: Err });
+    throw new Error("Unable to fetch page sections corpus.");
+  }
+});
 
-  return Damaan_Aqsam_As_Safahat;
-};
+// --- Available Translation / Transliteration Lists ---
 
-export const Jalb_Qaimat_At_Tarjamaat = (): Promise<Mudkhal_Qaimat_At_Tarjamah[]> => {
-  if (Damaan_Qaimat_At_Tarjamaat) return Damaan_Qaimat_At_Tarjamaat;
-
-  Damaan_Qaimat_At_Tarjamaat = (async () => {
+function Build_List_Fetcher<T>(
+  Param_Name: string,
+  Result_Key: string,
+  Result_Key_Alt?: string
+): () => Promise<T[]> {
+  return async () => {
     try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?qaimat-at-tarjamaat=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Bayanat = await Istijabah.json();
-
-      return (Al_Bayanat["Qaimat-At-Tarjamaat"] || []) as Mudkhal_Qaimat_At_Tarjamah[];
-    } catch (Khata) {
-      console.error("Error fetching Qaimat At-Tarjamaat:", Khata);
-      Damaan_Qaimat_At_Tarjamaat = null;
+      const Response = await fetch(`${API_BASE_PATH}?${Param_Name}=true`);
+      if (!Response.ok) throw new Error(`HTTP ${Response.status}`);
+      const Data = await Response.json();
+      return (Data[Result_Key] ?? (Result_Key_Alt && Data[Result_Key_Alt]) ?? []) as T[];
+    } catch (Error_Obj) {
+      console.error(`Error fetching ${Result_Key}:`, Error_Obj);
       return [];
     }
-  })();
+  };
+}
 
-  return Damaan_Qaimat_At_Tarjamaat;
-};
+export const Fetch_Translation_List = Build_List_Fetcher<Translation_List_Entry>(
+  "Available-Translations",
+  "Available-Translations"
+);
 
-export const Jalb_Qaimat_At_Tarjamaat_Kalimah = (): Promise<Mudkhal_Qaimat_At_Tarjamah[]> => {
-  if (Damaan_Qaimat_At_Tarjamaat_Kalimah) return Damaan_Qaimat_At_Tarjamaat_Kalimah;
+export const Fetch_Word_Translation_List = Build_List_Fetcher<Translation_List_Entry>(
+  "Available-WBW-Translations",
+  "Available-WBW-Translations"
+);
 
-  Damaan_Qaimat_At_Tarjamaat_Kalimah = (async () => {
-    try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?qaimat-at-tarjamaat-kalimah=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Bayanat = await Istijabah.json();
+export const Fetch_Transliteration_List = Build_List_Fetcher<Transliteration_List_Entry>(
+  "Available-Transliterations",
+  "Available-Transliterations"
+);
 
-      return (Al_Bayanat["Qaimat-At-Tarjamaat-Kalimah"] || []) as Mudkhal_Qaimat_At_Tarjamah[];
-    } catch (Khata) {
-      console.error("Error fetching Qaimat At-Tarjamaat-Kalimah:", Khata);
-      Damaan_Qaimat_At_Tarjamaat_Kalimah = null;
-      return [];
-    }
-  })();
-
-  return Damaan_Qaimat_At_Tarjamaat_Kalimah;
-};
-
-export const Jalb_Qaimat_An_Naqharat = (): Promise<Mudkhal_Qaimat_An_Naqharah[]> => {
-  if (Damaan_Qaimat_An_Naqharat) return Damaan_Qaimat_An_Naqharat;
-
-  Damaan_Qaimat_An_Naqharat = (async () => {
-    try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?qaimat-an-naqharat=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Bayanat = await Istijabah.json();
-
-      return (
-        Al_Bayanat["Qaimat-An-Naqharat"] ||
-        Al_Bayanat["Qaimat-An-Naqharah"] ||
-        []
-      ) as Mudkhal_Qaimat_An_Naqharah[];
-    } catch (Khata) {
-      console.error("Error fetching Qaimat An-Naqharat:", Khata);
-      Damaan_Qaimat_An_Naqharat = null;
-      return [];
-    }
-  })();
-
-  return Damaan_Qaimat_An_Naqharat;
-};
-
-export const Jalb_Qaimat_An_Naqharat_Kalimah = (): Promise<Mudkhal_Qaimat_An_Naqharah[]> => {
-  if (Damaan_Qaimat_An_Naqharat_Kalimah) return Damaan_Qaimat_An_Naqharat_Kalimah;
-
-  Damaan_Qaimat_An_Naqharat_Kalimah = (async () => {
-    try {
-      const Istijabah = await fetch(
-        "/Wajihat-Barmajatt-At-Tatbiqat/Al-Quran?qaimat-an-naqharat-kalimah=true"
-      );
-      if (!Istijabah.ok) throw new Error(`HTTP ${Istijabah.status}`);
-      const Al_Bayanat = await Istijabah.json();
-
-      return (Al_Bayanat["Qaimat-An-Naqharat-Kalimah"] || []) as Mudkhal_Qaimat_An_Naqharah[];
-    } catch (Khata) {
-      console.error("Error fetching Qaimat An-Naqharat-Kalimah:", Khata);
-      Damaan_Qaimat_An_Naqharat_Kalimah = null;
-      return [];
-    }
-  })();
-
-  return Damaan_Qaimat_An_Naqharat_Kalimah;
-};
+export const Fetch_Word_Transliteration_List = Build_List_Fetcher<Transliteration_List_Entry>(
+  "Available-WBW-Transliterations",
+  "Available-WBW-Transliterations"
+);

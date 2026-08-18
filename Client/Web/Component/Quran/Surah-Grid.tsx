@@ -1,15 +1,17 @@
+// Surah-Grid
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@Web/Component/UI/Card";
 import { Button } from "@Web/Component/UI/Button";
-import { Jalb_Qaimat_As_Suwar } from "@/Library/Quran-API";
-import type { As_Surah } from "@/Library/Quran-Types";
+
+import { Fetch_Suwar } from "@/Library/Quran-API";
+import type { Surah_Metadata } from "@/Library/Quran-Types";
 
 interface SurahGridProps {
   filterType: "surah" | "juz" | "hizb" | "page" | null;
   surahSortOrder: "ascending" | "descending" | "revelation";
   onSelectSurah?: (surahId: number) => void;
-  onListLoaded?: (list: As_Surah[]) => void;
+  onListLoaded?: (list: Surah_Metadata[]) => void;
 }
 
 export const SurahGrid = ({
@@ -18,7 +20,7 @@ export const SurahGrid = ({
   onSelectSurah,
   onListLoaded,
 }: SurahGridProps) => {
-  const [surahs, setSurahs] = useState<As_Surah[]>([]);
+  const [surahs, setSurahs] = useState<Surah_Metadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -26,7 +28,7 @@ export const SurahGrid = ({
   useEffect(() => {
     let active = true;
 
-    Jalb_Qaimat_As_Suwar()
+    Fetch_Suwar()
       .then((data) => {
         if (!active) return;
         const list = Array.isArray(data) ? data : [];
@@ -61,19 +63,19 @@ export const SurahGrid = ({
       return list.reverse();
     }
     if (surahSortOrder === "revelation") {
-      return list.sort((a, b) => (a["Tartib-Al-Wahy"] ?? 0) - (b["Tartib-Al-Wahy"] ?? 0));
+      return list.sort((a, b) => (a["Revelation_Order"] ?? 0) - (b["Revelation_Order"] ?? 0));
     }
     return list;
   })();
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-      {sortedSurahs.map((surah: As_Surah) => {
-        const surahId = surah["As-Surah"];
-        const titleName = surah["At-Tansiq"];
-        const translationName = surah["At-Tarjamah"];
-        const revelationLoc = surah["Makan-Al-Wahy"];
-        const verseCount = surah["Adad-Al-Ayat"];
+      {sortedSurahs.map((surah: Surah_Metadata) => {
+        const surahId = surah["Surah"];
+        const titleName = surah["Transliteration"];
+        const translationName = surah["Translation"];
+        const revelationLoc = surah["Revelation_Place"];
+        const verseCount = surah["Ayah_Count"];
         const fontName = String(surahId).padStart(3, "0");
 
         return (
@@ -83,7 +85,7 @@ export const SurahGrid = ({
               if (filterType === "surah" && onSelectSurah) {
                 onSelectSurah(surahId);
               } else {
-                navigate(`/Al-Quran/As-Surah/${surahId}`);
+                navigate(`/Quran/Surah/${surahId}`);
               }
             }}
             className="cursor-pointer"
@@ -118,7 +120,7 @@ export const SurahGrid = ({
                   </p>
                 </div>
                 <p className="text-[10px] sm:text-xs [.high-contrast_&]:group-hover:text-white [.high-contrast_&]:dark:group-hover:text-black">
-                  {verseCount} Ayahs
+                  {verseCount} Ayah
                 </p>
               </div>
             </Card>

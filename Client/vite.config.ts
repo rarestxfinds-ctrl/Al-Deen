@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
         secure: false,
       },
       // Forward /Wajihat-Barmajatt-At-Tatbiqat routes to Express
-      "/Wajihat-Barmajatt-At-Tatbiqat": {
+      "/API": {
         target: "http://localhost:8081",
         changeOrigin: true,
         secure: false,

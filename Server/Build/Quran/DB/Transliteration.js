@@ -34,26 +34,25 @@ export function buildTransliterationDatabases() {
       db.pragma("journal_mode = WAL");
       db.pragma("synchronous = NORMAL");
 
-      // Removed Al_Surah; kept Al_Ayah and Al_Kalimah
       db.exec(`
-        CREATE TABLE IF NOT EXISTS Al_Ayah (
-          Al_Surah INTEGER NOT NULL,
-          Al_Ayah INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS Ayah (
+          Surah INTEGER NOT NULL,
+          Ayah INTEGER NOT NULL,
           Text TEXT NOT NULL,
-          PRIMARY KEY (Al_Surah, Al_Ayah)
+          PRIMARY KEY (Surah, Ayah)
         );
 
-        CREATE TABLE IF NOT EXISTS Al_Kalimah (
-          Al_Surah INTEGER NOT NULL,
-          Al_Ayah INTEGER NOT NULL,
-          Al_Kalimah INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS Kalimah (
+          Surah INTEGER NOT NULL,
+          Ayah INTEGER NOT NULL,
+          Kalimah INTEGER NOT NULL,
           Text TEXT NOT NULL,
-          PRIMARY KEY (Al_Surah, Al_Ayah, Al_Kalimah)
+          PRIMARY KEY (Surah, Ayah, Kalimah)
         );
       `);
 
-      const insertAlAyah = db.prepare(`INSERT INTO Al_Ayah (Al_Surah, Al_Ayah, Text) VALUES (?, ?, ?)`);
-      const insertAlKalimah = db.prepare(`INSERT INTO Al_Kalimah (Al_Surah, Al_Ayah, Al_Kalimah, Text) VALUES (?, ?, ?, ?)`);
+      const insertAyah = db.prepare(`INSERT INTO Ayah (Surah, Ayah, Text) VALUES (?, ?, ?)`);
+      const insertKalimah = db.prepare(`INSERT INTO Kalimah (Surah, Ayah, Kalimah, Text) VALUES (?, ?, ?, ?)`);
 
       const transaction = db.transaction(() => {
         for (let sId = 1; sId <= 114; sId++) {
@@ -62,25 +61,27 @@ export function buildTransliterationDatabases() {
 
           versesArray.forEach((item, vIdx) => {
             const ayahNumber = vIdx + 1;
-            const verseText = extractVerseString(item);
+            let kalimahList = [];
+            let verseText = "";
+
+            if (Array.isArray(item)) {
+              kalimahList = item.map((w) => extractVerseString(w).trim()).filter(Boolean);
+              verseText = kalimahList.join(" ");
+            } else if (item && typeof item === "object" && Array.isArray(item.words)) {
+              kalimahList = item.words.map((w) => extractVerseString(w).trim()).filter(Boolean);
+              verseText = kalimahList.join(" ");
+            } else {
+              verseText = extractVerseString(item);
+              kalimahList = splitIntoWords(verseText);
+            }
 
             if (verseText) {
-              insertAlAyah.run(sId, ayahNumber, verseText);
-
-              // Extract words by splitting on spaces / word boundary helper
-              let kalimahList = [];
-              if (item && typeof item === "object" && Array.isArray(item.words)) {
-                kalimahList = item.words.map((w) => extractVerseString(w));
-              } else if (Array.isArray(item)) {
-                kalimahList = item.map((w) => extractVerseString(w));
-              } else {
-                kalimahList = splitIntoWords(verseText);
-              }
+              insertAyah.run(sId, ayahNumber, verseText);
 
               kalimahList.forEach((kalimahText, kIdx) => {
                 const kalimahPosition = kIdx + 1;
                 if (kalimahText && typeof kalimahText === "string") {
-                  insertAlKalimah.run(sId, ayahNumber, kalimahPosition, kalimahText.trim());
+                  insertKalimah.run(sId, ayahNumber, kalimahPosition, kalimahText.trim());
                 }
               });
             }
@@ -90,7 +91,7 @@ export function buildTransliterationDatabases() {
 
       transaction();
       db.close();
-      console.log(` -> Compiled Transliteration/${relativePath}.db with Al_Ayah and Al_Kalimah`);
+      console.log(` -> Compiled Transliteration/${relativePath}.db with Ayah and Kalimah`);
     } else {
       for (const entry of entries) {
         if (entry.isDirectory()) {
