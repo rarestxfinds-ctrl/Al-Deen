@@ -244,13 +244,23 @@ interface PersistedSettings {
   showArabicText: boolean;
   selectedReciter: string;
   selectedTranslator: string;
-  // Hadith settings
+  // Hadith settings - Toggles
   showHadithTranslation: boolean;
   showHadithTransliteration: boolean;
   showHadithInlineTranslation: boolean;
   showHadithInlineTransliteration: boolean;
   showHadithHoverTranslation: boolean;
   showHadithHoverTransliteration: boolean;
+
+  // Hadith settings - Selected Editions
+  selectedHadithTranslationEdition: string;
+  selectedHadithTransliterationEdition: string;
+  selectedHadithInlineTranslationEdition: string;
+  selectedHadithInlineTransliterationEdition: string;
+  selectedHadithHoverTranslationEdition: string;
+  selectedHadithHoverTransliterationEdition: string;
+
+  // Hadith font sizes
   hadithArabicFontSize: number;
   hadithTranslationFontSize: number;
   hadithTransliterationFontSize: number;
@@ -329,13 +339,23 @@ const DEFAULTS: PersistedSettings = {
   showArabicText: true,
   selectedReciter: "Mishary_Rashid_Alafasy",
   selectedTranslator: "Direct",
-  // Hadith defaults
+  // Hadith defaults - Toggles
   showHadithTranslation: true,
   showHadithTransliteration: false,
   showHadithInlineTranslation: false,
   showHadithInlineTransliteration: false,
   showHadithHoverTranslation: true,
   showHadithHoverTransliteration: true,
+
+  // Hadith defaults - Selected Editions
+  selectedHadithTranslationEdition: "English",
+  selectedHadithTransliterationEdition: "",
+  selectedHadithInlineTranslationEdition: "",
+  selectedHadithInlineTransliterationEdition: "",
+  selectedHadithHoverTranslationEdition: "",
+  selectedHadithHoverTransliterationEdition: "",
+
+  // Hadith font sizes
   hadithArabicFontSize: 7,
   hadithTranslationFontSize: 7,
   hadithTransliterationFontSize: 7,
@@ -482,6 +502,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showHadithInlineTransliteration, setShowHadithInlineTransliteration] = useState(initial.showHadithInlineTransliteration);
   const [showHadithHoverTranslation, setShowHadithHoverTranslation] = useState(initial.showHadithHoverTranslation);
   const [showHadithHoverTransliteration, setShowHadithHoverTransliteration] = useState(initial.showHadithHoverTransliteration);
+
+  // Hadith edition selections
+  const [selectedHadithTranslationEdition, setSelectedHadithTranslationEdition] = useState(initial.selectedHadithTranslationEdition);
+  const [selectedHadithTransliterationEdition, setSelectedHadithTransliterationEdition] = useState(initial.selectedHadithTransliterationEdition);
+  const [selectedHadithInlineTranslationEdition, setSelectedHadithInlineTranslationEdition] = useState(initial.selectedHadithInlineTranslationEdition);
+  const [selectedHadithInlineTransliterationEdition, setSelectedHadithInlineTransliterationEdition] = useState(initial.selectedHadithInlineTransliterationEdition);
+  const [selectedHadithHoverTranslationEdition, setSelectedHadithHoverTranslationEdition] = useState(initial.selectedHadithHoverTranslationEdition);
+  const [selectedHadithHoverTransliterationEdition, setSelectedHadithHoverTransliterationEdition] = useState(initial.selectedHadithHoverTransliterationEdition);
+
+  // Hadith font sizes
   const [hadithArabicFontSize, setHadithArabicFontSize] = useState(initial.hadithArabicFontSize);
   const [hadithTranslationFontSize, setHadithTranslationFontSize] = useState(initial.hadithTranslationFontSize);
   const [hadithTransliterationFontSize, setHadithTransliterationFontSize] = useState(initial.hadithTransliterationFontSize);
@@ -649,11 +679,29 @@ useEffect(() => {
       inlineTransliteration, inlineTransliterationSize,
       verseTranslation, autoScrollDuringPlayback, showArabicText,
       selectedReciter, selectedTranslator,
-      showHadithTranslation, showHadithTransliteration,
-      showHadithInlineTranslation, showHadithInlineTransliteration,
-      showHadithHoverTranslation, showHadithHoverTransliteration,
-      hadithArabicFontSize, hadithTranslationFontSize, hadithTransliterationFontSize,
-      hadithInlineTranslationFontSize, hadithInlineTransliterationFontSize,
+      // Toggles
+      showHadithTranslation,
+      showHadithTransliteration,
+      showHadithInlineTranslation,
+      showHadithInlineTransliteration,
+      showHadithHoverTranslation,
+      showHadithHoverTransliteration,
+
+      // Selected Editions
+      selectedHadithTranslationEdition,
+      selectedHadithTransliterationEdition,
+      selectedHadithInlineTranslationEdition,
+      selectedHadithInlineTransliterationEdition,
+      selectedHadithHoverTranslationEdition,
+      selectedHadithHoverTransliterationEdition,
+
+      // Font Sizes
+      hadithArabicFontSize,
+      hadithTranslationFontSize,
+      hadithTransliterationFontSize,
+      hadithInlineTranslationFontSize,
+      hadithInlineTransliterationFontSize,
+
       showDuaTranslation, showDuaTransliteration,
       showDuaInlineTranslation, showDuaInlineTransliteration,
       showDuaHoverTranslation, showDuaHoverTransliteration,
@@ -751,12 +799,31 @@ highContrast, reduceMotion, underlineLinks, screenReaderHints, uiTextScale,
     availableTranslations, setAvailableTranslations,
     activeTranslationIds, setActiveTranslationIds,
     toggleTranslation,
+    // General Toggles & Setters
     showHadithTranslation, setShowHadithTranslation,
     showHadithTransliteration, setShowHadithTransliteration,
+
+    // General Selected Editions & Setters
+    selectedHadithTranslationEdition, setSelectedHadithTranslationEdition,
+    selectedHadithTransliterationEdition, setSelectedHadithTransliterationEdition,
+
+    // Inline Toggles & Setters
     showHadithInlineTranslation, setShowHadithInlineTranslation,
     showHadithInlineTransliteration, setShowHadithInlineTransliteration,
+
+    // Inline Selected Editions & Setters
+    selectedHadithInlineTranslationEdition, setSelectedHadithInlineTranslationEdition,
+    selectedHadithInlineTransliterationEdition, setSelectedHadithInlineTransliterationEdition,
+
+    // Hover Toggles & Setters
     showHadithHoverTranslation, setShowHadithHoverTranslation,
     showHadithHoverTransliteration, setShowHadithHoverTransliteration,
+
+    // Hover Selected Editions & Setters
+    selectedHadithHoverTranslationEdition, setSelectedHadithHoverTranslationEdition,
+    selectedHadithHoverTransliterationEdition, setSelectedHadithHoverTransliterationEdition,
+
+    // Font Sizes & Setters
     hadithArabicFontSize, setHadithArabicFontSize,
     hadithTranslationFontSize, setHadithTranslationFontSize,
     hadithTransliterationFontSize, setHadithTransliterationFontSize,

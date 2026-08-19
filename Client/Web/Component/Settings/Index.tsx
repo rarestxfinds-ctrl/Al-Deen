@@ -9,13 +9,13 @@ import { Desktop } from "./Layout/Desktop";
 import { Mobile } from "./Layout/Mobile";
 import { AccountSection } from "./Content/Account/Index";
 import { QuranSection } from "./Content/Quran/Index";
-import { HadithSection } from "./Content/Hadith";
+import { HadithSection } from "./Content/Hadith/Index";
 import { AidSection } from "./Content/Aid/Index";
 import { LanguageSection } from "./Content/Language";
 import { ThemeSection } from "./Content/Theme";
 import { AccessibilitySection } from "./Content/Accessibility";
 import { QURAN_SUBCATEGORIES } from "./Content/Quran/Constant";
-import type { SettingsCategory, AccountSubcategory, AidSubcategory, QuranSubcategory } from "./Types";
+import type { SettingsCategory, AccountSubcategory, AidSubcategory, QuranSubcategory, HadithSubcategory } from "./Types";
 
 export function SettingsSidebar({ compact = false }: { compact?: boolean }) {
   const { isSettingsSidebarOpen, setSettingsSidebarOpen } = useApp();
@@ -86,7 +86,7 @@ export function SettingsSidebar({ compact = false }: { compact?: boolean }) {
       case "quran":
         return <QuranSection activeSubcategory={activeSubcategory as QuranSubcategory} />;
       case "hadith":
-        return <HadithSection />;
+        return <HadithSection activeSubcategory={activeSubcategory as AidSubcategory}/>;
       case "aid":
         return <AidSection activeSubcategory={activeSubcategory as AidSubcategory} />;
       case "language":

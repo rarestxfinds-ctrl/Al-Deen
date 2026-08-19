@@ -16,6 +16,7 @@
     "build:dev": "npm run build:dev --workspace=Client --silent"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "@types/sql.js": "^1.4.11",
     "concurrently": "^8.2.2"
   },
@@ -28,8 +29,9 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "cheerio": "^1.2.0",
+    "puppeteer": "^25.8.0",
     "sql": "^0.78.0",
     "sql.js": "^1.14.2"
-    
   }
 }

@@ -1,0 +1,29 @@
+import * as fs from "fs";
+import * as path from "path";
+import { FORCE_REBUILD } from "../Config.js";
+
+export function shouldRebuildDb(
+  targetDbPath: string,
+  sourceFilesDir: string
+): boolean {
+  if (FORCE_REBUILD || !fs.existsSync(targetDbPath)) return true;
+
+  const dbMtime: number = fs.statSync(targetDbPath).mtimeMs;
+
+  function isModified(dirPath: string): boolean {
+    const entries: fs.Dirent[] = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath: string = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        if (isModified(fullPath)) return true;
+      } else if (entry.isFile()) {
+        if (fs.statSync(fullPath).mtimeMs > dbMtime) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  return isModified(sourceFilesDir);
+}

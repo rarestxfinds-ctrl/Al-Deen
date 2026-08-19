@@ -1,79 +1,60 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@Web/Component/Layout/Index";
-import { Card } from "@Web/Component/UI/Card";
 import { Button } from "@Web/Component/UI/Button";
-import { useTranslation } from "@/Hook/Use-Translation";
+import NotFound from "../404";
 
-// Fetch function targeting your GitHub Codespaces forwarded address
-async function fetchCorpusFromBackend() {
-  const response = await fetch("https://humble-lamp-v6xj65jprx7xc6pqv-8081.app.github.dev/api/hadith-corpus");
-  if (!response.ok) throw new Error("Failed to load backend corpus data");
-  return response.json();
-}
+import { Fetch_Collections, Get_Chapter } from "@/Library/Hadith-API";
+import type { Collection_Info, Chapter_Data, Narration as NarrationType } from "@/Library/Hadith-Types";
 
 const Chapter = () => {
-  const { Collection } = useParams<{ Collection: string }>();
-  const { t } = useTranslation();
-  
-  // React Query manages client-side caching smoothly
-  const { data: corpus, isLoading } = useQuery({
-    queryKey: ["hadithCorpusBackend"],
-    queryFn: fetchCorpusFromBackend,
-    staleTime: 1000 * 60 * 15, // Cache on front-end for 15 minutes
+  const { Collection, Chapter } = useParams<{ Collection: string; Chapter: string }>();
+
+  const collectionId = Collection ?? "";
+  const chapterIdNum = Number(Chapter) || 0;
+
+  // 1. Resolve collection metadata to match Collection ID
+  const { data: collections = [] } = useQuery<Collection_Info[]>({
+    queryKey: ["hadithCollections"],
+    queryFn: () => Fetch_Collections(),
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground animate-pulse">Loading chapters...</p>
-        </Card>
-      </Layout>
-    );
-  }
+  // Normalize slug comparisons so "Sahih-Muslim" matches "Sahih/Muslim"
+  const normalize = (str?: string) => str?.toLowerCase().replace(/[\/-]/g, "");
 
-  const collection = corpus?.collections?.find(
-    (c: any) => c.slug.toLowerCase() === Collection?.toLowerCase()
+  const targetCollection = collections.find(
+    (c) => normalize(c.ID) === normalize(collectionId)
   );
 
-  if (!collection) {
-    return (
-      <Layout>
-        <div className="py-16 text-center">
-          <Card className="max-w-md mx-auto p-8">
-            <h1 className="text-2xl font-semibold mb-4">Collection Not Found</h1>
-            <Link to="/Hadith">
-              <Button>{t.common.back} to {t.hadith.title}</Button>
-            </Link>
-          </Card>
-        </div>
-      </Layout>
-    );
+  // 2. Fetch chapter data (including its Narrations list)
+  const { data: chapterData = null } = useQuery<Chapter_Data | null>({
+    queryKey: ["hadithChapter", targetCollection?.ID, chapterIdNum],
+    queryFn: () => (targetCollection?.ID && chapterIdNum ? Get_Chapter(targetCollection.ID, chapterIdNum) : null),
+    enabled: Boolean(targetCollection?.ID && chapterIdNum),
+    staleTime: 1000 * 60 * 30, // Cache for 30 minutes
+  });
+
+  if (!targetCollection || !chapterData || !chapterData.Narrations) {
+    return <NotFound />;
   }
+
+  const safeCollectionId = targetCollection.ID.replace(/\//g, "-");
 
   return (
     <Layout>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {collection.chapters?.map((chapter: any, index: number) => (
-          <Link key={chapter.id} to={`/Hadith/${collection.slug}/${chapter.id}`}>
-            <Card className="p-4 transition-all group">
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                <span className="text-xs text-muted-foreground group-hover:text-foreground">
-                  {index + 1}
-                </span>
-                <p className="font-semibold text-sm truncate group-hover:text-foreground">
-                  {chapter.name}
-                </p>
-                <div className="text-right flex flex-col justify-center">
-                  {chapter.range && (
-                    <span className="text-sm font-medium text-foreground group-hover:text-foreground">
-                      {chapter.range}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {chapterData.Narrations.map((narration: NarrationType) => (
+          <Link
+            key={narration.ID}
+            to={`/Hadith/${safeCollectionId}/${chapterIdNum}/${narration.ID}`}
+          >
+            <Button
+              variant="outline"
+              className="w-full h-16 text-lg font-semibold"
+            >
+              {narration.ID}
+            </Button>
           </Link>
         ))}
       </div>

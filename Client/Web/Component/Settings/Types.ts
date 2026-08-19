@@ -11,7 +11,9 @@ export type SettingsCategory =
   | "accessibility";
 export type AccountSubcategory = "profile" | "bookmarks" | "notes" | "history";
 export type AidSubcategory = "prayer-times" | "dua";
-export type QuranSubcategory = 
+export type QuranSubcategory = ""
+export type HadithSubcategory =
+
   | "arabic"
   | "translation"
   | "transliteration"
@@ -37,6 +39,11 @@ export interface AccountSubcategoryConfig {
 
 export interface AidSubcategoryConfig {
   id: AidSubcategory;
+  label: string;
+  icon: ReactNode;
+}
+export interface HadithSubcategoryConfig {
+  id: HadithSubcategory;
   label: string;
   icon: ReactNode;
 }

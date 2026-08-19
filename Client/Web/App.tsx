@@ -31,10 +31,10 @@ import QuranGoals   from "./Page/Quran/Goal";
 import QuranPage    from "./Page/Quran/Safhah";
 
 // 6. Pages - Hadith (Relative Paths)
-import Collection   from "./Page/Hadith/Collection";
-import Chapter      from "./Page/Hadith/Chapter";
-import Narration    from "./Page/Hadith/Narration";
-import Detail       from "./Page/Hadith/Detail";
+import HadithIndex   from "./Page/Hadith/Index";
+import Collection      from "./Page/Hadith/Collection";
+import Chapter    from "./Page/Hadith/Chapter";
+import Narration       from "./Page/Hadith/Narration";
 
 // 7. Pages - Aid (Relative Paths)
 import Aid                   from "./Page/Aid/Index";
@@ -134,10 +134,10 @@ const App = () => (
                   <Route path="/Quran/Goal" element={<QuranGoals />} />
 
                   {/* Hadith */}
-                  <Route path="/Hadith" element={<Collection />} />
-                  <Route path="/Hadith/:Collection" element={<Chapter />} />
-                  <Route path="/Hadith/:Collection/:Chapter/:HadithId" element={<Detail />} />
-                  <Route path="/Hadith/:Collection/:Chapter" element={<Narration />} />
+                  <Route path="/Hadith" element={<HadithIndex />} />
+                  <Route path="/Hadith/:Collection" element={<Collection />} />
+                  <Route path="/Hadith/:Collection/:Chapter" element={<Chapter />} />
+                  <Route path="/Hadith/:Collection/:Chapter/:HadithId" element={<Narration />} />
 
                   {/* Aid */}
                   <Route path="/Aid" element={<Aid />} />

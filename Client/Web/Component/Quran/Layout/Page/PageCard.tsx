@@ -41,34 +41,34 @@ export const PageLines = memo(function PageLines({
   VerseMarkerOverrides = [],
   IsUthmaniV4Font = false,
   JustifyLines = true,
-}: PageLinesProps) {
-  const { hifz, settings } = useApp();
+  ShowBasmalah = false,
+}: PageLinesProps & { ShowBasmalah?: boolean }) {
+  const { hifz } = useApp();
   const { activeVerse, activeWord, playAyah } = useAudio();
   const { playWordAudio, isPlaying } = useAudioPlayback(SurahNumber);
 
   const inlineTranslationFontSize = 12;
   const inlineTransliterationFontSize = 12;
 
-  // Resolve active settings from context or props
-  const activeHoverTranslation = settings?.hoverTranslation ?? HoverTranslation;
-  const activeHoverTransliteration = settings?.hoverTransliteration ?? ShowTransliteration;
-
-  const activeInlineTranslation = settings?.inlineTranslation ?? InlineTranslation;
-  const activeInlineTransliteration = settings?.inlineTransliteration ?? InlineTransliteration;
-
-  // Determine active modes (global feature toggles)
+  // Respect exactly what was passed down through props from the parent
+  // chain (Surah/Index.tsx -> PageView -> PageCard -> PageLines). Do not
+  // override with a separate `settings` object from useApp() — it isn't
+  // guaranteed to be in sync with what the user actually selected upstream,
+  // and silently preferring it here is what made this component ignore the
+  // parent's actual Hover_Translation / Inline_Translation /
+  // Inline_Transliteration / Show_Transliteration values.
   const isHoverTranslationEnabled = useMemo(
-    () => activeHoverTranslation !== "None" && activeHoverTranslation !== false && activeHoverTranslation !== undefined,
-    [activeHoverTranslation]
+    () => HoverTranslation !== "None" && HoverTranslation !== false && HoverTranslation !== undefined,
+    [HoverTranslation]
   );
 
   const isHoverTransliterationEnabled = useMemo(
-    () => activeHoverTransliteration !== "None" && activeHoverTransliteration !== false && activeHoverTransliteration !== undefined,
-    [activeHoverTransliteration]
+    () => ShowTransliteration !== "None" && ShowTransliteration !== false && ShowTransliteration !== undefined,
+    [ShowTransliteration]
   );
 
-  const showInlineTranslation = activeInlineTranslation !== "None" && !!activeInlineTranslation;
-  const showInlineTransliteration = activeInlineTransliteration !== "None" && !!activeInlineTransliteration;
+  const showInlineTranslation = InlineTranslation !== "None" && !!InlineTranslation;
+  const showInlineTransliteration = InlineTransliteration !== "None" && !!InlineTransliteration;
   const hasActiveInline = showInlineTranslation || showInlineTransliteration;
 
   const pageFontFamilyWithFallback = useMemo(() => {
@@ -76,8 +76,6 @@ export const PageLines = memo(function PageLines({
     return base ? `${base}, ${ARABIC_FONT_FALLBACK}` : ARABIC_FONT_FALLBACK;
   }, [PageFontFamily, FontClass]);
 
-  // NOTE: `["Al-Ayah"]`, `.verseNumber`, `.Ayah` are external data-shape
-  // fallbacks, not naming style — left as-is (see caveat above).
   const isWordCompleted = (ayah: any, wordIndex: number): boolean => {
     if (!ayah) return false;
     const ayahNumber = Number(ayah["Al-Ayah"] ?? ayah.verseNumber ?? ayah.Ayah);
@@ -159,8 +157,6 @@ export const PageLines = memo(function PageLines({
 
     const isAyahHighlighted = HighlightedAyah !== null && resolvedAyahNumber === HighlightedAyah;
 
-    // NOTE: `.wbwTranslation` / `.wbwTransliteration` are external data-shape
-    // fields, not naming style — left as-is.
     const rawTranslation = !IsVerseEnd && Ayah
       ? (Ayah as any).wbwTranslation?.[WordIndex]
       : undefined;
@@ -206,15 +202,15 @@ export const PageLines = memo(function PageLines({
       isAudioPlaying
     );
 
-    if (IsUthmaniV4Font) {
-      if (isActive || isAudioPlaying) {
-        elementClassName += " uthmani-glyph-highlighted";
-      }
+    if (IsUthmaniV4Font && (isActive || isAudioPlaying)) {
+      elementClassName += " uthmani-glyph-highlighted";
     }
 
     const elementRef = (el: HTMLSpanElement | null) => {
       if (el && isFirstInLine && resolvedAyahNumber && index === 0) {
-        AyahRefs.current.set(resolvedAyahNumber, el as unknown as HTMLDivElement);
+        if (AyahRefs?.current) {
+          AyahRefs.current.set(resolvedAyahNumber, el as unknown as HTMLDivElement);
+        }
       }
     };
 
@@ -328,19 +324,34 @@ export const PageLines = memo(function PageLines({
 
   return (
     <div className="space-y-2 p-4 print:p-0 print:space-y-0">
-      {BasmalahWords.length > 0 && (
-        <Bismillah
-          words={BasmalahWords}
-          fontClass={BasmalahFontClass}
-          fontSize={BasmalahFontSize}
-          fontFamily={BasmalahFontFamily}
-          wordSpacing={WordSpacing}
-          showInlineTranslation={showInlineTranslation}
-          showInlineTransliteration={showInlineTransliteration}
-          hoverTranslationEnabled={isHoverTranslationEnabled}
-          inlineTranslationSize={inlineTranslationFontSize}
-          inlineTransliterationSize={inlineTransliterationFontSize}
-        />
+      {ShowBasmalah && (
+        <div className="my-4 text-center">
+          {BasmalahWords && BasmalahWords.length > 0 ? (
+            <Bismillah
+              words={BasmalahWords}
+              fontClass={BasmalahFontClass}
+              fontSize={BasmalahFontSize}
+              fontFamily={BasmalahFontFamily}
+              wordSpacing={WordSpacing}
+              showInlineTranslation={showInlineTranslation}
+              showInlineTransliteration={showInlineTransliteration}
+              hoverTranslationEnabled={isHoverTranslationEnabled}
+              inlineTranslationSize={inlineTranslationFontSize}
+              inlineTransliterationSize={inlineTransliterationFontSize}
+            />
+          ) : (
+            <div
+              className={`text-center my-2 text-foreground ${BasmalahFontClass || FontClass || ""}`}
+              style={{
+                fontSize: ArabicFontSize || "1.75rem",
+                fontFamily: BasmalahFontFamily || pageFontFamilyWithFallback,
+              }}
+              dir="rtl"
+            >
+              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+            </div>
+          )}
+        </div>
       )}
 
       <div
@@ -388,9 +399,18 @@ export const PageCard = memo(function PageCard({
   ContainerClass,
   ShowArabicText = true,
   ShowTransliteration,
-  ShowBasmalahOnPage,
-  BasmalahWords,
+  ShowBasmalahOnPage: ProvidedShowBasmalah,
+  BasmalahWords = [],
   PageFontFamily,
+  // Font family locked to mushaf page 1, used ONLY for the Basmalah. Must
+  // stay separate from PageFontFamily (the CURRENTLY DISPLAYED page's font):
+  // glyph-based fonts (uthmani_v1/v2/v4) bind specific ligature codepoints to
+  // a specific page's custom font file, and the Basmalah's glyphs are always
+  // sourced from Surah 1 / mushaf page 1, regardless of which surah or page
+  // is actually being rendered here. Reusing PageFontFamily for the Basmalah
+  // (e.g. "Uthmani-V4-51" on Surah 2's first page) produces wrong glyph
+  // shapes even though the underlying Arabic text/data is correct.
+  BasmalahPageFontFamily,
   FontClass,
   ArabicFontSize,
   WordSpacing,
@@ -409,18 +429,38 @@ export const PageCard = memo(function PageCard({
   PageFooter,
   Layout,
 }: PageCardProps) {
-  const surahId = Number(SurahNumber || 1);
+  const pageNum = Number((PageData as any)?.pageNumber ?? (PageData as any)?.Page ?? PageIndex ?? 0);
+
+  const inferredSurahNumber = useMemo(() => {
+    if (SurahNumber) return Number(SurahNumber);
+    if ((PageData as any)?.surahNumber) return Number((PageData as any).surahNumber);
+    if ((PageData as any)?.verses?.[0]?.surahNumber) return Number((PageData as any).verses[0].surahNumber);
+    return 1;
+  }, [SurahNumber, PageData]);
+
+  const shouldShowBasmalah = useMemo(() => {
+    if (ProvidedShowBasmalah !== undefined) {
+      return ProvidedShowBasmalah;
+    }
+    const isNotTawbahOrFatihah = inferredSurahNumber !== 1 && inferredSurahNumber !== 9;
+    const firstVerseNumber =
+      (PageData as any)?.verses?.[0]?.verseNumber ??
+      (PageData as any)?.verses?.[0]?.Ayah ??
+      ResolvedLines[0]?.[0]?.AyahNumber;
+
+    return Number(firstVerseNumber) === 1 && isNotTawbahOrFatihah;
+  }, [ProvidedShowBasmalah, inferredSurahNumber, PageData, ResolvedLines]);
 
   return (
     <Container className={`w-full ${ContainerClass} print:bg-white print:text-black print:shadow-none print:border-none print:m-0 print:p-0 print:break-after-page`}>
       <div className="relative print:static">
-        {ShowArabicText && ResolvedLines.length > 0 && AyahRefs && (
+        {ShowArabicText && ResolvedLines.length > 0 ? (
           <PageLines
             ResolvedLines={ResolvedLines}
             FontClass={FontClass || ""}
             ArabicFontSize={ArabicFontSize || "1.5rem"}
             WordSpacing={WordSpacing || "1.8px"}
-            SurahNumber={surahId}
+            SurahNumber={inferredSurahNumber}
             AyahRefs={AyahRefs}
             HighlightedAyah={HighlightedAyah ?? null}
             setHighlightedAyah={setHighlightedAyah || (() => {})}
@@ -430,8 +470,9 @@ export const PageCard = memo(function PageCard({
             InlineTransliteration={InlineTransliteration || "None"}
             HideVerses={HideVerses}
             HideVerseMarkers={HideVerseMarkers}
-            BasmalahWords={ShowBasmalahOnPage ? BasmalahWords : []}
-            BasmalahFontFamily={ShowBasmalahOnPage ? PageFontFamily : undefined}
+            BasmalahWords={BasmalahWords}
+            ShowBasmalah={shouldShowBasmalah}
+            BasmalahFontFamily={shouldShowBasmalah ? (BasmalahPageFontFamily || PageFontFamily) : undefined}
             BasmalahFontClass={FontClass}
             BasmalahFontSize={ArabicFontSize}
             PageFontFamily={PageFontFamily}
@@ -440,13 +481,17 @@ export const PageCard = memo(function PageCard({
             IsUthmaniV4Font={IsUthmaniV4Font}
             JustifyLines={false}
           />
+        ) : (
+          <div className="p-4 text-xs font-mono bg-red-500/10 text-red-500 border border-red-500/30 rounded my-2">
+            ⚠️ PageLines Failed to Render! 
+            {!ShowArabicText && " (Reason: ShowArabicText is false)"}
+            {ResolvedLines.length === 0 && " (Reason: ResolvedLines is empty)"}
+          </div>
         )}
 
         {!ShowArabicText && ShowTransliteration && PageData && (
           <div className="space-y-1 p-4 print:p-0">
-            {/* NOTE: `.verses`, `["Al-Ayah"]`, `["Al-Arabiyyah"]`, `.verseNumber`,
-                `.arabic` are external data-shape fields — left as-is. */}
-            {(PageData as any).verses.map((ayah: any) => {
+            {(PageData as any).verses?.map((ayah: any) => {
               const ayahNumber = Number(ayah["Al-Ayah"] ?? ayah.verseNumber ?? ayah.Ayah);
               const verseText = ayah["Al-Arabiyyah"] || ayah.arabic;
               if (!verseText) return null;

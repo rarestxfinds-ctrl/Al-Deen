@@ -1,5 +1,5 @@
 import { User, Type, Globe, Bookmark, FileText, Clock, BookText, Heart, Palette, Accessibility } from "lucide-react";
-import type { SettingsCategoryConfig, AccountSubcategoryConfig, AidSubcategoryConfig } from "./Types";
+import type { SettingsCategoryConfig, AccountSubcategoryConfig, HadithSubcategoryConfig } from "./Types";
 import { AID_SUBCATEGORIES } from "./Content/Aid/Constant";
 import { QURAN_SUBCATEGORIES } from "./Content/Quran/Constant";  // ← ADD THIS IMPORT
 
@@ -7,7 +7,7 @@ import { QURAN_SUBCATEGORIES } from "./Content/Quran/Constant";  // ← ADD THIS
 export const SETTINGS_CATEGORIES: SettingsCategoryConfig[] = [
   { id: "account", label: "Account", icon: User, hasSubcategories: true },
   { id: "quran",   label: "Quran",   icon: Type, hasSubcategories: true },
-  { id: "hadith",  label: "Hadith",  icon: BookText, hasSubcategories: false },
+  { id: "hadith",  label: "Hadith",  icon: BookText, hasSubcategories: true },
   { id: "aid",     label: "Aid",     icon: Heart, hasSubcategories: true },
   { id: "language", label: "Language", icon: Globe, hasSubcategories: false },
   { id: "theme", label: "Theme", icon: Palette, hasSubcategories: false },
@@ -21,6 +21,12 @@ export const ACCOUNT_SUBCATEGORIES: AccountSubcategoryConfig[] = [
   { id: "notes",     label: "Notes",     icon: <FileText className="h-4 w-4" /> },
   { id: "history",   label: "History",   icon: <Clock className="h-4 w-4" /> },
 ];
+export const HADITH_SUBCATEGORIES: HadithSubcategoryConfig[] = [
+  { id: "arabic",   label: "Arabic",   icon: <User className="h-4 w-4" /> },
+  { id: "translation", label: "Translation", icon: <Bookmark className="h-4 w-4" /> },
+  { id: "transliteration",     label: "Transliteration",     icon: <FileText className="h-4 w-4" /> },
+  { id: "wbw",   label: "WBW",   icon: <Clock className="h-4 w-4" /> },
+];
 
 // Helper to get subcategories for a given category
 export const getSubcategories = (category: string) => {
@@ -31,6 +37,8 @@ export const getSubcategories = (category: string) => {
       return AID_SUBCATEGORIES;
     case "quran":                     // ← ADD THIS CASE
       return QURAN_SUBCATEGORIES;
+    case "hadith":                     // ← ADD THIS CASE
+      return HADITH_SUBCATEGORIES;
     default:
       return [];
   }
